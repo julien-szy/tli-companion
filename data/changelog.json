@@ -1,17 +1,23 @@
 {
   "unreleased": {
-    "en": [
-      "Global farming strategy: the numbers of your farm sessions are now shared anonymously (no username, no notes) to show which map, Timemark, strategy and compasses earn the most FE. A strategy only appears once 3 different players are behind it. You can turn this off in Settings, and publishing your own route with your name stays optional.",
-      "New \"You vs. the community\" card in each farm session: your FE/h compared with the community median and the top 10% on the same map and Timemark, and the compasses the best runs use.",
-      "No more question at the start of each farm session: at the end you simply choose whether to also publish your route."
-    ],
-    "fr": [
-      "Stratégie de farm globale : les chiffres de tes sessions de farm sont maintenant partagés anonymement (sans pseudo ni notes) pour montrer quelle carte, quel Timemark, quelle stratégie et quels compas rapportent le plus de FE. Une stratégie n'apparaît qu'à partir de 3 joueurs différents. Désactivable dans les Réglages, et publier ta propre route avec ton pseudo reste facultatif.",
-      "Nouvelle carte « Toi face à la communauté » dans chaque session de farm : ton FE/h comparé à la médiane de la communauté et au top 10 % sur la même carte et le même Timemark, et les compas utilisés par les meilleures sessions.",
-      "Plus de question au début de chaque session de farm : à la fin, tu choisis simplement si tu publies aussi ta route."
-    ]
+    "en": [],
+    "fr": []
   },
   "releases": [
+    {
+      "version": "0.9.14",
+      "date": "2026-10-17",
+      "en": [
+        "Global farming strategy: the numbers of your farm sessions are now shared anonymously (no username, no notes) to show which map, Timemark, strategy and compasses earn the most FE. A strategy only appears once 3 different players are behind it. You can turn this off in Settings, and publishing your own route with your name stays optional.",
+        "New \"You vs. the community\" card in each farm session: your FE/h compared with the community median and the top 10% on the same map and Timemark, and the compasses the best runs use.",
+        "No more question at the start of each farm session: at the end you simply choose whether to also publish your route."
+      ],
+      "fr": [
+        "Stratégie de farm globale : les chiffres de tes sessions de farm sont maintenant partagés anonymement (sans pseudo ni notes) pour montrer quelle carte, quel Timemark, quelle stratégie et quels compas rapportent le plus de FE. Une stratégie n'apparaît qu'à partir de 3 joueurs différents. Désactivable dans les Réglages, et publier ta propre route avec ton pseudo reste facultatif.",
+        "Nouvelle carte « Toi face à la communauté » dans chaque session de farm : ton FE/h comparé à la médiane de la communauté et au top 10 % sur la même carte et le même Timemark, et les compas utilisés par les meilleures sessions.",
+        "Plus de question au début de chaque session de farm : à la fin, tu choisis simplement si tu publies aussi ta route."
+      ]
+    },
     {
       "version": "0.9.13",
       "date": "2026-10-17",
