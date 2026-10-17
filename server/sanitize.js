@@ -179,4 +179,27 @@ function sanitizeMeta(body) {
   return { server, snapshot: out, names, players };
 }
 
-module.exports = { parseMapName, STRATEGY_TAGS, sanitizeReport, sanitizeBuild, sanitizeMeta };
+// Statistiques anonymes d'une session de farm : seulement des chiffres et des numéros d'objets.
+function sanitizeFarmStats(b) {
+  if (!b || typeof b !== 'object') throw bad('invalid stats');
+  if (typeof b.id !== 'string' || !/^[0-9a-f-]{36}$/.test(b.id)) throw bad('invalid id');
+  if (typeof b.anonId !== 'string' || !/^[0-9a-f-]{36}$/.test(b.anonId)) throw bad('invalid anonymous id');
+  const out = {
+    id: b.id, anonId: b.anonId,
+    heroId: b.heroId != null ? int(b.heroId) : null,
+    mainMap: str(b.mainMap, 120) || null,
+    strategyTag: STRATEGY_TAGS.includes(b.strategyTag) ? b.strategyTag : null,
+    server: b.server ? str(b.server, 40) : null,
+    season: b.season ? int(b.season) : null,
+    runs: int(b.runs), realMs: int(b.realMs), mapMs: int(b.mapMs), afkMs: Math.max(0, int(b.afkMs)),
+    profit: num(b.profit), perHour: num(b.perHour),
+    loot: arr(b.loot, 150).map((i) => ({ id: int(i && i.id), qty: num(i && i.qty), unit: num(i && i.unit) })).filter((i) => i.id > 0),
+    consumables: arr(b.consumables, 40).map((i) => ({ id: int(i && i.id), name: str(i && i.name, 120), img: img(i && i.img), qty: num(i && i.qty), unit: num(i && i.unit) })).filter((i) => i.id > 0),
+  };
+  // Bornes de bon sens : au moins 3 cartes et 5 minutes, FE/h plausible.
+  if (out.runs < 3 || out.realMs < 5 * 60000) throw bad('session too short');
+  if (Math.abs(out.perHour) > 5e6) throw bad('implausible numbers');
+  return out;
+}
+
+module.exports = { parseMapName, STRATEGY_TAGS, sanitizeReport, sanitizeBuild, sanitizeMeta, sanitizeFarmStats };

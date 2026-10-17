@@ -33,7 +33,8 @@ async function load() {
   const q = query();
   history.replaceState(null, '', q.toString() ? '/strategies?' + q : '/strategies');
   $('reset').hidden = ![...q.keys()].some((k) => k !== 'sort');
-  const [{ reports }, { best }] = await Promise.all([api('/api/reports?' + q), api('/api/strategies/best?' + q)]);
+  const [{ reports }, bestRes] = await Promise.all([api('/api/reports?' + q), api('/api/strategies/best?' + q)]);
+  const best = bestRes.best;
 
   // Les plus rentables en ce moment (regroupées par carte + Timemark + type).
   $('best').innerHTML = best.length ? best.slice(0, 12).map((b, i) => `<tr class="click" data-region="${esc(b.region || '')}" data-tier="${b.timemark ?? ''}" data-tag="${esc(b.tag || '')}">
@@ -44,7 +45,7 @@ async function load() {
       <td class="r hide-sm muted">${nf1.format(b.hours)} h</td>
       <td class="r"><b class="pos">${fe(b.perHourNow)}</b></td>
       <td class="r hide-sm muted">${fe(b.perHourThen)}</td></tr>`).join('')
-    : `<tr><td colspan="7" class="empty">${esc(t('bestEmpty'))}</td></tr>`;
+    : `<tr><td colspan="7" class="empty">${esc(bestRes.pending ? t('bestPending', { n: bestRes.pending }) : t('bestEmpty'))}</td></tr>`;
   document.querySelectorAll('#best tr.click').forEach((tr) => (tr.onclick = () => {
     $('region').value = tr.dataset.region; $('tier').value = tr.dataset.tier; $('tag').value = tr.dataset.tag;
     load().then(() => $('allTitle').scrollIntoView({ behavior: 'smooth' }));

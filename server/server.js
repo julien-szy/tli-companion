@@ -8,7 +8,7 @@ const zlib = require('zlib');
 const { openDb } = require('./db');
 const AI = require('./ai');
 const TITrack = require('./titrack');
-const { sanitizeReport, sanitizeBuild, sanitizeMeta, parseMapName } = require('./sanitize');
+const { sanitizeReport, sanitizeBuild, sanitizeMeta, parseMapName, sanitizeFarmStats } = require('./sanitize');
 
 const PORT = +(process.env.PORT || 8080);
 const HOST = process.env.HOST || '127.0.0.1';
@@ -250,83 +250,108 @@ route('GET', /^\/api\/stats$/, () => {
   return { heroes, maps, totals, regions, tiers, tags, servers, items: Object.values(items).sort((a, b) => b.n - a.n).slice(0, 60) };
 });
 
+// ---------------- Statistiques de farm anonymes ----------------
+const bestCache = new Map();
+// Un chiffre n'est affiché que s'il repose sur au moins 3 joueurs différents (personne n'est identifiable).
+const MIN_PLAYERS = 3;
+route('POST', /^\/api\/stats\/farm$/, async (req) => {
+  rateLimit('farmstats:' + clientIp(req), 30, 3600000);
+  const s = sanitizeFarmStats(await readJson(req));
+  const contributor = sha256('farm-stats:' + s.anonId);
+  const existing = db.prepare('SELECT contributor FROM farm_stats WHERE id = ?').get(s.id);
+  if (existing && existing.contributor !== contributor) throw new HttpError(403, 'not yours');
+  const { region, timemark } = parseMapName(s.mainMap);
+  const cons = s.consumables.length ? '|' + s.consumables.map((c) => c.id).join('|') + '|' : null;
+  db.prepare(`INSERT INTO farm_stats (id, contributor, created_at, hero_id, main_map, region, timemark, strategy_tag, server_region, season,
+      runs, real_ms, map_ms, afk_ms, profit, per_hour, consumables, json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET strategy_tag = excluded.strategy_tag, json = excluded.json`)
+    .run(s.id, contributor, Date.now(), s.heroId, s.mainMap, region, timemark, s.strategyTag, s.server, s.season,
+      s.runs, s.realMs, s.mapMs, s.afkMs, s.profit, s.perHour, cons, JSON.stringify({ loot: s.loot, consumables: s.consumables }));
+  bestCache.clear();
+  return { ok: true };
+});
+
+function statsFilters(q) {
+  const where = ['1 = 1'];
+  const args = [];
+  if (q.get('hero')) { where.push('hero_id = ?'); args.push(+q.get('hero')); }
+  if (q.get('region')) { where.push('region = ?'); args.push(q.get('region')); }
+  if (q.get('tier')) { where.push('timemark = ?'); args.push(+q.get('tier')); }
+  if (q.get('tag')) { where.push('strategy_tag = ?'); args.push(q.get('tag')); }
+  if (q.get('item')) { where.push('consumables LIKE ?'); args.push(`%|${+q.get('item')}|%`); }
+  if (q.get('server')) { where.push('server_region = ?'); args.push(q.get('server')); }
+  // Saison en cours seulement (les 120 derniers jours au plus).
+  where.push('created_at > ?'); args.push(Date.now() - 120 * 86400000);
+  return { where, args };
+}
+const quantile = (sorted, q) => (sorted.length ? sorted[Math.min(sorted.length - 1, Math.floor(q * (sorted.length - 1) + 0.5))] : 0);
+
+// Comparaison pour l'app : « ton FE/h sur cette carte » face à la communauté (même carte, même Timemark).
+route('GET', /^\/api\/stats\/compare$/, (req, url) => {
+  const q = url.searchParams;
+  const { where, args } = statsFilters(q);
+  const rows = db.prepare(`SELECT contributor, per_hour, json FROM farm_stats WHERE ${where.join(' AND ')}`).all(...args);
+  const players = new Set(rows.map((r) => r.contributor)).size;
+  if (players < MIN_PLAYERS) return { enough: false, sessions: rows.length, players, needed: MIN_PLAYERS };
+  const ph = rows.map((r) => r.per_hour).sort((a, b) => a - b);
+  // Consommables des meilleures sessions (quart supérieur) : « ce que font ceux qui gagnent le plus ».
+  const p75 = quantile(ph, 0.75);
+  const items = {};
+  for (const r of rows.filter((x) => x.per_hour >= p75)) {
+    for (const c of JSON.parse(r.json).consumables || []) {
+      const it = (items[c.id] = items[c.id] || { id: c.id, name: c.name, img: c.img, n: 0 });
+      it.n++;
+    }
+  }
+  return { enough: true, sessions: rows.length, players, median: quantile(ph, 0.5), p90: quantile(ph, 0.9),
+    avg: ph.reduce((a, b) => a + b, 0) / ph.length, topItems: Object.values(items).sort((a, b) => b.n - a.n).slice(0, 4) };
+});
+
 // Stratégies les plus rentables : sessions regroupées par région + Timemark + type,
 // profit recalculé avec les prix actuels de la communauté (sinon le prix au moment de la session).
-const bestCache = new Map();
 route('GET', /^\/api\/strategies\/best$/, (req, url) => {
   const q = url.searchParams;
   const key = q.toString();
   const hit = bestCache.get(key);
   if (hit && Date.now() - hit.at < 5 * 60000) return hit.body;
-  const { where, args } = reportFilters(q);
-  const rows = db.prepare(`SELECT r.json, r.user_id, r.region, r.timemark, r.strategy_tag, r.hero_id, r.real_ms, r.per_hour_real
-    FROM reports r JOIN users u ON u.id = r.user_id WHERE ${where.join(' AND ')} ORDER BY r.created_at DESC LIMIT 3000`).all(...args);
+  const { where, args } = statsFilters(q);
+  const rows = db.prepare(`SELECT contributor, region, timemark, strategy_tag, hero_id, real_ms, map_ms, afk_ms, per_hour, json
+    FROM farm_stats WHERE ${where.join(' AND ')} ORDER BY created_at DESC LIMIT 5000`).all(...args);
   const now = currentPrices().prices;
   const groups = {};
   for (const row of rows) {
-    const r = JSON.parse(row.json);
-    const priceNow = (id, old) => (now[id] ? now[id].price : (r.prices[id] ?? old ?? 0));
+    const d = JSON.parse(row.json);
+    const priceNow = (id, old) => (now[id] ? now[id].price : (old ?? 0));
     let value = 0;
-    for (const i of r.loot) value += i.qty * priceNow(i.id, i.unit);
-    for (const c of r.strategy.consumables) value += (c.qty || 0) * priceNow(c.id, c.unit); // qty < 0 : coût
+    for (const i of d.loot) value += i.qty * priceNow(i.id, i.unit);
+    for (const c of d.consumables) value += (c.qty || 0) * priceNow(c.id, c.unit); // qty < 0 : coût
     const hours = Math.max(row.real_ms, 60000) / 3600000;
     const k = `${row.region || '?'}|${row.timemark ?? ''}|${row.strategy_tag || ''}`;
     const g = (groups[k] = groups[k] || { region: row.region, timemark: row.timemark, tag: row.strategy_tag, sessions: 0, players: new Set(),
-      hours: 0, valueNow: 0, valueThen: 0, heroes: {}, items: {} });
-    g.sessions++; g.players.add(row.user_id); g.hours += hours; g.valueNow += value; g.valueThen += row.per_hour_real * hours;
+      hours: 0, mapHours: 0, valueNow: 0, valueThen: 0, heroes: {}, items: {} });
+    g.sessions++; g.players.add(row.contributor); g.hours += hours; g.mapHours += row.map_ms / 3600000;
+    g.valueNow += value; g.valueThen += row.per_hour * hours;
     if (row.hero_id != null) g.heroes[row.hero_id] = (g.heroes[row.hero_id] || 0) + 1;
-    for (const c of r.strategy.consumables) {
+    for (const c of d.consumables) {
       const it = (g.items[c.id] = g.items[c.id] || { id: c.id, name: c.name, img: c.img, n: 0 });
       it.n++;
     }
   }
   const names = heroNameMap();
-  const best = Object.values(groups).map((g) => ({
+  const all = Object.values(groups);
+  const best = all.filter((g) => g.players.size >= MIN_PLAYERS).map((g) => ({
     region: g.region, timemark: g.timemark, tag: g.tag, sessions: g.sessions, players: g.players.size,
-    hours: Math.round(g.hours * 10) / 10,
+    hours: Math.round(g.hours * 10) / 10, efficiency: g.hours ? g.mapHours / g.hours : null,
     perHourNow: g.valueNow / g.hours, perHourThen: g.valueThen / g.hours,
     heroes: Object.entries(g.heroes).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([id, n]) => ({ id: +id, name: names[id] || null, n })),
     items: Object.values(g.items).sort((a, b) => b.n - a.n).slice(0, 4),
   })).sort((a, b) => b.perHourNow - a.perHourNow).slice(0, 30);
-  const body = { best, sessions: rows.length };
+  // Groupes pas encore assez fournis : on dit juste combien de sessions attendent d'autres joueurs.
+  const pending = all.filter((g) => g.players.size < MIN_PLAYERS).reduce((n, g) => n + g.sessions, 0);
+  const body = { best, sessions: rows.length, players: new Set(rows.map((r) => r.contributor)).size, pending, minPlayers: MIN_PLAYERS };
   bestCache.set(key, { at: Date.now(), body });
   if (bestCache.size > 300) bestCache.delete(bestCache.keys().next().value);
   return body;
-});
-
-// ---------------- Conseiller IA (hébergé) ----------------
-// 25 questions par jour et par joueur (ou par adresse IP sans pseudo) pour rester dans les offres gratuites.
-route('GET', /^\/api\/ai\/status$/, () => ({ enabled: AI.available().length > 0, dailyLimit: 25 }));
-route('POST', /^\/api\/ai\/chat$/, async (req) => {
-  let who = 'ip:' + clientIp(req);
-  try { who = 'user:' + auth(req).id; } catch { /* sans pseudo : limite par IP */ }
-  rateLimit('ai-min:' + who, 5, 60000);
-  rateLimit('ai-day:' + who, 25, 86400000);
-  const body = await readJson(req, 400 * 1024);
-  const lang = body.lang === 'fr' ? 'fr' : 'en';
-  const messages = (Array.isArray(body.messages) ? body.messages : []).slice(-16)
-    .filter((m) => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string' && m.content.trim())
-    .map((m) => ({ role: m.role, content: m.content.slice(0, 4000) }));
-  if (!messages.length || messages[messages.length - 1].role !== 'user') throw new HttpError(400, 'empty question');
-  const context = body.context && typeof body.context === 'object' ? body.context : {};
-  // Recherche de prix : noms connus du serveur + prix communautaires, puis les prix déjà dans le contexte.
-  const now = currentPrices().prices;
-  const find = db.prepare('SELECT id, name FROM item_names WHERE name LIKE ? LIMIT 10');
-  const searchPrices = (q) => {
-    if (!q) return [];
-    const out = find.all(`%${q.replace(/[%_]/g, '')}%`).map((r) => ({ name: r.name, priceFE: now[r.id] ? Math.round(now[r.id].price * 100) / 100 : null }));
-    const known = (context.market && context.market.prices) || {};
-    for (const [name, price] of Object.entries(known)) {
-      if (out.length < 10 && name.toLowerCase().includes(q.toLowerCase()) && !out.some((x) => x.name === name)) out.push({ name, priceFE: price });
-    }
-    return out;
-  };
-  try {
-    return await AI.chat({ lang, context, messages, searchPrices });
-  } catch (e) {
-    console.error(new Date().toISOString(), 'IA :', e.status || '', e.message);
-    throw new HttpError(e.status === 503 ? 503 : 502, e.status === 429 ? 'AI is busy right now, try again in a minute' : e.message);
-  }
 });
 
 // ---------------- Builds ----------------

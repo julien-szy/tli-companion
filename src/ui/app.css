@@ -266,3 +266,9 @@ tr.ignored td:first-child::after { content: ' ·  < min'; font-size: 11px; color
 .todo-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
 .todo-item { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px 4px 6px; border: 1px solid var(--line); border-radius: 999px; background: var(--panel2); font-size: 12.5px; }
 .todo-item em { font-style: normal; font-size: 11px; }
+
+.cmp-rows { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+.cmp-rows > div { display: grid; grid-template-columns: 170px 1fr 110px; align-items: center; gap: 10px; }
+.cmp-rows b { text-align: right; font-variant-numeric: tabular-nums; }
+.cmp-bar { display: block; height: 8px; border-radius: 4px; background: #5a6170; }
+.cmp-bar.you { background: var(--accent); } .cmp-bar.top { background: var(--pos); }

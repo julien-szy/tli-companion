@@ -32,7 +32,6 @@ tli.onState((s) => {
   $('btnRec').classList.toggle('on', recording);
   $('recLbl').textContent = recording ? `REC ${dur(s.session.realTimeMs)}` : t('btn.start');
   $('btnRec').title = t(recording ? 'ov.recStop' : 'ov.recStart');
-  $('pubAsk').hidden = !(recording && s.farmPublish === null);
 
   // Avertissements
   let warn = '';
@@ -94,8 +93,6 @@ tli.onState((s) => {
   firstRender = false;
 });
 
-$('pubYes').onclick = () => tli.action('farmPublish', true);
-$('pubNo').onclick = () => tli.action('farmPublish', false);
 
 // Alerte de stock (balises, compas, sondes…) : bandeau quelques secondes + son.
 let stockTimer = null;

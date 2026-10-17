@@ -37,40 +37,39 @@ function modal(html) {
   box.innerHTML = html ? `<div class="modal-bg"><div class="modal">${html}</div></div>` : '';
   return box;
 }
-// « Publier cette session ? » à chaque début de session de farm.
-function consentModal() {
-  if ($('cYes')) return;
-  const cur = last.settings.shareFarm;
-  modal(`<h1>${esc(t('consent.title'))}</h1>
-    <div class="body"><p>${esc(t('consent.text'))}</p>
-      <ul style="margin:10px 0 0 20px;line-height:1.9"><li>${esc(t('consent.li1'))}</li><li>${esc(t('consent.li2'))}</li><li>${esc(t('consent.li3'))}</li></ul>
-      <p class="muted" style="margin-top:10px">${esc(t('consent.never'))}</p></div>
-    <div class="foot"><button class="btn ${cur === false ? 'primary' : ''}" id="cNo">${esc(t('consent.no'))}</button>
-      <button class="btn big ${cur === false ? '' : 'primary'}" id="cYes">${esc(t('consent.yes'))}</button></div>`);
-  $('cYes').onclick = () => { modal(''); tli.action('farmPublish', true); };
-  $('cNo').onclick = () => { modal(''); tli.action('farmPublish', false); };
+// Information unique (première session de farm) : les stats anonymes sont partagées, désactivable.
+function farmStatsNotice() {
+  if ($('fnOk')) return;
+  modal(`<h1>${esc(t('fstat.title'))}</h1>
+    <div class="body" style="min-height:0"><p>${esc(t('fstat.text'))}</p>
+      <ul style="margin:10px 0 0 20px;line-height:1.9"><li>${esc(t('fstat.li1'))}</li><li>${esc(t('fstat.li2'))}</li><li>${esc(t('fstat.li3'))}</li></ul></div>
+    <div class="foot"><button class="btn" id="fnOff">${esc(t('fstat.off'))}</button><button class="btn primary big" id="fnOk">${esc(t('fstat.ok'))}</button></div>`);
+  $('fnOk').onclick = () => { modal(''); tli.action('farmStatsNotice'); };
+  $('fnOff').onclick = () => { modal(''); tli.action('shareFarmStats', false); tli.action('farmStatsNotice'); };
 }
 // Fin de session : enregistrer (titre, type de stratégie, notes) et publier si le joueur l'accepte.
 async function endSessionModal(id) {
   const r = await tli.getReport(id);
   if (!r) return;
   const srv = last.settings.server;
-  const share = r.publishChoice ?? (last.settings.shareFarm !== false);
+  const share = false;
   modal(`<h1>${esc(t('end.title'))}</h1>
     <p class="muted">${esc(t('end.summary', { maps: r.totals.runs, profit: fe(r.totals.profit, true), hour: fe(r.totals.perHourReal), time: dur(r.totals.realMs) }))}</p>
     <div class="body end-form">
       <label>${esc(t('end.name'))}<input id="eTitle" value="${esc(r.title || (r.strategy.maps[0] ? r.strategy.maps[0].name : ''))}"></label>
       <label>${esc(t('end.tag'))}<select id="eTag">${tagOptions(r.strategyTag)}</select></label>
       <label>${esc(t('end.notes'))}<textarea id="eNotes" rows="3" placeholder="${esc(t('end.notesPh'))}">${esc(r.notes || '')}</textarea></label>
-      <label class="check"><input type="checkbox" id="ePub" ${share ? 'checked' : ''}> ${esc(t('end.publish'))}</label>
-      ${srv.registered ? '' : `<label id="eNameRow" ${share ? '' : 'hidden'}>${esc(t('share.namePh'))}<input id="eName" maxlength="24"></label>`}
-      <p class="muted" id="eMsg" style="font-size:12px">${esc(t('share.what'))}</p>
+      <p class="muted" style="font-size:12px">${esc(t(last.settings.shareFarmStats !== false ? 'end.statsOn' : 'end.statsOff'))}</p>
+      <label class="check"><input type="checkbox" id="ePub"> ${esc(t('end.publishSheet'))}</label>
+      ${srv.registered ? '' : `<label id="eNameRow" hidden>${esc(t('share.namePh'))}<input id="eName" maxlength="24"></label>`}
+      <p class="muted" id="eMsg" style="font-size:12px" hidden>${esc(t('share.what'))}</p>
     </div>
     <div class="foot"><button class="btn" id="eDrop">${esc(t('end.discard'))}</button>
-      <button class="btn primary big" id="eSave">${esc(t(share ? 'end.savePublish' : 'end.save'))}</button></div>`);
+      <button class="btn primary big" id="eSave">${esc(t('end.save'))}</button></div>`);
   $('ePub').onchange = () => {
     $('eSave').textContent = t($('ePub').checked ? 'end.savePublish' : 'end.save');
     if ($('eNameRow')) $('eNameRow').hidden = !$('ePub').checked;
+    $('eMsg').hidden = !$('ePub').checked;
   };
   $('eDrop').onclick = async () => {
     if (!confirm(t('sess.confirmDelete'))) return;
@@ -83,10 +82,10 @@ async function endSessionModal(id) {
       try {
         if (!srv.registered) {
           const name = $('eName').value.trim();
-          if (name.length < 2) { $('eMsg').textContent = t('share.nameShort'); return; }
+          if (name.length < 2) { $('eMsg').hidden = false; $('eMsg').textContent = t('share.nameShort'); return; }
           await tli.register(name);
         }
-        $('eMsg').textContent = t('share.sending');
+        $('eMsg').hidden = false; $('eMsg').textContent = t('share.sending');
         await tli.shareReport(id);
       } catch (e) { $('eMsg').textContent = t('share.error', { msg: errMsg(e) }); return; }
     }
@@ -171,6 +170,7 @@ async function openSession(id) {
       <button class="btn" id="dDelete">${esc(t('btn.delete'))}</button>
     </div>
     <div class="card" id="shareBox"></div>
+    <div class="card cmp" id="cmpBox" hidden></div>
     <div class="card"><div class="bigstats">
       ${stat('d.profit', fe(tot.profit, true), cls(tot.profit))}
       ${stat('d.perHourReal', fe(tot.perHourReal))}
@@ -214,6 +214,30 @@ async function openSession(id) {
     await tli.deleteReport(id); closeSession(); loadSessions();
   };
   renderShare(r);
+  loadCompare(id);
+}
+
+// Comparaison avec la communauté (stats anonymes, même carte et même Timemark).
+async function loadCompare(id) {
+  const c = await tli.compareStats(id);
+  const box = $('cmpBox');
+  if (!box || openReportId !== id || !c) return;
+  box.hidden = false;
+  const where = `${c.region}${c.tier ? ' · T' + c.tier : ''}`;
+  if (!c.enough) {
+    box.innerHTML = `<h2>${esc(t('cmp.title', { map: where }))}</h2><p class="muted">${esc(t('cmp.notEnough', { n: c.players, needed: c.needed }))}</p>`;
+    return;
+  }
+  const pct = Math.round(((c.mine - c.median) / Math.max(1, Math.abs(c.median))) * 100);
+  const bar = (v) => Math.max(2, Math.min(100, (v / Math.max(c.p90, c.mine, 1)) * 100));
+  box.innerHTML = `<h2>${esc(t('cmp.title', { map: where }))}</h2>
+    <div class="cmp-rows">
+      <div><span>${esc(t('cmp.you'))}</span><i class="cmp-bar you" style="width:${bar(c.mine)}%"></i><b>${fe(c.mine)} FE/h</b></div>
+      <div><span>${esc(t('cmp.median'))}</span><i class="cmp-bar" style="width:${bar(c.median)}%"></i><b>${fe(c.median)} FE/h</b></div>
+      <div><span>${esc(t('cmp.top'))}</span><i class="cmp-bar top" style="width:${bar(c.p90)}%"></i><b>${fe(c.p90)} FE/h</b></div>
+    </div>
+    <p class="muted" style="margin-top:8px">${esc(t(pct >= 0 ? 'cmp.above' : 'cmp.below', { pct: Math.abs(pct), n: c.sessions, players: c.players }))}</p>
+    ${c.topItems.length ? `<p style="margin-top:6px">${esc(t('cmp.topItems'))} ${c.topItems.map((i) => `<span class="chip">${icon(i.img)}${esc(i.name)}</span>`).join(' ')}</p>` : ''}`;
 }
 
 // Zone de partage : pseudo -> confirmation -> lien public.
@@ -266,6 +290,7 @@ $('sTime').onchange = (e) => tli.action('timeMode', e.target.value);
 $('sCommunity').onchange = (e) => tli.action('community', e.target.checked);
 $('sShareMeta').onchange = (e) => tli.action('shareMeta', e.target.checked);
 $('sStock').onchange = (e) => tli.action('stockAlerts', e.target.checked);
+$('sFarmStats').onchange = (e) => tli.action('shareFarmStats', e.target.checked);
 $('sCheckUpd').onclick = () => tli.action('checkUpdates');
 $('sTartarus').onchange = (e) => tli.action('tartarusAlerts', e.target.checked);
 $('sMinLoot').onchange = (e) => tli.action('minLootValue', e.target.value);
@@ -316,8 +341,7 @@ tli.onState((s) => {
   // Après ce passage (la langue choisie est appliquée plus bas) : sinon les fenêtres s'affichent en anglais.
   if (!whatsNewChecked && s.settings.onboarded) { whatsNewChecked = true; setTimeout(whatsNewModal, 0); }
   // Session de farm qui démarre sans réponse : on demande (la question disparaît si le widget a répondu).
-  if (s.recording && s.farmPublish === null) setTimeout(consentModal, 0);
-  else if ($('cYes')) modal('');
+  if (s.recording && !s.settings.farmStatsNotice) setTimeout(farmStatsNotice, 0);
   if (setLang(s.settings.lang)) {
     // Langue changée : on redessine ce qui est généré en JS.
     $('feed').dataset.h = '';
@@ -355,6 +379,7 @@ tli.onState((s) => {
     $('sCommunity').checked = s.settings.communityPrices;
     $('sShareMeta').checked = s.settings.shareMeta !== false;
     $('sStock').checked = s.settings.stockAlerts !== false;
+    $('sFarmStats').checked = s.settings.shareFarmStats !== false;
     $('sTartarus').checked = s.settings.tartarusAlerts !== false;
     renderSounds(s);
     if (document.activeElement !== $('sMinLoot')) $('sMinLoot').value = s.settings.minLootValue || 0;

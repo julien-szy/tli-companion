@@ -51,6 +51,8 @@ const DEFAULTS = {
   // Son de chaque alerte : « builtin » (son intégré : bips pour le stock, sons créés pour Tartarus) ou « file:<chemin> » (fichier du joueur).
   sounds: { tartarusReady: 'builtin', tartarusFull: 'builtin', stock: 'builtin' },
   minLootValue: 0,       // loot qui vaut moins de X FE pièce : ignoré dans le profit (0 = tout compter)
+  shareFarmStats: true,  // stats de farm ANONYMES envoyées à chaque session (désactivable)
+  farmStatsNotice: false, // information « stats anonymes » déjà montrée
   onboarded: false,      // guide du premier lancement terminé
 };
 const COLLAPSED = { w: 330, h: 48 };
@@ -158,11 +160,35 @@ function reportPath(id) {
   return path.join(SESSIONS_DIR, `${id}.json`);
 }
 
-// « Publier cette session ? » : demandé à chaque début de session de farm (null = pas encore répondu).
-let farmPublish = null;
 function beginFarm() {
-  farmPublish = null;
   tracker.startFarm();
+}
+
+// Identifiant aléatoire de l'installation, seulement pour compter les joueurs distincts dans les stats anonymes
+// (jamais relié au pseudo ; le serveur n'en garde qu'une empreinte).
+if (!settings.anonId) { settings.anonId = require('crypto').randomUUID(); saveSettings(); }
+
+// Stats anonymes d'une session : seulement des chiffres et des numéros d'objets, ni pseudo, ni titre, ni notes.
+async function sendFarmStats(report) {
+  if (!settings.shareFarmStats || !report || report.statsSent) return false;
+  const t = report.totals;
+  if (t.runs < 3 || t.realMs < 5 * 60000) return false;
+  const body = {
+    id: report.id, anonId: settings.anonId,
+    heroId: report.hero ? report.hero.id : null,
+    mainMap: report.strategy.maps[0] ? report.strategy.maps[0].name : null,
+    strategyTag: report.strategyTag || null,
+    server: report.context ? report.context.server : null, season: report.context ? report.context.season : null,
+    runs: t.runs, realMs: t.realMs, mapMs: t.mapMs, afkMs: t.afkMs || 0, profit: t.profit, perHour: t.perHourReal,
+    loot: report.loot.map((i) => ({ id: i.id, qty: i.qty, unit: i.unit })),
+    consumables: report.strategy.consumables.map((c) => ({ id: c.id, name: c.name, img: c.img, qty: c.qty, unit: c.unit })),
+  };
+  try {
+    await community.sendFarmStats(body);
+    report.statsSent = true;
+    saveReport(report);
+    return true;
+  } catch (e) { console.error('Stats anonymes :', e.message); return false; }
 }
 const STRATEGY_TAGS = ['mapping', 'boss', 'netherrealm', 'dream', 'vorax', 'overrealm', 'sandlord', 'clockwork', 'blacksail', 'deepspace', 'leveling', 'other'];
 
@@ -179,9 +205,8 @@ function stopFarm(title) {
   if (!ended.runs.length) return null;
   const report = buildReport(ended, tracker, { appVersion: app.getVersion(), title });
   report.context = farmContext();
-  report.publishChoice = farmPublish;
-  farmPublish = null;
   saveReport(report);
+  sendFarmStats(report);
   refreshFarmRate();
   // La fenêtre principale demande alors : enregistrer ? publier ?
   openDashboard(`endsession:${report.id}`);
@@ -300,7 +325,6 @@ function broadcast() {
   const snap = { ...tracker.snapshot(), status, settings: publicSettings() };
   snap.overlayVisible = !!(overlay && !overlay.isDestroyed() && overlay.isVisible());
   snap.update = updateState;
-  snap.farmPublish = tracker.session.recording ? farmPublish : undefined;
   snap.updateRequired = updateRequired;
   snap.appVersion = app.getVersion();
   snap.advice = adviceSummary(snap);
@@ -685,12 +709,24 @@ ipcMain.handle('whatsNew', () => {
   return { version: cur, releases };
 });
 ipcMain.handle('getReport', (_e, id) => loadJson(reportPath(id), null));
+// « Ton FE/h face à la communauté » sur la carte principale de la session (même région de balise et Timemark).
+ipcMain.handle('compareStats', async (_e, id) => {
+  const r = loadJson(reportPath(id), null);
+  if (!r || !r.strategy.maps[0]) return null;
+  const m = /^(.*?)\s*Beacon\s*\(Timemark\s*(\d+)\)/i.exec(r.strategy.maps[0].name || '');
+  const region = m ? m[1].trim() : r.strategy.maps[0].name;
+  try {
+    const c = await community.compareStats({ region, tier: m ? m[2] : '' });
+    return { ...c, region, tier: m ? +m[2] : null, mine: r.totals.perHourReal };
+  } catch { return null; }
+});
 ipcMain.handle('updateReport', (_e, id, patch) => {
   const r = loadJson(reportPath(id), null);
   if (!r) return null;
   if (typeof patch.title === 'string') r.title = patch.title.slice(0, 120);
   if (typeof patch.notes === 'string') r.notes = patch.notes.slice(0, 4000);
   if (typeof patch.strategyTag === 'string' && STRATEGY_TAGS.includes(patch.strategyTag)) r.strategyTag = patch.strategyTag;
+  if (typeof patch.strategyTag === 'string' && r.statsSent) { r.statsSent = false; setImmediate(() => sendFarmStats(r)); }
   saveReport(r);
   return r;
 });
@@ -1079,7 +1115,8 @@ ipcMain.handle('action', async (_e, name, arg) => {
     case 'installUpdate': if (updateState.state === 'ready') setImmediate(() => autoUpdater.quitAndInstall(true, true)); break;
     case 'onboarded': settings.onboarded = true; saveSettings(); break;
     case 'seenVersion': settings.lastSeenVersion = app.getVersion(); saveSettings(); break;
-    case 'farmPublish': farmPublish = !!arg; settings.shareFarm = !!arg; saveSettings(); broadcast(); break;
+    case 'shareFarmStats': settings.shareFarmStats = !!arg; saveSettings(); break;
+    case 'farmStatsNotice': settings.farmStatsNotice = true; saveSettings(); break;
     case 'newSession': tracker.newSession(); break;
     case 'startFarm': beginFarm(); break;
     case 'stopFarm': { const id = stopFarm(arg || ''); broadcast(); return id; }
@@ -1234,7 +1271,7 @@ async function debugScreenshots(dir) {
     settings.onboarded = true; beginFarm(); broadcast(); await wait(1200);
     await shot('farm-consent.png');
     fs.writeFileSync(path.join(dir, 'farm-consent-overlay.png'), (await overlay.webContents.capturePage()).toPNG());
-    farmPublish = true; tracker.stopFarm(); broadcast();
+    tracker.stopFarm(); broadcast();
     const id = require('crypto').randomUUID();
     saveReport({ version: 1, id, appVersion: app.getVersion(), title: '', startedAt: Date.now() - 3600000, endedAt: Date.now(), hero: null,
       totals: { profit: 1234, loot: 1500, cost: -266, other: 0, realMs: 3600000, mapMs: 3000000, runs: 18, perHourReal: 1234, perHourMap: 1480, avgPerMap: 68, avgMapMs: 160000 },
@@ -1242,6 +1279,8 @@ async function debugScreenshots(dir) {
       loot: [], runs: [], prices: {}, context: farmContext() });
     openDashboard(`endsession:${id}`); await wait(1800);
     await shot('farm-end.png');
+    await dashboard.webContents.executeJavaScript(`modal(''); openSession('${id}')`); await wait(2000);
+    await shot('farm-compare.png');
     fs.unlinkSync(reportPath(id));
   }
   if (process.env.TLI_AI_TEST) {

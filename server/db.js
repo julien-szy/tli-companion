@@ -39,6 +39,31 @@ function openDb(dataDir) {
     CREATE INDEX IF NOT EXISTS reports_map ON reports(main_map);
     CREATE INDEX IF NOT EXISTS reports_created ON reports(created_at);
 
+    -- Statistiques de farm ANONYMES : aucun pseudo, aucun compte. « contributor » est l'empreinte (sha256)
+    -- d'un identifiant aléatoire de l'installation, utilisée seulement pour compter les joueurs distincts.
+    CREATE TABLE IF NOT EXISTS farm_stats (
+      id            TEXT PRIMARY KEY,
+      contributor   TEXT NOT NULL,
+      created_at    INTEGER NOT NULL,
+      hero_id       INTEGER,
+      main_map      TEXT,
+      region        TEXT,
+      timemark      INTEGER,
+      strategy_tag  TEXT,
+      server_region TEXT,
+      season        INTEGER,
+      runs          INTEGER NOT NULL,
+      real_ms       INTEGER NOT NULL,
+      map_ms        INTEGER NOT NULL,
+      afk_ms        INTEGER NOT NULL,
+      profit        REAL NOT NULL,
+      per_hour      REAL NOT NULL,
+      consumables   TEXT,
+      json          TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS farm_stats_group ON farm_stats(region, timemark, strategy_tag);
+    CREATE INDEX IF NOT EXISTS farm_stats_created ON farm_stats(created_at);
+
     CREATE TABLE IF NOT EXISTS builds (
       id          TEXT PRIMARY KEY,
       user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
