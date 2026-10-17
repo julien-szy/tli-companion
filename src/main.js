@@ -1,0 +1,1343 @@
+const { app, BrowserWindow, ipcMain, globalShortcut, Tray, Menu, nativeImage, dialog, screen, shell, safeStorage } = require('electron');
+const fs = require('fs');
+const path = require('path');
+const { LogParser } = require('./parser');
+const { Tracker, zoneLabel, TARTARUS_ENTRY, TARTARUS_MAX } = require('./tracker');
+const { ItemDb, PriceBook } = require('./prices');
+const { LogWatcher, findLogPath, findGameDir, expectedLogDir } = require('./logwatcher');
+const { JsonStore } = require('./store');
+const { buildReport } = require('./report');
+const { CommunityClient } = require('./community');
+const { BuildStore, cleanBuild, publicBuild, advise } = require('./builds');
+const Meta = require('./meta');
+const { buildAdvisorContext } = require('./advisor');
+const AI = require('./ai');
+const { autoUpdater } = require('electron-updater');
+// Fonctions en travaux, masquées dans la version publiée (« Bientôt disponible »).
+const FEATURES = { builds: false, advisor: false };
+const I18N = require('./i18n');
+
+// TLI_USERDATA : dossier de données séparé (tests à côté de l'app installée).
+// Sinon le dossier reste %APPDATA%\tli-profit-tracker quel que soit le nom affiché de l'app,
+// pour garder les réglages, prix et sessions des versions précédentes.
+app.setPath('userData', process.env.TLI_USERDATA || path.join(app.getPath('appData'), 'tli-profit-tracker'));
+const userDir = app.getPath('userData');
+const SETTINGS_FILE = path.join(userDir, 'settings.json');
+const HISTORY_FILE = path.join(userDir, 'history.json');
+const SESSIONS_DIR = path.join(userDir, 'sessions');
+const HEROES = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'data', 'heroes.json'), 'utf8')).heroes;
+const FE_ID = 100300;
+// Noms des arbres de talents, talents principaux, pactes et traits (ids du jeu), avec leurs icônes.
+const GAME_NAMES = (() => { try { return JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'data', 'game_names.json'), 'utf8')); } catch { return {}; } })();
+const EXTRA_ICONS = (() => { try { return JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'data', 'extra_icons.json'), 'utf8')).icons; } catch { return {}; } })();
+function gameNamed(cat, id) {
+  const name = (GAME_NAMES[cat] || {})[id];
+  return { id, name: name || null, img: name ? EXTRA_ICONS[name] || null : null };
+}
+
+const DEFAULTS = {
+  logPath: null,
+  lang: 'en',            // langue de l'interface : 'en' (défaut) ou 'fr'
+  mode: 'farm',          // 'farm' = loot en carte - coût des cartes ; 'all' = tout ce qui entre/sort du sac
+  timeMode: 'real',      // 'real' = temps réel de session ; 'map' = temps passé en carte
+  communityPrices: true,
+  hubPatterns: ['/XZ_'], // chemins de map considérés comme repaire / ville
+  overlay: { x: null, y: null, collapsed: false, opacity: 0.92, scale: 1, solid: false },
+  server: { url: 'https://tlicompanion.com', token: null, userId: null, name: null },
+  activeBuild: null,     // id du build suivi par le conseiller d'achat
+  shareMeta: true,       // partage auto du Hero Ranking consulté (pseudos sauf profils masqués)
+  stockAlerts: true,     // alerte (avec son) quand il reste 10, 5 puis 1 balise / compas / sonde
+  tartarusAlerts: true,  // alerte (avec son) quand le compteur Tartarus atteint 36 (entrée possible) puis 48 (plein)
+  // Son de chaque alerte : « builtin » (son intégré : bips pour le stock, sons créés pour Tartarus) ou « file:<chemin> » (fichier du joueur).
+  sounds: { tartarusReady: 'builtin', tartarusFull: 'builtin', stock: 'builtin' },
+  minLootValue: 0,       // loot qui vaut moins de X FE pièce : ignoré dans le profit (0 = tout compter)
+  onboarded: false,      // guide du premier lancement terminé
+};
+const COLLAPSED = { w: 330, h: 48 };
+const EXPANDED = { w: 340, h: 520 };
+
+let settings = loadJson(SETTINGS_FILE, {});
+settings = {
+  ...DEFAULTS, ...settings,
+  overlay: { ...DEFAULTS.overlay, ...(settings.overlay || {}) },
+  server: { ...DEFAULTS.server, ...(settings.server || {}) },
+  sounds: Object.fromEntries(Object.entries({ ...DEFAULTS.sounds, ...(settings.sounds || {}) }).map(([k, v]) => [k, String(v).startsWith('file:') ? v : 'builtin'])),
+};
+delete settings.overlay.clickThrough; // option retirée (0.3.0)
+const tr = () => I18N.make(settings.lang);
+
+const items = new ItemDb(path.join(__dirname, '..', 'data', 'items_seed_en.json'));
+const prices = new PriceBook(path.join(userDir, 'prices.json'));
+prices.isKnown = (id) => items.known(id);
+const meta = new JsonStore(path.join(userDir, 'meta.json'), { affixDesc: {}, heroNames: {} });
+items.custom = meta.data.itemNames || {};
+const tracker = new Tracker({ prices, items, settings, meta });
+// Nom de classe automatique quand le numéro de héros est connu.
+tracker.heroLookup = (id) => { const h = HEROES.find((x) => x.gameId === +id); return h ? { key: h.key, name: `${h.hero} — ${h.trait}` } : null; };
+const parser = new LogParser((ev) => tracker.handle(ev));
+const community = new CommunityClient(settings, () => saveSettings());
+const builds = new BuildStore(path.join(userDir, 'builds'));
+// Chaque prix vu à l'hôtel des ventes est partagé (anonymement) avec le serveur.
+tracker.on('price', (id) => { const e = prices.exchange[id]; if (e) community.queuePrice(id, e.price, e.ts); });
+
+async function syncServerPrices() {
+  try { await community.flushPrices(); } catch { /* serveur injoignable : on réessaiera */ }
+  try { prices.setServerPrices(await community.fetchPrices()); } catch { /* idem */ }
+}
+let watcher = null;
+let status = { logPath: null, state: 'init', progress: 0, error: '', msgKey: null, msgVars: null };
+
+let overlay = null;
+let dashboard = null;
+let tray = null;
+
+function loadJson(file, fallback) {
+  try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return fallback; }
+}
+// Réglages envoyés aux fenêtres : sans le jeton secret du serveur.
+function publicSettings() {
+  const { token, ...server } = settings.server;
+  return { ...settings, server: { ...server, registered: !!token } };
+}
+function saveSettings() {
+  fs.mkdirSync(userDir, { recursive: true });
+  fs.writeFileSync(SETTINGS_FILE, JSON.stringify(settings, null, 2));
+}
+// Renomme les zones déjà enregistrées (historique, sessions) avec la table data/zone_names.json.
+function renameStoredZones() {
+  const fix = (n) => zoneLabel(n);
+  try {
+    const hist = loadJson(HISTORY_FILE, null);
+    if (Array.isArray(hist)) {
+      let changed = false;
+      for (const r of hist) {
+        if (fix(r.name) !== r.name) { r.name = fix(r.name); changed = true; }
+        if (Array.isArray(r.zones)) r.zones = r.zones.map((z) => { const f = fix(z); if (f !== z) changed = true; return f; });
+      }
+      if (changed) fs.writeFileSync(HISTORY_FILE, JSON.stringify(hist));
+    }
+    for (const f of fs.existsSync(SESSIONS_DIR) ? fs.readdirSync(SESSIONS_DIR) : []) {
+      if (!f.endsWith('.json')) continue;
+      const file = path.join(SESSIONS_DIR, f);
+      const r = loadJson(file, null);
+      if (!r || !r.strategy) continue;
+      let changed = false;
+      for (const m of [...(r.strategy.maps || []), ...(r.runs || [])]) if (fix(m.name) !== m.name) { m.name = fix(m.name); changed = true; }
+      if (changed) fs.writeFileSync(file, JSON.stringify(r));
+    }
+  } catch (e) { console.error('Noms de zones :', e.message); }
+}
+
+function appendHistory(run) {
+  const hist = loadJson(HISTORY_FILE, []);
+  hist.push({ ...tracker.runSummary(run), items: tracker.runSummary(run).items.slice(0, 20) });
+  if (hist.length > 5000) hist.splice(0, hist.length - 5000);
+  fs.writeFileSync(HISTORY_FILE, JSON.stringify(hist));
+}
+
+// ---------------- Sessions de farm ----------------
+
+function saveReport(report) {
+  fs.mkdirSync(SESSIONS_DIR, { recursive: true });
+  fs.writeFileSync(path.join(SESSIONS_DIR, `${report.id}.json`), JSON.stringify(report));
+}
+function listReports() {
+  let files = [];
+  try { files = fs.readdirSync(SESSIONS_DIR).filter((f) => f.endsWith('.json')); } catch { return []; }
+  return files.map((f) => {
+    const r = loadJson(path.join(SESSIONS_DIR, f), null);
+    if (!r) return null;
+    return {
+      id: r.id, title: r.title, startedAt: r.startedAt, endedAt: r.endedAt, hero: r.hero,
+      totals: r.totals, maps: r.strategy.maps.slice(0, 3).map((m) => m.name), shared: r.shared || null, strategyTag: r.strategyTag || null,
+    };
+  }).filter(Boolean).sort((a, b) => b.startedAt - a.startedAt);
+}
+function reportPath(id) {
+  if (!/^[0-9a-f-]{36}$/.test(id)) throw new Error('invalid id');
+  return path.join(SESSIONS_DIR, `${id}.json`);
+}
+
+// « Publier cette session ? » : demandé à chaque début de session de farm (null = pas encore répondu).
+let farmPublish = null;
+function beginFarm() {
+  farmPublish = null;
+  tracker.startFarm();
+}
+const STRATEGY_TAGS = ['mapping', 'boss', 'netherrealm', 'dream', 'vorax', 'overrealm', 'sandlord', 'clockwork', 'blacksail', 'deepspace', 'leveling', 'other'];
+
+// Contexte de la session (sans identifiant) : région du serveur et saison en cours.
+function farmContext() {
+  const cs = Meta.currentServer(status.logPath);
+  let season = null;
+  try { season = Math.max(...Meta.listRankingFiles(status.logPath, { includeStale: true }).map((f) => Math.floor(f.season / 100))) || null; } catch { /* aucun classement */ }
+  return { server: cs ? cs.server : null, season: Number.isFinite(season) ? season : null };
+}
+
+function stopFarm(title) {
+  const ended = tracker.stopFarm();
+  if (!ended.runs.length) return null;
+  const report = buildReport(ended, tracker, { appVersion: app.getVersion(), title });
+  report.context = farmContext();
+  report.publishChoice = farmPublish;
+  farmPublish = null;
+  saveReport(report);
+  refreshFarmRate();
+  // La fenêtre principale demande alors : enregistrer ? publier ?
+  openDashboard(`endsession:${report.id}`);
+  return report.id;
+}
+
+// ---------------- Log ----------------
+
+async function startWatching() {
+  if (watcher) watcher.stop();
+  const file = process.env.TLI_NOLOG ? null : findLogPath(settings.logPath); // TLI_NOLOG : test de l'aide
+  // Pas de log : jeu trouvé (= « Enable Log » pas activé) ou jeu introuvable (= choisir le fichier à la main).
+  const gameDir = file ? null : findGameDir();
+  status = { ...status, logPath: file, gameDir, expectedLog: gameDir ? path.join(expectedLogDir(gameDir), 'UE_game.log') : null,
+    state: file ? 'loading' : 'nolog', progress: 0, error: '' };
+  broadcast();
+  if (!file) return;
+
+  tracker.resetBag();
+  tracker.replay = true;
+  watcher = new LogWatcher(file, (l) => parser.feed(l));
+  watcher.onRotate = () => { tracker.resetBag(); broadcast(); };
+  try {
+    const simulateMb = +(process.env.TLI_SIMULATE_MB || 0);
+    await watcher.bootstrap((p) => { status.progress = p; broadcastThrottled(); }, simulateMb * 1024 * 1024);
+  } catch (e) {
+    status.state = 'error';
+    status.error = e.message;
+  }
+  tracker.endReplay(parser.lastTs);
+  tracker.session.startedAt = Date.now();
+  if (status.state !== 'error') status.state = 'live';
+  if (process.env.TLI_SIMULATE_MB && process.env.TLI_SHOT) tracker.startFarm();
+  watcher.start();
+  broadcast();
+}
+
+async function refreshCommunity() {
+  if (!settings.communityPrices) return;
+  try {
+    const n = await prices.fetchCommunity(() => community.communityPrices());
+    status.msgKey = 'msg.communityLoaded'; status.msgVars = { n };
+  } catch (e) {
+    status.msgKey = 'msg.communityFailed'; status.msgVars = { err: e.message };
+  }
+  broadcast();
+}
+
+// ---------------- Diffusion de l'état vers les fenêtres ----------------
+
+let lastBroadcast = 0;
+let pendingBroadcast = null;
+// ---------------- Conseiller d'achat ----------------
+
+// FE/h de référence : la session en cours si elle dure assez, sinon la moyenne des 5 dernières sessions de farm.
+let pastFarmRate = null;
+function refreshFarmRate() {
+  const recent = listReports().filter((r) => r.totals.realMs > 10 * 60000).slice(0, 5);
+  pastFarmRate = recent.length ? recent.reduce((a, r) => a + r.totals.perHourReal, 0) / recent.length : null;
+}
+function farmRate(snap) {
+  if (snap && snap.session.realTimeMs > 10 * 60000 && snap.session.perHour > 0) return snap.session.perHour;
+  return pastFarmRate;
+}
+// Compétences possédées : le jeu les liste dans AccountCache\<compte>\<perso>\SkillStateData.
+// On prend le fichier le plus récent (dernier personnage joué). Relu au plus toutes les 30 s.
+let ownedSkills = { at: 0, ids: new Set() };
+function readOwnedSkills() {
+  if (Date.now() - ownedSkills.at < 30000) return ownedSkills.ids;
+  ownedSkills.at = Date.now();
+  try {
+    if (!status.logPath) return ownedSkills.ids;
+    const cache = path.join(status.logPath, '..', '..', '..', '..', 'Local', 'AccountCache');
+    let best = null;
+    for (const acc of fs.readdirSync(cache)) {
+      let chars = [];
+      try { chars = fs.readdirSync(path.join(cache, acc)); } catch { continue; }
+      for (const ch of chars) {
+        const f = path.join(cache, acc, ch, 'SkillStateData');
+        try { const st = fs.statSync(f); if (!best || st.mtimeMs > best.t) best = { f, t: st.mtimeMs }; } catch { /* pas un perso */ }
+      }
+    }
+    if (best) {
+      const d = JSON.parse(fs.readFileSync(best.f, 'utf8'));
+      ownedSkills.ids = new Set(Object.keys(d.SkillCacheList || {}).map((k) => +k.split('_')[0]).filter((n) => n > 0));
+    }
+  } catch { /* cache absent ou format changé : on garde la dernière lecture */ }
+  return ownedSkills.ids;
+}
+
+function adviceFor(build, snap) {
+  const skills = readOwnedSkills();
+  return advise(build, {
+    items, prices,
+    bagQty: (id) => tracker.bagQty(id) + (skills.has(id) ? 1 : 0),
+    perHour: farmRate(snap),
+    feInBag: tracker.bagQty(FE_ID),
+  });
+}
+// Résumé pour le widget : le prochain achat conseillé du build suivi.
+function adviceSummary(snap) {
+  if (!FEATURES.builds || !settings.activeBuild) return null;
+  const b = builds.get(settings.activeBuild);
+  if (!b) return null;
+  const a = adviceFor(b, snap);
+  const n = a.next[0];
+  return {
+    buildTitle: b.title, stepIndex: a.currentIndex, stepCount: b.steps.length,
+    next: n ? { name: n.name, img: n.img, cost: n.cost, missing: n.missing, affordable: n.affordable, hours: n.hours } : null,
+    stepMissing: a.currentMissing, stepHours: a.currentHours,
+  };
+}
+
+function broadcast() {
+  lastBroadcast = Date.now();
+  const snap = { ...tracker.snapshot(), status, settings: publicSettings() };
+  snap.overlayVisible = !!(overlay && !overlay.isDestroyed() && overlay.isVisible());
+  snap.update = updateState;
+  snap.farmPublish = tracker.session.recording ? farmPublish : undefined;
+  snap.updateRequired = updateRequired;
+  snap.appVersion = app.getVersion();
+  snap.advice = adviceSummary(snap);
+  if (overlay && !overlay.isDestroyed()) overlay.webContents.send('state', snap);
+  if (dashboard && !dashboard.isDestroyed()) dashboard.webContents.send('state', snap);
+}
+function broadcastThrottled() {
+  if (pendingBroadcast) return;
+  const wait = Math.max(0, 250 - (Date.now() - lastBroadcast));
+  pendingBroadcast = setTimeout(() => { pendingBroadcast = null; broadcast(); }, wait);
+}
+tracker.on('changed', () => { if (!tracker.replay) broadcastThrottled(); });
+tracker.on('delta', (e) => {
+  if (dashboard && !dashboard.isDestroyed() && tracker.visible(e.id)) dashboard.webContents.send('delta', tracker._feedEntry(e));
+  if (e.cat === 'cost' && e.delta < 0) setImmediate(() => checkStock(e.id));
+});
+
+// ---------------- Sons des alertes ----------------
+const SOUND_KEYS = ['tartarusReady', 'tartarusFull', 'stock'];
+const BUILTIN_SOUNDS = { tartarusReady: 'tartarus-ready.wav', tartarusFull: 'tartarus-full.wav' };
+// Son à jouer : fichier du joueur, son intégré créé pour l'app (Tartarus) ou bips (stock).
+function soundSpecFor(key) {
+  const v = settings.sounds[key] || 'builtin';
+  if (v.startsWith('file:')) return v;
+  return BUILTIN_SOUNDS[key] ? 'builtin:' + key : 'synth';
+}
+// Contenu d'un son en data URL (son intégré, ou fichier choisi par le joueur dans les réglages).
+const soundCache = new Map();
+ipcMain.handle('soundData', (_e, spec) => {
+  if (typeof spec !== 'string') return null;
+  let file = null;
+  if (spec.startsWith('builtin:') && BUILTIN_SOUNDS[spec.slice(8)]) file = path.join(__dirname, '..', 'data', 'sounds', BUILTIN_SOUNDS[spec.slice(8)]);
+  else if (spec.startsWith('file:') && Object.values(settings.sounds).includes(spec)) file = spec.slice(5);
+  if (!file) return null;
+  if (soundCache.has(file)) return soundCache.get(file);
+  try {
+    if (fs.statSync(file).size > 8 * 1024 * 1024) return null;
+    const ext = path.extname(file).slice(1).toLowerCase();
+    const mime = { wav: 'audio/wav', mp3: 'audio/mpeg', ogg: 'audio/ogg', m4a: 'audio/mp4' }[ext] || 'audio/wav';
+    const url = `data:${mime};base64,${fs.readFileSync(file).toString('base64')}`;
+    soundCache.set(file, url);
+    return url;
+  } catch { return null; }
+});
+ipcMain.handle('soundSpec', (_e, key) => (SOUND_KEYS.includes(key) ? soundSpecFor(key) : null));
+
+// ---------------- Alerte Tartarus ----------------
+// 36 = assez pour entrer dans Tartarus ; 48 = plein (les suivants sont perdus).
+tracker.on('tartarus', ({ prev, value }) => {
+  if (!settings.tartarusAlerts || prev == null) return;
+  let kind = null;
+  if (prev < TARTARUS_MAX && value >= TARTARUS_MAX) kind = 'full';
+  else if (prev < TARTARUS_ENTRY && value >= TARTARUS_ENTRY) kind = 'ready';
+  if (kind) sendAlert({ kind: 'tartarus-' + kind, text: tr()('tart.' + kind, { n: value, max: TARTARUS_MAX }), level: kind === 'full' ? 1 : 5, qty: kind === 'full' ? 1 : 5 });
+});
+
+// ---------------- Alertes de stock ----------------
+// Objets consommés à l'ouverture des cartes (balises, compas, sondes…) : alerte à 10, 5 puis au dernier.
+const STOCK_LEVELS = [10, 5, 1];
+function checkStock(id) {
+  if (!tracker.visible(id)) return; // objet sans nom : pas d'alerte « Item #1234 »
+  meta.data.mapConsumables = meta.data.mapConsumables || {};
+  const known = meta.data.mapConsumables;
+  const qty = tracker.bagQty(id);
+  const level = STOCK_LEVELS.slice().reverse().find((l) => qty <= l) ?? null; // 1, 5 ou 10
+  const prev = known[id] ? known[id].level : null;
+  known[id] = { level: qty > STOCK_LEVELS[0] ? null : (prev != null && level != null ? Math.min(prev, level) : level) };
+  meta.save();
+  if (!settings.stockAlerts || level == null || (prev != null && level >= prev)) return;
+  const it = items.get(id);
+  sendAlert({ id, name: it.name, img: it.img, qty, level });
+}
+// Son joué par une seule fenêtre : le widget s'il est affiché (en jeu), sinon la fenêtre principale.
+function sendAlert(alert) {
+  const key = alert.kind === 'tartarus-full' ? 'tartarusFull' : alert.kind === 'tartarus-ready' ? 'tartarusReady' : 'stock';
+  alert = { ...alert, soundSpec: soundSpecFor(key) };
+  const ovShown = overlay && !overlay.isDestroyed() && overlay.isVisible();
+  if (ovShown) overlay.webContents.send('stockAlert', { ...alert, sound: true });
+  if (dashboard && !dashboard.isDestroyed()) dashboard.webContents.send('stockAlert', { ...alert, sound: !ovShown });
+}
+tracker.on('runEnded', (run) => { try { appendHistory(run); } catch (e) { console.error(e); } });
+setInterval(broadcast, 1000); // chronos
+
+// ---------------- Fenêtres ----------------
+
+function createOverlay() {
+  const o = settings.overlay;
+  const size = o.collapsed ? COLLAPSED : EXPANDED;
+  const wa = screen.getPrimaryDisplay().workArea;
+  overlay = new BrowserWindow({
+    width: Math.round(size.w * o.scale), height: Math.round(size.h * o.scale),
+    x: o.x ?? wa.x + wa.width - size.w - 20, y: o.y ?? wa.y + 80,
+    frame: false, transparent: true, resizable: false, skipTaskbar: true,
+    alwaysOnTop: true, hasShadow: false, focusable: true, show: false,
+    webPreferences: { preload: path.join(__dirname, 'preload.js') },
+  });
+  overlay.setAlwaysOnTop(true, 'screen-saver');
+  overlay.setVisibleOnAllWorkspaces(true);
+  overlay.loadFile(path.join(__dirname, 'ui', 'overlay.html'));
+  overlay.once('ready-to-show', () => { overlay.webContents.setZoomFactor(o.scale); overlay.showInactive(); applyOpacity(); broadcast(); });
+  overlay.on('moved', () => {
+    const [x, y] = overlay.getPosition();
+    settings.overlay.x = x; settings.overlay.y = y; saveSettings();
+  });
+  overlay.on('closed', () => { overlay = null; });
+}
+
+function setCollapsed(c) {
+  settings.overlay.collapsed = c;
+  saveSettings();
+  if (!overlay) return;
+  const size = c ? COLLAPSED : EXPANDED;
+  const s = settings.overlay.scale;
+  overlay.setResizable(true);
+  overlay.setSize(Math.round(size.w * s), Math.round(size.h * s));
+  overlay.setResizable(false);
+  overlay.webContents.setZoomFactor(s);
+  broadcast();
+}
+
+function applyOpacity() {
+  if (!overlay) return;
+  // Mode opaque : aucune transparence (fenêtre et fond du widget).
+  overlay.setOpacity(settings.overlay.solid ? 1 : settings.overlay.opacity);
+}
+
+// Redimensionner le widget en tirant son coin : on suit la souris depuis le processus principal
+// (indépendant du zoom de la page) et on change l'échelle du widget.
+const SCALE_MIN = 0.6, SCALE_MAX = 2;
+let resizeTimer = null;
+function applyScale(s) {
+  const size = settings.overlay.collapsed ? COLLAPSED : EXPANDED;
+  overlay.setResizable(true);
+  overlay.setSize(Math.round(size.w * s), Math.round(size.h * s));
+  overlay.setResizable(false);
+  overlay.webContents.setZoomFactor(s);
+}
+function startResize() {
+  if (!overlay || resizeTimer) return;
+  const size = settings.overlay.collapsed ? COLLAPSED : EXPANDED;
+  const start = screen.getCursorScreenPoint();
+  const s0 = settings.overlay.scale;
+  const w0 = size.w * s0, h0 = size.h * s0;
+  const t0 = Date.now();
+  resizeTimer = setInterval(() => {
+    if (!overlay || overlay.isDestroyed() || Date.now() - t0 > 30000) return endResize();
+    const p = screen.getCursorScreenPoint();
+    // Le plus grand des deux déplacements (largeur ou hauteur) donne la nouvelle taille, proportions gardées.
+    const k = Math.max((w0 + p.x - start.x) / w0, (h0 + p.y - start.y) / h0);
+    const s = Math.min(SCALE_MAX, Math.max(SCALE_MIN, Math.round(s0 * k * 100) / 100));
+    if (Math.abs(s - settings.overlay.scale) >= 0.01) { settings.overlay.scale = s; applyScale(s); }
+  }, 16);
+}
+function endResize() {
+  if (!resizeTimer) return;
+  clearInterval(resizeTimer); resizeTimer = null;
+  saveSettings(); broadcast();
+}
+
+// nav (facultatif) : onglet ou « session:<id> » à afficher à l'ouverture.
+function openDashboard(nav) {
+  nav = typeof nav === 'string' ? nav : null;
+  if (dashboard && !dashboard.isDestroyed()) {
+    dashboard.show(); dashboard.focus();
+    if (nav) dashboard.webContents.send('navigate', nav);
+    return;
+  }
+  dashboard = new BrowserWindow({
+    width: 1180, height: 760, minWidth: 820, minHeight: 520,
+    backgroundColor: '#0f1115', title: tr()('dash.windowTitle'), autoHideMenuBar: true, icon: APP_ICON,
+    webPreferences: { preload: path.join(__dirname, 'preload.js') },
+  });
+  dashboard.loadFile(path.join(__dirname, 'ui', 'dashboard.html'));
+  dashboard.on('page-title-updated', (e) => e.preventDefault());
+  dashboard.webContents.once('did-finish-load', () => {
+    broadcast();
+    if (nav) dashboard.webContents.send('navigate', nav);
+  });
+  dashboard.on('closed', () => {
+    dashboard = null;
+    // Fermer la fenêtre principale quitte l'app, sauf si le widget est affiché par-dessus le jeu.
+    if (!(overlay && !overlay.isDestroyed() && overlay.isVisible()) && !process.env.TLI_SHOT) app.quit();
+  });
+}
+
+// Icône de l'app (flamme) : zone de notification et fenêtres.
+const APP_ICON = path.join(__dirname, 'ui', 'icon.png');
+function trayIcon() {
+  return nativeImage.createFromPath(APP_ICON).resize({ width: 16, height: 16, quality: 'best' });
+}
+
+function createTray() {
+  tray = new Tray(trayIcon());
+  tray.setToolTip('TLI Companion');
+  buildTrayMenu();
+  tray.on('click', openDashboard);
+}
+
+// Menu de la zone de notification, dans la langue choisie.
+function buildTrayMenu() {
+  if (!tray) return;
+  const t = tr();
+  tray.setContextMenu(Menu.buildFromTemplate([
+    { label: t('tray.dashboard'), click: openDashboard },
+    { label: t('tray.toggleOverlay'), click: toggleOverlay },
+    { label: t('tray.collapse'), click: () => setCollapsed(!settings.overlay.collapsed) },
+    { type: 'separator' },
+    { label: t('tray.farm'), click: () => (tracker.session.recording ? stopFarm('') : beginFarm()) },
+    { label: t('tray.reset'), click: () => tracker.newSession() },
+    { type: 'separator' },
+    { label: t('tray.quit'), click: () => app.quit() },
+  ]));
+}
+
+function toggleOverlay() {
+  if (!overlay) { createOverlay(); return broadcast(); }
+  if (overlay.isVisible()) overlay.hide(); else overlay.showInactive();
+  broadcast();
+}
+
+// ---------------- IPC ----------------
+
+ipcMain.handle('getFull', () => ({ ...tracker.fullData(), status, settings: publicSettings() }));
+ipcMain.handle('getHistory', () => loadJson(HISTORY_FILE, []));
+// Onglet Prix : tous les objets qui ont un prix, filtrés / triés / paginés.
+// Les objets non identifiés (prix communautaire sans nom public) sont masqués sauf demande.
+ipcMain.handle('searchPrices', (_e, opts) => {
+  const o = typeof opts === 'string' ? { q: opts } : (opts || {});
+  const q = (o.q || '').trim();
+  let ids = q ? items.search(q, 2000) : prices.list();
+  const unknownCount = ids.filter((id) => !items.known(id)).length;
+  if (!o.showUnknown) ids = ids.filter((id) => items.known(id));
+  let rows = ids.map((id) => ({ id, ...items.get(id), ...prices.get(id), manual: prices.manual[id] ?? null }));
+  if (o.source === 'hdv') rows = rows.filter((r) => r.source === 'hdv');
+  else if (o.source === 'manual') rows = rows.filter((r) => r.manual != null);
+  else if (o.source === 'community') rows = rows.filter((r) => r.source === 'communauté' || r.source === 'serveur');
+  const sorts = {
+    name: (a, b) => a.name.localeCompare(b.name),
+    priceDesc: (a, b) => b.price - a.price,
+    priceAsc: (a, b) => a.price - b.price,
+    recent: (a, b) => (b.ts || 0) - (a.ts || 0),
+  };
+  rows.sort(sorts[o.sort] || sorts.name);
+  const limit = Math.min(2000, +o.limit || 200);
+  return { total: rows.length, unknownCount, rows: rows.slice(0, limit) };
+});
+// « Prix à vérifier » : objets du sac et des drops de la session sans prix, ou avec un prix de plus de 3 jours.
+// Les chercher à l'HdV en jeu remplit notre base de prix pour tout le monde.
+ipcMain.handle('priceTodo', () => {
+  const STALE = 3 * 24 * 3600 * 1000;
+  const qty = new Map();
+  for (const { id, num } of tracker.slots.values()) qty.set(id, (qty.get(id) || 0) + num);
+  for (const m of [tracker.session.loot, tracker.session.cost]) for (const id in m) if (!qty.has(+id)) qty.set(+id, Math.abs(m[id]));
+  const out = [];
+  for (const [id, n] of qty) {
+    if (id === FE_ID || !tracker.visible(id)) continue;
+    const p = prices.get(id);
+    if (p.source === 'manuel' || p.source === 'fe') continue;
+    const missing = p.source === 'inconnu' || !p.price;
+    const stale = !missing && p.ts && Date.now() - p.ts > STALE;
+    if (!missing && !stale) continue;
+    const it = items.get(id);
+    if (/^Bound /i.test(it.name)) continue; // objets liés : impossibles à échanger, donc pas de prix
+    out.push({ id, name: it.name, img: it.img, qty: n, price: p.price, ts: p.ts || null, missing, weight: missing ? 1e12 + n : n * p.price });
+  }
+  return out.sort((a, b) => b.weight - a.weight).slice(0, 15);
+});
+
+// Nom donné par le joueur à un objet non identifié (gardé sur ce PC).
+ipcMain.handle('setItemName', (_e, id, name) => {
+  meta.data.itemNames = meta.data.itemNames || {};
+  name = typeof name === 'string' ? name.trim().slice(0, 80) : '';
+  if (name) meta.data.itemNames[+id] = name; else delete meta.data.itemNames[+id];
+  meta.save();
+  items.custom = meta.data.itemNames;
+  broadcast();
+});
+ipcMain.handle('setManualPrice', (_e, id, price) => { prices.setManual(id, price); broadcast(); });
+ipcMain.handle('listReports', () => listReports());
+ipcMain.handle('getHeroes', () => HEROES);
+// Liens externes autorisés : uniquement les pages de classe tlidb.
+const SUPPORT_URL = 'https://buymeacoffee.com/snoopiisz';
+ipcMain.handle('openExternal', (_e, url) => {
+  if (typeof url === 'string' && /^https:\/\/tlidb\.com\/en\/[\w-]+$/.test(url)) shell.openExternal(url);
+});
+// Page de soutien du projet (lien fixe, jamais fourni par la page).
+ipcMain.handle('openSupport', () => shell.openExternal(SUPPORT_URL));
+ipcMain.handle('searchItems', (_e, q) => (q ? items.search(q, 40) : []).map((id) => ({ id, ...items.get(id), price: prices.value(id) })));
+ipcMain.handle('listBuilds', () => builds.list().map((b) => ({
+  id: b.id, title: b.title, heroKey: b.heroKey, steps: b.steps.length, updatedAt: b.updatedAt,
+  shared: b.shared, source: b.source, active: b.id === settings.activeBuild,
+})));
+ipcMain.handle('getBuild', (_e, id) => {
+  const b = builds.get(id);
+  if (!b) return null;
+  // Emplacements de compétences avec noms, icônes et « possédée » (cache de compétences du jeu).
+  const owned = readOwnedSkills();
+  const view = (sl) => { const it = items.get(sl.id); return { id: sl.id, name: it.name, img: it.img, owned: owned.has(sl.id) || tracker.bagQty(sl.id) > 0 }; };
+  const lo = b.loadout || { active: [], passive: [] };
+  const loadout = {
+    active: lo.active.map((sl) => ({ ...view(sl), supports: sl.supports.map((id) => view({ id })) })),
+    passive: lo.passive.map((sl) => ({ ...view(sl), supports: sl.supports.map((id) => view({ id })) })),
+  };
+  return { build: b, advice: adviceFor(b, { ...tracker.snapshot() }), loadout };
+});
+ipcMain.handle('saveBuild', (_e, b) => { const saved = builds.save(b); broadcast(); return saved; });
+ipcMain.handle('deleteBuild', (_e, id) => {
+  builds.remove(id);
+  if (settings.activeBuild === id) { settings.activeBuild = null; saveSettings(); }
+  broadcast();
+});
+ipcMain.handle('setActiveBuild', (_e, id) => { settings.activeBuild = id || null; saveSettings(); broadcast(); });
+ipcMain.handle('setOwned', (_e, id, itemId, owned) => {
+  const b = builds.get(id);
+  if (!b) return null;
+  b.progress = b.progress || { owned: {} };
+  if (owned) b.progress.owned[itemId] = true; else delete b.progress.owned[itemId];
+  builds.save(b);
+  broadcast();
+  return true;
+});
+ipcMain.handle('shareBuild', async (_e, id) => {
+  const b = builds.get(id);
+  if (!b) throw new Error('build not found');
+  const pub = publicBuild(b);
+  for (const s of pub.steps) for (const it of s.items) { const info = items.get(it.id); it.name = info.name; it.img = info.img; }
+  const withName = (x) => { const info = items.get(x.id); return { id: x.id, name: info.name, img: info.img }; };
+  pub.loadout = {
+    active: pub.loadout.active.map((sl) => ({ ...withName(sl), supports: sl.supports.map((id) => withName({ id })) })),
+    passive: pub.loadout.passive.map((sl) => ({ ...withName(sl), supports: sl.supports.map((id) => withName({ id })) })),
+  };
+  const res = await community.shareBuild(pub);
+  b.shared = { url: community.siteUrl(res.url), at: Date.now() };
+  builds.save(b);
+  return b.shared;
+});
+ipcMain.handle('unshareBuild', async (_e, id) => {
+  await community.unshareBuild(id);
+  const b = builds.get(id);
+  if (b) { b.shared = null; builds.save(b); }
+});
+ipcMain.handle('browseBuilds', (_e, heroKey) => community.listBuilds(heroKey));
+// Copie un build du site dans « mes builds » (nouvel id, progression vide).
+ipcMain.handle('importBuild', async (_e, remoteId) => {
+  const { build, author } = await community.getBuild(remoteId);
+  const copy = cleanBuild({ ...build, id: undefined, createdAt: Date.now(), progress: { owned: {} },
+    source: { url: community.siteUrl(`/b/${remoteId}`), author } });
+  return builds.save(copy);
+});
+ipcMain.handle('register', async (_e, name) => { const r = await community.register(name); broadcast(); return r; });
+ipcMain.handle('shareReport', async (_e, id) => {
+  const r = loadJson(reportPath(id), null);
+  if (!r) throw new Error('session not found');
+  if (r.hero) r.hero.name = tracker.heroName(r.hero.id); // nom donné à la classe depuis
+  const { prices: _p, shared: _s, ...payload } = r;
+  const res = await community.share({ ...payload, prices: _p });
+  r.shared = { url: community.siteUrl(res.url), at: Date.now() };
+  saveReport(r);
+  return r.shared;
+});
+ipcMain.handle('unshareReport', async (_e, id) => {
+  await community.unshare(id);
+  const r = loadJson(reportPath(id), null);
+  if (r) { delete r.shared; saveReport(r); }
+});
+ipcMain.handle('openSite', (_e, sitePath) => {
+  // Uniquement des pages de notre serveur.
+  const p = typeof sitePath === 'string' && /^\/[\w/?=&.-]*$/.test(sitePath) ? sitePath : '/';
+  shell.openExternal(community.siteUrl(p));
+});
+// Nouveautés : notes des versions installées depuis la dernière ouverture (rien à la première installation).
+ipcMain.handle('whatsNew', () => {
+  const cur = app.getVersion();
+  if (settings.lastSeenVersion === cur) return null;
+  const log = loadJson(path.join(__dirname, '..', 'data', 'changelog.json'), { releases: [] });
+  // Joueur déjà installé mais venant d'une version sans cette fenêtre : on montre au moins les notes de cette version.
+  const from = settings.lastSeenVersion || null;
+  // Sans version vue (mise à jour depuis 0.9.9 ou avant) : les deux dernières versions, pour ne rien rater.
+  const upToCur = log.releases.filter((r) => verNum(r.version) <= verNum(cur));
+  const releases = from ? upToCur.filter((r) => verNum(r.version) > verNum(from)) : upToCur.slice(0, 2);
+  if (!releases.length) { settings.lastSeenVersion = cur; saveSettings(); return null; }
+  return { version: cur, releases };
+});
+ipcMain.handle('getReport', (_e, id) => loadJson(reportPath(id), null));
+ipcMain.handle('updateReport', (_e, id, patch) => {
+  const r = loadJson(reportPath(id), null);
+  if (!r) return null;
+  if (typeof patch.title === 'string') r.title = patch.title.slice(0, 120);
+  if (typeof patch.notes === 'string') r.notes = patch.notes.slice(0, 4000);
+  if (typeof patch.strategyTag === 'string' && STRATEGY_TAGS.includes(patch.strategyTag)) r.strategyTag = patch.strategyTag;
+  saveReport(r);
+  return r;
+});
+ipcMain.handle('deleteReport', (_e, id) => { try { fs.unlinkSync(reportPath(id)); } catch { /* déjà supprimé */ } });
+// Associe le numéro de héros du jeu à une classe/trait de la liste (ou à un nom libre).
+ipcMain.handle('setHeroName', (_e, heroId, value) => {
+  meta.data.heroKeys = meta.data.heroKeys || {};
+  const h = HEROES.find((x) => x.key === value);
+  const name = h ? `${h.hero} — ${h.trait}` : String(value || '').trim().slice(0, 60);
+  if (name) meta.data.heroNames[heroId] = name; else delete meta.data.heroNames[heroId];
+  if (h) meta.data.heroKeys[heroId] = h.key; else delete meta.data.heroKeys[heroId];
+  meta.save(0);
+  if (h) community.voteHero(heroId, h.key).catch(() => {}); // aide les autres joueurs à reconnaître ce numéro
+  broadcast();
+});
+
+// ---------------- Méta (cache Hero Ranking du jeu) ----------------
+
+let serverHeroMap = {};
+async function syncHeroMap() {
+  try { serverHeroMap = (await community.heroMap()).map || {}; } catch { /* hors ligne */ }
+}
+// Classe connue pour un numéro de héros : d'abord ce que j'ai choisi, sinon le vote de la communauté.
+function heroKeyFor(heroId) {
+  const local = (meta.data.heroKeys || {})[heroId];
+  if (local) return { key: local, source: 'me' };
+  const known = HEROES.find((h) => h.gameId === +heroId); // ids connus (déduits du Hero Ranking)
+  if (known) return { key: known.key, source: 'known' };
+  const s = serverHeroMap[heroId];
+  return s ? { key: s.key, source: 'community', votes: s.total } : { key: null, source: null };
+}
+// ---- Sources de méta : 'l:<fichier local>' ou 'r:<serveur>|<saison>|<mode>' (serveur = 'global' pour tous) ----
+
+// Serveur de jeu de chaque compte (un compte = une région), appris depuis UserData.
+function rememberServer() {
+  const cs = Meta.currentServer(status.logPath);
+  if (!cs) return;
+  const f = Meta.listRankingFiles(status.logPath).find((x) => x.charId === cs.charId);
+  let account = f ? f.account : null;
+  if (!account) {
+    // Pas encore de classement pour ce perso : on cherche son dossier de compte.
+    try {
+      const root = path.join(status.logPath, '..', '..', '..', '..', 'Local', 'AccountCache');
+      account = fs.readdirSync(root).find((a) => fs.existsSync(path.join(root, a, cs.charId))) || null;
+    } catch { /* ignoré */ }
+  }
+  meta.data.accountServers = meta.data.accountServers || {};
+  if (account && meta.data.accountServers[account] !== cs.server) { meta.data.accountServers[account] = cs.server; meta.save(0); }
+}
+const serverOf = (f) => (meta.data.accountServers || {})[f.account] || null;
+const localFiles = () => Meta.listRankingFiles(status.logPath).map((f) => ({ ...f, server: serverOf(f) }));
+
+const remoteCache = new Map(); // clé -> { at, snap }
+async function remoteSnapshot(server, season, mode) {
+  const k = `${server}|${season}|${mode}`;
+  const hit = remoteCache.get(k);
+  if (hit && Date.now() - hit.at < 5 * 60000) return hit.snap;
+  const snap = await community.metaSnapshot(server, season, mode);
+  remoteCache.set(k, { at: Date.now(), snap });
+  return snap;
+}
+// Renvoie { info, overview(), detail(heroId, topN) } pour une source.
+async function metaSource(key) {
+  if (typeof key === 'string' && key.startsWith('r:')) {
+    const [server, season, mode] = key.slice(2).split('|');
+    const snap = await remoteSnapshot(server, +season, +mode);
+    return {
+      info: { key, remote: true, server, season: +season, mode: +mode, mtime: snap.capturedAt, uploads: snap.sources || 1 },
+      overview: () => Meta.overviewFromSnapshot(snap),
+      detail: (heroId) => Meta.detailFromSnapshot(snap, heroId),
+      players: (heroId, opts) => community.metaPlayers(server, +season, +mode, heroId, opts),
+    };
+  }
+  const files = localFiles();
+  const f = files.find((x) => 'l:' + x.key === key) || files.slice().sort((a, b) => b.size - a.size)[0];
+  if (!f) return null;
+  return {
+    info: { key: 'l:' + f.key, remote: false, server: f.server, season: f.season, mode: f.mode, mtime: f.mtime },
+    overview: () => Meta.overview(f),
+    detail: (heroId, topN) => Meta.classDetail(f, heroId, topN),
+    players: async (heroId, opts) => Meta.classPlayers(f, heroId, opts),
+  };
+}
+const named = (id) => { const it = items.get(id); return { id, name: it.name, img: it.img }; };
+
+ipcMain.handle('metaFiles', async () => {
+  rememberServer();
+  const local = localFiles().map((f) => ({ key: 'l:' + f.key, remote: false, server: f.server, mode: f.mode, season: f.season, mtime: f.mtime, size: f.size }));
+  let remote = [];
+  try { remote = (await community.metaIndex()).snapshots.map((r) => ({ key: `r:${r.server}|${r.season}|${r.mode}`, remote: true, ...r, mtime: r.capturedAt })); }
+  catch { /* hors ligne : seulement les données locales */ }
+  return { local, remote };
+});
+ipcMain.handle('metaOverview', async (_e, key) => {
+  const src = await metaSource(key);
+  if (!src) return null;
+  const o = src.overview();
+  return { file: src.info, myHeroId: tracker.heroId, ...o, classes: Meta.withTiers(o.classes).map((c) => ({ ...c, ...heroKeyFor(c.heroId) })) };
+});
+ipcMain.handle('metaClass', async (_e, key, heroId, topN) => {
+  const src = await metaSource(key);
+  const d = src && src.detail(heroId, topN);
+  if (!d) return null;
+  const skills = readOwnedSkills();
+  const enrich = (r) => ({ ...r, ...named(r.id), price: prices.value(r.id), owned: tracker.bagQty(r.id) > 0 || skills.has(r.id) });
+  const gn = (cat) => (r) => ({ ...r, ...gameNamed(cat, r.id) });
+  return { ...d, ...heroKeyFor(heroId), file: src.info,
+    uniques: d.uniques.map(enrich), skills: d.skills.map(enrich), supports: d.supports.map(enrich),
+    boards: d.boards.map(gn('boards')), talents: d.talents.map(gn('talents')), servants: (d.servants || []).map(gn('servants')) };
+});
+
+// Joueurs d'une classe, avec noms et icônes des compétences / légendaires.
+ipcMain.handle('metaPlayers', async (_e, key, heroId, opts) => {
+  const src = await metaSource(key);
+  if (!src) return null;
+  const r = await src.players(heroId, opts || {});
+  const nm = (id) => { const it = items.get(id); return { id, name: it.name, img: it.img }; };
+  return {
+    total: r.total, sort: r.sort || (opts && opts.sort) || 'rank',
+    players: r.players.map((p) => ({
+      ...p,
+      uniques: p.uniques.map(nm),
+      active: p.active.map(([m, sup]) => ({ ...nm(m), supports: sup.map(nm) })),
+      passive: p.passive.map(([m, sup]) => ({ ...nm(m), supports: sup.map(nm) })),
+      boards: (p.boards || []).map((id) => gameNamed('boards', id)),
+      talents: (p.talents || []).map((id) => gameNamed('talents', id)),
+      servants: (p.servants || []).map((id) => gameNamed('servants', id)),
+    })),
+  };
+});
+// Copie le build d'un joueur du classement dans « mes builds ».
+ipcMain.handle('metaPlayerBuild', (_e, player, heroId) => {
+  const t = tr();
+  const k = heroKeyFor(heroId).key;
+  const skillItems = (list) => list.flatMap((sk) => [{ id: sk.id, qty: 1, priority: 'core', note: '' },
+    ...sk.supports.map((x) => ({ id: x.id, qty: 1, priority: 'core', note: t('m.supportOf', { name: sk.name }) }))]);
+  const steps = [
+    { title: t('m.stepSkills'), notes: '', items: skillItems([...player.active, ...player.passive]) },
+    { title: t('m.stepLegendaries'), notes: '', items: player.uniques.map((u) => ({ id: u.id, qty: 1, priority: 'core', note: '' })) },
+  ].filter((st) => st.items.length);
+  if (!steps.length) throw new Error('this player has no visible build');
+  const slot = (sk) => ({ id: sk.id, supports: sk.supports.map((x) => x.id) });
+  return builds.save({
+    loadout: { active: player.active.map(slot), passive: player.passive.map(slot) },
+    title: t('m.playerBuildTitle', { name: player.name || t('m.hiddenPlayer'), pos: player.pos }),
+    heroKey: k || '',
+    description: t('m.playerBuildDesc', { name: player.name || t('m.hiddenPlayer'), level: player.level, dps: Math.round(player.dps).toLocaleString('en-US') }),
+    steps,
+  });
+});
+
+// ---------------- Mises à jour automatiques ----------------
+// L'installateur publié sur tlicompanion.com/download contient latest.yml : l'app vérifie au démarrage
+// puis toutes les 4 h, télécharge en arrière-plan et propose de redémarrer pour installer.
+let updateState = { state: 'idle' }; // idle | checking | downloading | ready | error
+// Mise à jour obligatoire : le serveur annonce une version minimale (ou refuse cette version, HTTP 426).
+let updateRequired = null;
+const verNum = (v) => String(v || '0').split('.').map((x) => parseInt(x, 10) || 0).reduce((a, x) => a * 1000 + x, 0);
+// Vérification manuelle (bouton des réglages) ou demandée par le serveur (réponse 426).
+let lastForcedCheck = 0;
+function checkUpdatesNow() {
+  if (Date.now() - lastForcedCheck < 60000) return;
+  lastForcedCheck = Date.now();
+  checkMinVersion();
+  if (app.isPackaged && !process.env.PORTABLE_EXECUTABLE_DIR && updateState.state !== 'downloading' && updateState.state !== 'ready') {
+    updateState = { state: 'checking' }; broadcast();
+    autoUpdater.checkForUpdates().catch(() => { updateState = { state: 'idle' }; broadcast(); });
+  }
+}
+community.onOutdated = checkUpdatesNow;
+
+async function checkMinVersion() {
+  try {
+    const v = await community.version();
+    updateRequired = v.minVersion && verNum(app.getVersion()) < verNum(v.minVersion) ? { min: v.minVersion, latest: v.version } : null;
+    broadcast();
+    // Version trop ancienne : on vérifie la mise à jour tout de suite plutôt qu'au prochain passage.
+    if (updateRequired && (updateState.state === 'idle' || updateState.state === 'uptodate') && app.isPackaged && !process.env.PORTABLE_EXECUTABLE_DIR) autoUpdater.checkForUpdates().catch(() => {});
+  } catch { /* hors ligne */ }
+}
+function setupUpdates() {
+  // Version minimale : vérifiée aussi pour la version portable.
+  checkMinVersion();
+  setInterval(checkMinVersion, 15 * 60 * 1000);
+  // Pas de mise à jour automatique pour la version portable ni en développement.
+  if (!app.isPackaged || process.env.PORTABLE_EXECUTABLE_DIR) return;
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+  autoUpdater.disableWebInstaller = true;
+  // Même canal pour tous : une bêta locale (x.y.z-beta.n) passera à la prochaine version publique x.y.z.
+  autoUpdater.channel = 'latest';
+  autoUpdater.allowPrerelease = false;
+  autoUpdater.allowDowngrade = false;
+  // Tests : TLI_UPDATE_URL pointe vers un serveur local au lieu de tlicompanion.com.
+  if (process.env.TLI_UPDATE_URL) autoUpdater.setFeedURL({ provider: 'generic', url: process.env.TLI_UPDATE_URL });
+  autoUpdater.logger = { info: (m) => console.log('[maj]', m), warn: (m) => console.log('[maj]', m), error: (m) => console.log('[maj] erreur', m), debug: () => {} };
+  autoUpdater.on('checking-for-update', () => { updateState = { state: 'checking' }; });
+  autoUpdater.on('update-available', (i) => { updateState = { state: 'downloading', version: i.version, percent: 0 }; broadcast(); });
+  autoUpdater.on('update-not-available', () => { updateState = { state: 'uptodate', at: Date.now() }; broadcast(); });
+  autoUpdater.on('download-progress', (p) => { updateState = { ...updateState, state: 'downloading', percent: Math.round(p.percent) }; broadcastThrottled(); });
+  autoUpdater.on('update-downloaded', (i) => {
+    updateState = { state: 'ready', version: i.version }; broadcast();
+    // Mise à jour obligatoire : installée tout de suite, sauf pendant une session de farm (l'écran bloquant propose alors de redémarrer).
+    if (updateRequired && !tracker.session.recording) setTimeout(() => autoUpdater.quitAndInstall(true, true), 3000);
+  });
+  autoUpdater.on('error', (e) => { updateState = { state: 'error', message: String(e && e.message || e).slice(0, 200) }; console.error('Mise à jour :', updateState.message); });
+  const check = () => autoUpdater.checkForUpdates().catch(() => {});
+  check();
+  setInterval(check, 15 * 60 * 1000); // toutes les 15 min : les mises à jour arrivent vite
+}
+
+// ---------------- Conseiller (IA, bientôt) ----------------
+// Assemble le contexte qui sera envoyé à l'IA : classe, économie, méta de la classe, top joueurs.
+async function advisorContextData() {
+  const snap = tracker.snapshot();
+  let meta = null, topPlayers = [];
+  try {
+    const { local } = { local: localFiles() };
+    const myServer = (local.find((f) => f.server) || {}).server;
+    let key = null;
+    try {
+      const idx = (await community.metaIndex()).snapshots;
+      const r = idx.find((x) => x.server === myServer) || idx.find((x) => x.server === 'global');
+      if (r) key = `r:${r.server}|${r.season}|${r.mode}`;
+    } catch { /* hors ligne */ }
+    if (!key && local.length) key = 'l:' + local.slice().sort((a, b) => b.size - a.size)[0].key;
+    if (key && tracker.heroId) {
+      const src = await metaSource(key);
+      const ov = Meta.withTiers(src.overview().classes);
+      const mine = ov.find((c) => c.heroId === tracker.heroId);
+      const d = src.detail(tracker.heroId, 100);
+      const nm = (r) => ({ ...r, name: items.get(r.id).name, price: prices.value(r.id) });
+      if (mine && d) meta = { tier: mine.tier, rank: ov.slice().sort((a, b) => b.score - a.score).indexOf(mine) + 1, players: mine.players,
+        uniques: d.uniques.map(nm), skills: d.skills.map(nm), supports: d.supports.map(nm) };
+      const pl = await src.players(tracker.heroId, { sort: 'dps', limit: 10 });
+      const named = (id) => ({ id, name: items.get(id).name });
+      topPlayers = pl.players.map((p) => ({ ...p, uniques: p.uniques.map(named),
+        active: p.active.map(([m, s]) => ({ name: items.get(m).name, supports: s.map(named) })),
+        passive: p.passive.map(([m, s]) => ({ name: items.get(m).name, supports: s.map(named) })),
+        talents: (p.talents || []).map((id) => gameNamed('talents', id)), servants: (p.servants || []).map((id) => gameNamed('servants', id)) }));
+    }
+  } catch (e) { console.error('Contexte conseiller :', e.message); }
+  return buildAdvisorContext({
+    lang: settings.lang,
+    hero: snap.hero ? { id: snap.hero.id, key: snap.hero.key, name: snap.hero.name } : null,
+    skillsOwned: [...readOwnedSkills()].map((id) => items.get(id).name),
+    feInBag: tracker.bagQty(FE_ID), bagValue: snap.netWorth, farmRate: farmRate(snap),
+    sessions: listReports(), meta, topPlayers, priceOf: (id) => prices.value(id),
+  });
+}
+ipcMain.handle('advisorContext', () => advisorContextData());
+
+// Bêta privée de l'agent IA : débloquée en cliquant 7 fois sur le numéro de version.
+// Clé API du joueur stockée à part (jamais dans settings.json ni envoyée à notre serveur).
+const aiKey = AI.keyStore(path.join(userDir, 'ai-key.json'), safeStorage);
+// Build bêta (version « x.y.z-beta.n ») : l'agent IA est activé d'office.
+const IS_BETA_BUILD = /-beta/i.test(app.getVersion());
+// Version publique : l'IA reste « bientôt disponible » (pas de déblocage caché).
+const aiEnabled = () => IS_BETA_BUILD;
+ipcMain.handle('aiStatus', async () => {
+  const local = await AI.ollamaModels();
+  let server = { enabled: false };
+  try { server = await community.aiStatus(); } catch { /* hors ligne */ }
+  return { beta: aiEnabled(), provider: settings.aiProvider || 'server', server, hasKey: aiKey.has(), model: settings.aiModel || AI.MODELS[0], models: AI.MODELS,
+    ollama: { ...local, model: local.models.includes(settings.aiLocalModel) ? settings.aiLocalModel : (local.models.find((m) => m.startsWith('qwen2.5')) || local.models[0] || null), recommended: AI.OLLAMA_RECOMMENDED } };
+});
+ipcMain.handle('aiSetProvider', (_e, p) => { if (p === 'server' || p === 'ollama' || p === 'anthropic') { settings.aiProvider = p; saveSettings(); } });
+ipcMain.handle('aiSetLocalModel', (_e, m) => { if (typeof m === 'string' && /^[\w.:/-]{1,80}$/.test(m)) { settings.aiLocalModel = m; saveSettings(); } });
+ipcMain.handle('aiSetKey', (_e, key) => {
+  key = typeof key === 'string' ? key.trim() : '';
+  if (key && !/^sk-ant-[\w-]{20,}$/.test(key)) return { ok: false };
+  aiKey.set(key);
+  return { ok: true };
+});
+ipcMain.handle('aiSetModel', (_e, m) => { if (AI.MODELS.includes(m)) { settings.aiModel = m; saveSettings(); } });
+ipcMain.handle('aiChat', async (_e, messages) => {
+  if (!aiEnabled()) return { error: 'disabled' };
+  const provider = settings.aiProvider || 'server';
+  const local = provider === 'ollama';
+  const key = provider === 'anthropic' ? aiKey.get() : null;
+  if (provider === 'anthropic' && !key) return { error: 'nokey' };
+  const clean = (Array.isArray(messages) ? messages : []).slice(-20)
+    .filter((m) => (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string' && m.content.trim())
+    .map((m) => ({ role: m.role, content: m.content.slice(0, 4000) }));
+  if (!clean.length || clean[clean.length - 1].role !== 'user') return { error: 'empty' };
+  try {
+    const context = await advisorContextData();
+    const searchPrices = (q) => items.search(q, 10).map((id) => { const it = items.get(id); return { name: it.name, category: it.type || it.category || null, priceFE: prices.value(id) || null }; });
+    if (provider === 'server') {
+      try { return await community.aiChat({ lang: settings.lang, context, messages: clean }); }
+      catch (e) { return { error: 'api', message: String(e.message || e).slice(0, 300) }; }
+    }
+    if (local) {
+      const { up, models } = await AI.ollamaModels();
+      if (!up) return { error: 'noollama' };
+      const model = models.includes(settings.aiLocalModel) ? settings.aiLocalModel : (models.find((m) => m.startsWith('qwen2.5')) || models[0]);
+      if (!model) return { error: 'nomodel' };
+      return await AI.chatOllama({ model, lang: settings.lang, context, messages: clean, searchPrices });
+    }
+    return await AI.chat({ key, model: settings.aiModel, lang: settings.lang, context, messages: clean, searchPrices });
+  } catch (e) { return { error: 'api', status: e.status || 0, message: String(e.message || e).slice(0, 300) }; }
+});
+
+// Envoi automatique : chaque classement nouveau ou mis à jour (avec serveur connu) est résumé et partagé.
+let uploading = false;
+async function uploadRankings() {
+  if (uploading || !settings.shareMeta) return;
+  uploading = true;
+  try {
+    rememberServer();
+    meta.data.uploadedRankings = meta.data.uploadedRankings || {};
+    for (const f of localFiles()) {
+      if (!f.server || meta.data.uploadedRankings['v2:' + f.key] === f.mtime) continue;
+      const snap = Meta.snapshot(f);
+      const ids = new Set();
+      for (const c of snap.classes) for (const k of ['uniques', 'skills', 'supports']) for (const [id] of c[k]) ids.add(id);
+      const names = {};
+      for (const id of ids) { const it = items.get(id); if (it.img || !it.name.startsWith('Item #')) names[id] = [it.name, it.img]; }
+      await community.uploadMeta({ server: f.server, snapshot: snap, names });
+      meta.data.uploadedRankings['v2:' + f.key] = f.mtime;
+      meta.save();
+      status.msgKey = 'msg.metaShared'; status.msgVars = { server: f.server };
+    }
+  } catch (e) { console.error('Envoi méta :', e.message); }
+  uploading = false;
+}
+
+// Associe un numéro de classe à une classe de la liste (depuis l'onglet Méta).
+ipcMain.handle('metaAssign', (_e, heroId, key) => {
+  const h = HEROES.find((x) => x.key === key);
+  meta.data.heroKeys = meta.data.heroKeys || {};
+  if (h) { meta.data.heroKeys[heroId] = key; community.voteHero(heroId, key).catch(() => {}); }
+  else delete meta.data.heroKeys[heroId];
+  if (h && heroId === tracker.heroId) meta.data.heroNames[heroId] = `${h.hero} — ${h.trait}`;
+  meta.save(0);
+  broadcast();
+});
+// Crée un build à partir de ce que joue le top de la classe.
+ipcMain.handle('metaBuild', async (_e, key, heroId, topN, threshold) => {
+  const src = await metaSource(key);
+  const d = src && src.detail(heroId, topN);
+  if (!d) throw new Error('no ranking data');
+  const f = src.info;
+  const thr = Math.min(0.9, Math.max(0.05, +threshold || 0.3));
+  const pick = (rows, max, minPct) => rows.filter((r) => r.pct >= minPct).slice(0, max);
+  const t = tr();
+  const item = (r, priority) => ({ id: r.id, qty: 1, priority, note: t('m.itemNote', { pct: Math.round(r.pct * 100), n: d.sample }) });
+  const k = heroKeyFor(heroId).key;
+  const h = HEROES.find((x) => x.key === k);
+  const label = h ? h.trait : `#${heroId}`;
+  const steps = [
+    { title: t('m.stepSkills'), notes: '', items: [
+      ...pick(d.skills, 3, thr).map((r) => item(r, 'core')),
+      ...pick(d.supports, 12, thr).map((r) => item(r, 'core')),
+    ] },
+    { title: t('m.stepLegendaries'), notes: '', items: [
+      ...pick(d.uniques, 10, thr).map((r) => item(r, 'core')),
+      ...d.uniques.filter((r) => r.pct < thr && r.pct >= thr / 2).slice(0, 8).map((r) => item(r, 'optional')),
+    ] },
+  ].filter((s) => s.items.length);
+  if (!steps.length) throw new Error('not enough data for this class');
+  // Emplacements : les compétences principales les plus jouées, chacune avec les soutiens les plus fréquents.
+  const mainSkills = pick(d.skills, 3, thr);
+  const sups = pick(d.supports, 15, thr).map((r) => r.id);
+  const loadout = { active: mainSkills.map((r, i) => ({ id: r.id, supports: i === 0 ? sups.slice(0, 5) : sups.slice(5 * i, 5 * i + 5) })), passive: [] };
+  return builds.save({
+    loadout,
+    title: t('m.buildTitle', { name: label, n: d.sample }),
+    heroKey: k || '',
+    description: t('m.buildDesc', { n: d.sample, season: String(f.season).slice(0, 2), mode: f.mode,
+      thr: Math.round(thr * 100), half: Math.round(thr * 50) }),
+    steps,
+  });
+});
+ipcMain.handle('action', async (_e, name, arg) => {
+  switch (name) {
+    case 'collapse': setCollapsed(arg ?? !settings.overlay.collapsed); break;
+    case 'dashboard': openDashboard(typeof arg === 'string' ? arg : null); break;
+    // Masquer le widget alors que la fenêtre principale est fermée : on la rouvre (sinon plus rien de visible).
+    case 'hideOverlay': if (overlay) overlay.hide(); if (!dashboard) openDashboard('home'); break;
+    case 'toggleOverlay': toggleOverlay(); break;
+
+    case 'openOllama': shell.openExternal('https://ollama.com/download/windows'); break;
+    case 'downloadUpdate': shell.openExternal(community.siteUrl('/download')); break;
+    case 'checkUpdates': lastForcedCheck = 0; checkUpdatesNow(); break;
+    case 'installUpdate': if (updateState.state === 'ready') setImmediate(() => autoUpdater.quitAndInstall(true, true)); break;
+    case 'onboarded': settings.onboarded = true; saveSettings(); break;
+    case 'seenVersion': settings.lastSeenVersion = app.getVersion(); saveSettings(); break;
+    case 'farmPublish': farmPublish = !!arg; settings.shareFarm = !!arg; saveSettings(); broadcast(); break;
+    case 'newSession': tracker.newSession(); break;
+    case 'startFarm': beginFarm(); break;
+    case 'stopFarm': { const id = stopFarm(arg || ''); broadcast(); return id; }
+    case 'mode': settings.mode = arg; saveSettings(); break;
+    case 'timeMode': settings.timeMode = arg; saveSettings(); break;
+    case 'shareMeta': settings.shareMeta = !!arg; saveSettings(); if (arg) uploadRankings(); break;
+    case 'stockAlerts': settings.stockAlerts = !!arg; saveSettings(); break;
+    case 'tartarusAlerts': settings.tartarusAlerts = !!arg; saveSettings(); break;
+    case 'resetSound': if (SOUND_KEYS.includes(arg)) { settings.sounds[arg] = 'builtin'; saveSettings(); } break;
+    case 'pickSound': {
+      if (!SOUND_KEYS.includes(arg)) break;
+      const r = await dialog.showOpenDialog(dashboard || overlay, { title: tr()('snd.pick'), properties: ['openFile'], filters: [{ name: 'Audio', extensions: ['wav', 'mp3', 'ogg', 'm4a'] }] });
+      if (!r.canceled && r.filePaths[0]) { settings.sounds[arg] = 'file:' + r.filePaths[0]; saveSettings(); }
+      break;
+    }
+    case 'testTartarus': { const kind = arg === 'full' ? 'full' : 'ready'; const n = kind === 'full' ? TARTARUS_MAX : TARTARUS_ENTRY;
+      sendAlert({ kind: 'tartarus-' + kind, text: tr()('tart.' + kind, { n, max: TARTARUS_MAX }), level: kind === 'full' ? 1 : 5, qty: kind === 'full' ? 1 : 5 }); break; }
+    case 'minLootValue': settings.minLootValue = Math.max(0, Math.min(1000, +String(arg).replace(',', '.') || 0)); saveSettings(); break;
+    case 'testStockAlert': { const ids = Object.keys((meta.data.mapConsumables) || {}); const id = +(ids[0] || 0);
+      const it = items.get(id); const a = { id, name: id ? it.name : 'Beacon', img: id ? it.img : null, qty: 5, level: 5 };
+      const ovShown = overlay && !overlay.isDestroyed() && overlay.isVisible();
+      if (ovShown) overlay.webContents.send('stockAlert', { ...a, sound: true });
+      if (dashboard && !dashboard.isDestroyed()) dashboard.webContents.send('stockAlert', { ...a, sound: !ovShown }); break; }
+    case 'opacity': settings.overlay.opacity = arg; saveSettings(); applyOpacity(); break;
+    case 'lang':
+      settings.lang = I18N.LANGS[arg] ? arg : 'en'; saveSettings(); buildTrayMenu();
+      if (dashboard && !dashboard.isDestroyed()) dashboard.setTitle(tr()('dash.windowTitle'));
+      break;
+    case 'scale': settings.overlay.scale = Math.min(SCALE_MAX, Math.max(SCALE_MIN, +arg || 1)); saveSettings(); setCollapsed(settings.overlay.collapsed); break;
+    case 'resizeStart': startResize(); break;
+    case 'resizeEnd': endResize(); break;
+    case 'solid': settings.overlay.solid = !!arg; saveSettings(); applyOpacity(); break;
+    case 'community':
+      settings.communityPrices = !!arg; saveSettings();
+      if (arg) await refreshCommunity();
+      break;
+    case 'refreshCommunity': await refreshCommunity(); break;
+    case 'hubPatterns':
+      settings.hubPatterns = String(arg).split(',').map((s) => s.trim()).filter(Boolean); saveSettings();
+      break;
+    case 'openLogDir': {
+      // Ouvre le dossier où le jeu écrit (ou écrira) son log, pour aider le joueur.
+      const dir = status.logPath ? path.dirname(status.logPath) : status.gameDir ? expectedLogDir(status.gameDir) : null;
+      if (dir) shell.openPath(fs.existsSync(dir) ? dir : status.gameDir);
+      break;
+    }
+    case 'pickLog': {
+      const r = await dialog.showOpenDialog(dashboard || overlay, {
+        title: tr()('dlg.pickLog'),
+        properties: ['openFile'], filters: [{ name: 'Log', extensions: ['log'] }],
+      });
+      if (!r.canceled && r.filePaths[0]) { settings.logPath = r.filePaths[0]; saveSettings(); await startWatching(); }
+      break;
+    }
+  }
+  broadcast();
+});
+
+// Captures d'écran de contrôle (développement) : TLI_SHOT=<dossier> npm start
+async function debugScreenshots(dir) {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  fs.mkdirSync(dir, { recursive: true });
+  await wait(1500);
+  fs.writeFileSync(path.join(dir, 'overlay-expanded.png'), (await overlay.webContents.capturePage()).toPNG());
+  setCollapsed(true); await wait(800);
+  fs.writeFileSync(path.join(dir, 'overlay-collapsed.png'), (await overlay.webContents.capturePage()).toPNG());
+  setCollapsed(false);
+  openDashboard(); await wait(2500);
+  fs.writeFileSync(path.join(dir, 'dashboard-live.png'), (await dashboard.webContents.capturePage()).toPNG());
+  await dashboard.webContents.executeJavaScript("document.querySelector('[data-tab=runs]').click()"); await wait(1200);
+  fs.writeFileSync(path.join(dir, 'dashboard-runs.png'), (await dashboard.webContents.capturePage()).toPNG());
+  if (tracker.session.recording) {
+    stopFarm('Test simulation'); await wait(2000);
+    fs.writeFileSync(path.join(dir, 'session-detail.png'), (await dashboard.webContents.capturePage()).toPNG());
+    await dashboard.webContents.executeJavaScript("window.scrollTo(0,0); document.querySelector('main').scrollTop = 700");
+    await wait(500);
+    fs.writeFileSync(path.join(dir, 'session-detail-2.png'), (await dashboard.webContents.capturePage()).toPNG());
+    if (process.env.TLI_SHARE_TEST) {
+      await dashboard.webContents.executeJavaScript(`document.querySelector('main').scrollTop = 0;
+        const n = document.getElementById('shName'); if (n) n.value = 'Testeur'; document.getElementById('shGo').click();`);
+      await wait(3000);
+      fs.writeFileSync(path.join(dir, 'session-shared.png'), (await dashboard.webContents.capturePage()).toPNG());
+    }
+    await dashboard.webContents.executeJavaScript("document.getElementById('dBack').click()"); await wait(800);
+    fs.writeFileSync(path.join(dir, 'session-list.png'), (await dashboard.webContents.capturePage()).toPNG());
+  }
+  if (process.env.TLI_BUILD_TEST) {
+    const shot = async (name) => fs.writeFileSync(path.join(dir, name), (await dashboard.webContents.capturePage()).toPNG());
+    const b = builds.save({
+      title: 'Frostbitten Heart — Forking Thunder', heroKey: 'frostbitten_heart',
+      description: 'Demo build: lightning projectiles, cheap start then T7 farming.',
+      steps: [
+        { title: 'Starter', notes: 'Get the core skills first.', items: [
+          { id: 7350, qty: 1 }, { id: 7136, qty: 1 }, { id: 5210, qty: 300, note: 'for crafting' }] },
+        { title: 'T7 farming', notes: '', items: [
+          { id: 210000, qty: 60 }, { id: 7136, qty: 3 }, { id: 5230, qty: 200, priority: 'optional' }] },
+      ],
+    });
+    settings.activeBuild = b.id;
+    broadcast();
+    await dashboard.webContents.executeJavaScript("document.querySelector('[data-tab=build]').click()"); await wait(1200);
+    await shot('build-list.png');
+    await dashboard.webContents.executeJavaScript(`document.querySelector('#buildView tr.click').click()`); await wait(1500);
+    await shot('build-detail.png');
+    fs.writeFileSync(path.join(dir, 'overlay-advice.png'), (await overlay.webContents.capturePage()).toPNG());
+    await dashboard.webContents.executeJavaScript("document.getElementById('bShare').click()"); await wait(800);
+    await dashboard.webContents.executeJavaScript(`const n = document.getElementById('bName'); if (n) { n.value = 'Testeur'; document.getElementById('bNameGo').click(); }`); await wait(2500);
+    await shot('build-shared.png');
+    await dashboard.webContents.executeJavaScript("document.getElementById('bEdit').click()"); await wait(1000);
+    await dashboard.webContents.executeJavaScript(`const i = document.querySelector('[data-search]'); i.value = 'thunder'; i.dispatchEvent(new Event('input'));`); await wait(1200);
+    await shot('build-edit.png');
+  }
+  if (process.env.TLI_WIDGET_TEST) {
+    // Simule un glisser du coin : +150 px vers la droite, puis mode opaque.
+    const real = screen.getCursorScreenPoint.bind(screen);
+    const start = real(); let dx = 0;
+    screen.getCursorScreenPoint = () => ({ x: start.x + dx, y: start.y });
+    startResize();
+    for (let i = 0; i < 10; i++) { dx += 15; await wait(40); }
+    endResize(); screen.getCursorScreenPoint = real;
+    console.log('WIDGET scale', settings.overlay.scale, overlay.getSize());
+    settings.overlay.solid = true; applyOpacity(); broadcast(); await wait(800);
+    fs.writeFileSync(path.join(dir, 'widget-big-solid.png'), (await overlay.webContents.capturePage()).toPNG());
+    settings.overlay.scale = 1; settings.overlay.solid = false; applyScale(1); saveSettings();
+  }
+  if (process.env.TLI_STOCK_TEST) {
+    // Simule 3 ouvertures de carte : 10, 5 puis 1 balise restante.
+    const id = 210000;
+    for (const q of [10, 5, 1]) {
+      tracker.bagQty = () => q;
+      checkStock(id); await wait(900);
+      fs.writeFileSync(path.join(dir, `stock-${q}.png`), (await overlay.webContents.capturePage()).toPNG());
+    }
+    fs.writeFileSync(path.join(dir, 'stock-dash.png'), (await dashboard.webContents.capturePage()).toPNG());
+  }
+  if (process.env.TLI_NOLOG) {
+    settings.onboarded = true; broadcast();
+    await dashboard.webContents.executeJavaScript("document.querySelector('[data-tab=home]').click()"); await wait(1500);
+    fs.writeFileSync(path.join(dir, 'home-nolog.png'), (await dashboard.webContents.capturePage()).toPNG());
+  }
+  // Captures de contrôle : un onglet précis (TLI_TAB) et une expression à évaluer (TLI_EVAL), avec ou sans log.
+  if (process.env.TLI_TAB || process.env.TLI_EVAL) {
+    settings.onboarded = true; broadcast();
+    if (process.env.TLI_TAB) {
+      await dashboard.webContents.executeJavaScript(`document.querySelector('[data-tab=${process.env.TLI_TAB}]').click()`); await wait(1200);
+      fs.writeFileSync(path.join(dir, `tab-${process.env.TLI_TAB}.png`), (await dashboard.webContents.capturePage()).toPNG());
+    }
+    if (process.env.TLI_EVAL) console.log('EVAL', JSON.stringify(await dashboard.webContents.executeJavaScript(process.env.TLI_EVAL)));
+  }
+  if (process.env.TLI_FARM_TEST) {
+    const shot = async (name) => fs.writeFileSync(path.join(dir, name), (await dashboard.webContents.capturePage()).toPNG());
+    settings.onboarded = true; beginFarm(); broadcast(); await wait(1200);
+    await shot('farm-consent.png');
+    fs.writeFileSync(path.join(dir, 'farm-consent-overlay.png'), (await overlay.webContents.capturePage()).toPNG());
+    farmPublish = true; tracker.stopFarm(); broadcast();
+    const id = require('crypto').randomUUID();
+    saveReport({ version: 1, id, appVersion: app.getVersion(), title: '', startedAt: Date.now() - 3600000, endedAt: Date.now(), hero: null,
+      totals: { profit: 1234, loot: 1500, cost: -266, other: 0, realMs: 3600000, mapMs: 3000000, runs: 18, perHourReal: 1234, perHourMap: 1480, avgPerMap: 68, avgMapMs: 160000 },
+      strategy: { maps: [{ name: 'Thunder Wastes Beacon (Timemark 7)', runs: 18, profit: 1234, durationMs: 3000000, areaIds: {} }], consumables: [], modifiers: [] },
+      loot: [], runs: [], prices: {}, context: farmContext() });
+    openDashboard(`endsession:${id}`); await wait(1800);
+    await shot('farm-end.png');
+    fs.unlinkSync(reportPath(id));
+  }
+  if (process.env.TLI_AI_TEST) {
+    const shot = async (name) => fs.writeFileSync(path.join(dir, name), (await dashboard.webContents.capturePage()).toPNG());
+    settings.betaAi = true; aiKey.set('');
+    settings.onboarded = true; broadcast();
+    await dashboard.webContents.executeJavaScript("document.querySelector('[data-tab=advisor]').click()"); await wait(1200);
+    await shot('ai-key.png');
+    aiKey.set('sk-ant-api03-fausse-cle-de-test-0000000000');
+    await dashboard.webContents.executeJavaScript('showAdvisor()'); await wait(1000);
+    const demo = '## Priorité\n- **Sceptre X** : 1 200 FE, utilisé par 64 % du top 100\n- Puis le *pacte* Y\n\n1. Farm 2 h\n2. Achète';
+    await dashboard.webContents.executeJavaScript(`AIChat.messages = [{ role: 'user', content: 'What should I upgrade first?' }, { role: 'assistant', content: ${JSON.stringify(demo)}, meta: '512 tokens in / 120 out' }]; renderAiLog();`);
+    await wait(400); await shot('ai-chat.png');
+    await dashboard.webContents.executeJavaScript("aiSend('test')"); await wait(5000);
+    await shot('ai-error.png');
+    aiKey.set(''); settings.betaAi = false;
+  }
+  if (process.env.TLI_META_TEST) {
+    const shot = async (name) => fs.writeFileSync(path.join(dir, name), (await dashboard.webContents.capturePage()).toPNG());
+    await dashboard.webContents.executeJavaScript("document.querySelector('[data-tab=meta]').click()"); await wait(1500);
+    await shot('meta-overview.png');
+    // Vote de test : le numéro de la première classe -> une classe de la liste.
+    await dashboard.webContents.executeJavaScript(`(document.querySelector('#metaView tr[data-hero="1001"]') || document.querySelector('#metaView tr[data-hero]')).click()`); await wait(1500);
+    await shot('meta-class.png');
+    await dashboard.webContents.executeJavaScript("document.querySelector('[data-view=players]').click()"); await wait(2500);
+    await shot('meta-players.png');
+    await dashboard.webContents.executeJavaScript("document.querySelector('#mPlayers tr[data-pl]').click()"); await wait(800);
+    await shot('meta-player-open.png');
+    await dashboard.webContents.executeJavaScript("document.querySelector('[data-tab=home]').click()"); await wait(2500);
+    await shot('home-carousel.png');
+    await dashboard.webContents.executeJavaScript("const b = document.getElementById('cDetails'); if (b) b.click()"); await wait(800);
+    await shot('home-profile.png');
+    await dashboard.webContents.executeJavaScript("const c = document.getElementById('pmClose'); if (c) c.click(); document.querySelector('[data-tab=advisor]').click()"); await wait(600);
+    await shot('advisor.png');
+    await dashboard.webContents.executeJavaScript("document.querySelector('[data-tab=build]').click()"); await wait(600);
+    await shot('build-soon.png');
+  }
+  app.quit();
+}
+
+// ---------------- Démarrage ----------------
+
+// Même identifiant que les raccourcis de l'installateur : icône correcte dans la barre des tâches et les notifications.
+if (process.platform === 'win32') app.setAppUserModelId('local.tli.profit');
+
+// Répare les raccourcis Bureau / menu Démarrer des anciennes versions : leur description mal encodée
+// débordait sur l'emplacement de l'icône (raccourci blanc).
+function repairShortcuts() {
+  if (process.platform !== 'win32' || !app.isPackaged) return;
+  const exe = process.execPath;
+  const links = [
+    path.join(app.getPath('desktop'), 'TLI Companion.lnk'),
+    path.join(app.getPath('appData'), 'Microsoft', 'Windows', 'Start Menu', 'Programs', 'TLI Companion.lnk'),
+  ];
+  for (const lnk of links) {
+    try {
+      if (!fs.existsSync(lnk)) continue;
+      const cur = shell.readShortcutLink(lnk);
+      if (path.resolve(cur.target).toLowerCase() !== path.resolve(exe).toLowerCase()) continue;
+      if (cur.icon && path.resolve(cur.icon).toLowerCase() === exe.toLowerCase() && (cur.description || '').length < 200) continue;
+      shell.writeShortcutLink(lnk, 'update', { target: exe, cwd: path.dirname(exe), icon: exe, iconIndex: 0,
+        description: 'TLI Companion', appUserModelId: 'local.tli.profit' });
+    } catch (e) { console.error('Raccourci :', e.message); }
+  }
+}
+if (!app.requestSingleInstanceLock()) {
+  app.quit();
+} else {
+  app.on('second-instance', openDashboard);
+  app.whenReady().then(async () => {
+    repairShortcuts();
+    renameStoredZones();
+    // Nouvelle installation : pas de fenêtre « Nouveautés » (le guide de démarrage s'affiche à la place).
+    if (!settings.lastSeenVersion && !settings.onboarded) { settings.lastSeenVersion = app.getVersion(); saveSettings(); }
+    // La grande fenêtre s'ouvre au démarrage ; le widget (overlay) seulement à la demande.
+    if (process.env.TLI_SHOT) createOverlay(); // captures de test
+    createTray();
+    openDashboard('home');
+    setupUpdates();
+    globalShortcut.register('CommandOrControl+Shift+F', () => { if (overlay) setCollapsed(!settings.overlay.collapsed); });
+    globalShortcut.register('CommandOrControl+Shift+D', openDashboard);
+    globalShortcut.register('CommandOrControl+Shift+H', toggleOverlay);
+    if (settings.communityPrices && Date.now() - prices.communityFetchedAt > 15 * 60000) refreshCommunity();
+    setInterval(refreshCommunity, 15 * 60000);
+    syncServerPrices();
+    syncHeroMap();
+    setInterval(syncHeroMap, 30 * 60000);
+    setInterval(syncServerPrices, 5 * 60000);
+    refreshFarmRate();
+    await startWatching();
+    uploadRankings();
+    setInterval(uploadRankings, 60000);
+    // Log pas encore trouvé (jeu pas lancé, « Enable Log » activé après coup…) : on réessaie toutes les 10 s.
+    setInterval(() => { if (status.state === 'nolog') startWatching(); }, 10000);
+    if (process.env.TLI_SHOT) debugScreenshots(process.env.TLI_SHOT);
+  });
+  app.on('window-all-closed', (e) => e.preventDefault()); // reste dans la barre des tâches
+  app.on('will-quit', () => { globalShortcut.unregisterAll(); prices.save(); meta.flush(); });
+}

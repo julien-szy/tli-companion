@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' https://cdn.tlidb.com https://tlicompanion.com; style-src 'self' 'unsafe-inline'; script-src 'self'; media-src 'self' data:">
+<title>TLI Companion</title>
+<link rel="stylesheet" href="app.css">
+
+</head>
+<body>
+<aside class="side">
+  <div class="brand"><img class="logo" src="logo.svg" alt=""><div><span data-i18n="app.title"></span><small id="appVersion" class="ver"></small></div></div>
+  <nav>
+    <button data-tab="home" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg><span data-i18n="tab.home"></span></button>
+    <div class="group" data-i18n="grp.play"></div>
+    <button data-tab="live"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg><span data-i18n="tab.live"></span></button>
+    <button data-tab="sessions"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M9 2h6"/></svg><span data-i18n="tab.sessions"></span></button>
+    <button data-tab="runs"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3z"/><path d="M9 3v15M15 6v15"/></svg><span data-i18n="tab.runs"></span></button>
+    <button data-tab="items"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7l-8-4-8 4 8 4 8-4zM4 7v10l8 4 8-4V7"/></svg><span data-i18n="tab.items"></span></button>
+    <button data-tab="history"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 3"/></svg><span data-i18n="tab.history"></span></button>
+    <div class="group" data-i18n="grp.character"></div>
+    <button data-tab="build"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z"/></svg><span data-i18n="tab.build"></span></button>
+    <button data-tab="meta"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg><span data-i18n="tab.meta"></span></button>
+    <button data-tab="advisor"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 4.2L18 9l-4.2 1.8L12 15l-1.8-4.2L6 9l4.2-1.8z"/><path d="M19 14l.9 2.1L22 17l-2.1.9L19 20l-.9-2.1L16 17l2.1-.9z"/></svg><span data-i18n="tab.advisor"></span></button>
+    <div class="group" data-i18n="grp.market"></div>
+    <button data-tab="prices"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M15 9.5a3 3 0 0 0-3-1.5c-1.7 0-3 1-3 2.2 0 3 6 1.5 6 4.6 0 1.2-1.3 2.2-3 2.2a3 3 0 0 1-3-1.5M12 6v12"/></svg><span data-i18n="tab.prices"></span></button>
+    <div class="spacer"></div>
+    <button class="support" id="supportBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 8h1a3 3 0 0 1 0 6h-1"/><path d="M3 8h14v6a5 5 0 0 1-5 5H8a5 5 0 0 1-5-5z"/><path d="M7 2v2M11 2v2M15 2v2"/></svg><span data-i18n="sup.button"></span></button>
+    <button data-tab="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg><span data-i18n="tab.settings"></span></button>
+  </nav>
+  <div class="me"><span id="meAvatar"></span><div><b id="meName"></b><span id="meSub"></span></div></div>
+</aside>
+<div class="content">
+<div id="updateBar" class="updatebar" hidden></div>
+<header id="kpiBar" class="hidden">
+  <div class="kpis">
+    <div class="kpi"><div class="k" data-i18n="k.profit"></div><div class="v" id="kProfit">–</div></div>
+    <div class="kpi"><div class="k" data-i18n="k.perHour"></div><div class="v" id="kHour">–</div></div>
+    <div class="kpi"><div class="k" data-i18n="k.maps"></div><div class="v" id="kRuns">0</div></div>
+    <div class="kpi"><div class="k" data-i18n="k.avg"></div><div class="v" id="kAvg">–</div></div>
+    <div class="kpi"><div class="k" data-i18n="k.loot"></div><div class="v" id="kLoot">–</div></div>
+    <div class="kpi"><div class="k" data-i18n="k.cost"></div><div class="v" id="kCost">–</div></div>
+    <div class="kpi"><div class="k" data-i18n="k.other"></div><div class="v" id="kOther">–</div></div>
+    <div class="kpi"><div class="k" data-i18n="k.time"></div><div class="v" id="kTime">0:00</div></div>
+    <div class="kpi" id="kEffBox"><div class="k" data-i18n="k.eff"></div><div class="v" id="kEff">–</div></div>
+  </div>
+  <button class="btn" id="newSession" data-i18n="btn.newSession"></button>
+</header>
+<main>
+  <section id="home" class="on"><div id="homeView"></div></section>
+  <section id="live">
+    <div class="tools">
+      <label><input type="checkbox" id="fLoot" checked> <span data-i18n="live.loot"></span></label>
+      <label><input type="checkbox" id="fCost" checked> <span data-i18n="live.cost"></span></label>
+      <label><input type="checkbox" id="fOther" checked> <span data-i18n="live.other"></span></label>
+      <input id="fText" data-i18n-ph="live.filter">
+      <span class="status" id="statusLine"></span>
+    </div>
+    <table><thead><tr><th data-i18n="col.time"></th><th data-i18n="col.item"></th><th class="r" data-i18n="col.qty"></th><th class="r" data-i18n="col.unit"></th><th class="r" data-i18n="col.value"></th><th data-i18n="col.type"></th><th data-i18n="col.action"></th><th data-i18n="col.zone"></th></tr></thead><tbody id="feed"></tbody></table>
+  </section>
+  <section id="sessions">
+    <div id="sessList">
+      <div class="tools">
+        <button class="btn primary" id="farmToggle"></button>
+        <button class="btn" id="openCommunity" data-i18n="sess.community"></button>
+        <span class="muted" data-i18n="sess.help"></span>
+      </div>
+      <div class="tools qf">
+        <select id="sfTier"></select><select id="sfMap"></select><select id="sfTag"></select>
+        <select id="sfSort"><option value="recent" data-i18n="qf.sortRecent"></option><option value="perHour" data-i18n="qf.sortPerHour"></option><option value="profit" data-i18n="qf.sortProfit"></option></select>
+        <span class="muted" id="sfCount"></span>
+      </div>
+      <table><thead><tr><th data-i18n="col.date"></th><th data-i18n="col.titleMaps"></th><th data-i18n="col.class"></th><th class="r" data-i18n="col.duration"></th><th class="r" data-i18n="col.maps"></th><th class="r" data-i18n="col.profit"></th><th class="r" data-i18n="col.perHour"></th></tr></thead><tbody id="sessRows"></tbody></table>
+    </div>
+    <div id="sessDetail" hidden></div>
+  </section>
+  <section id="build"><div id="buildView"></div></section>
+  <section id="meta"><div id="metaView"></div></section>
+  <section id="advisor"><div id="advisorView"></div></section>
+  <section id="runs">
+    <table><thead><tr><th data-i18n="col.start"></th><th data-i18n="col.map"></th><th class="r" data-i18n="col.duration"></th><th class="r" data-i18n="col.loot"></th><th class="r" data-i18n="col.cost"></th><th class="r" data-i18n="col.net"></th><th class="r" data-i18n="col.perHour"></th></tr></thead><tbody id="runList"></tbody></table>
+  </section>
+  <section id="items">
+    <table><thead><tr><th data-i18n="col.item"></th><th class="r" data-i18n="col.quantity"></th><th class="r" data-i18n="col.unit"></th><th data-i18n="col.source"></th><th class="r" data-i18n="col.value"></th></tr></thead><tbody id="itemList"></tbody></table>
+  </section>
+  <section id="history">
+    <p class="muted" style="margin-bottom:10px" data-i18n="history.intro"></p>
+    <div class="tools qf"><select id="hfTier"></select><select id="hfMap"></select><span class="muted" id="hfCount"></span></div>
+    <table><thead><tr><th data-i18n="col.date"></th><th data-i18n="col.map"></th><th class="r" data-i18n="col.duration"></th><th class="r" data-i18n="col.net"></th><th class="r" data-i18n="col.perHour"></th></tr></thead><tbody id="histList"></tbody></table>
+  </section>
+  <section id="prices">
+    <div class="card todo" id="pTodo" hidden><h2><span data-i18n="todo.title"></span> <span class="muted" id="pTodoN"></span></h2><p class="muted" data-i18n="todo.help"></p><div class="todo-list" id="pTodoList"></div></div>
+    <div class="tools">
+      <input id="pSearch" data-i18n-ph="prices.search" style="width:260px">
+      <select id="pSource"><option value="" data-i18n="prices.srcAll"></option><option value="hdv" data-i18n="prices.srcHdv"></option><option value="community" data-i18n="prices.srcCommunity"></option><option value="manual" data-i18n="prices.srcManual"></option></select>
+      <select id="pSort"><option value="name" data-i18n="prices.sortName"></option><option value="priceDesc" data-i18n="prices.sortPriceDesc"></option><option value="priceAsc" data-i18n="prices.sortPriceAsc"></option><option value="recent" data-i18n="prices.sortRecent"></option></select>
+      <label><input type="checkbox" id="pUnknown"> <span id="pUnknownLbl"></span></label>
+    </div>
+    <p class="muted" style="margin:-4px 0 10px"><span id="pCount"></span> <span data-i18n="prices.help"></span></p>
+    <table><thead><tr><th data-i18n="col.item"></th><th data-i18n="col.id"></th><th class="r" data-i18n="col.priceFe"></th><th data-i18n="col.source"></th><th data-i18n="col.updated"></th><th class="r" data-i18n="col.manual"></th></tr></thead><tbody id="priceList"></tbody></table>
+    <div style="text-align:center;margin:12px 0"><button class="btn" id="pMore" hidden data-i18n="prices.more"></button></div>
+  </section>
+  <section id="settings">
+    <div class="settings">
+      <div data-i18n="set.language"></div>
+      <div><select id="sLang"><option value="en">English</option><option value="fr">Français</option></select></div>
+
+      <div data-i18n="set.hero"></div>
+      <div><select id="sHeroClass"></select> <button class="btn" id="saveHero" data-i18n="btn.save"></button> <span class="muted" id="heroMsg"></span></div>
+      <div class="help" id="heroHelp"></div>
+
+      <div data-i18n="set.pseudo"></div>
+      <div><input id="sPseudo" style="width:260px" data-i18n-ph="set.pseudoPh"> <button class="btn" id="savePseudo" data-i18n="btn.save"></button> <span class="muted" id="pseudoMsg"></span></div>
+
+      <div data-i18n="set.log"></div>
+      <div><span id="logPath" class="muted"></span> <button class="btn" id="pickLog" data-i18n="btn.choose"></button></div>
+      <div class="help" data-i18n="set.logHelp"></div>
+
+      <div data-i18n="set.mode"></div>
+      <div><select id="sMode"><option value="farm" data-i18n="set.modeFarm"></option><option value="all" data-i18n="set.modeAll"></option></select></div>
+
+      <div data-i18n="set.time"></div>
+      <div><select id="sTime"><option value="real" data-i18n="set.timeReal"></option><option value="map" data-i18n="set.timeMap"></option></select></div>
+
+      <div data-i18n="set.community"></div>
+      <div><label><input type="checkbox" id="sCommunity"> <span data-i18n="set.communityLabel"></span></label> <button class="btn" id="refreshCommunity" data-i18n="btn.refresh"></button></div>
+
+      <div data-i18n="set.shareMeta"></div>
+      <div><label><input type="checkbox" id="sShareMeta"> <span data-i18n="set.shareMetaLabel"></span></label></div>
+
+      <div data-i18n="set.minLoot"></div>
+      <div><input id="sMinLoot" type="number" min="0" step="0.1" style="width:90px"> <span class="muted">FE</span></div>
+      <div class="help" data-i18n="set.minLootHelp"></div>
+
+      <div data-i18n="set.tartarus"></div>
+      <div><label><input type="checkbox" id="sTartarus"> <span data-i18n="set.tartarusLabel"></span></label></div>
+
+      <div data-i18n="snd.title"></div>
+      <div class="sounds">
+        <div><span data-i18n="snd.tartarusReady"></span><button class="btn" data-sndtest="tartarusReady">▶</button><em class="muted" data-sndname="tartarusReady"></em><button class="btn" data-sndfile="tartarusReady" data-i18n="snd.file"></button><button class="btn" data-sndreset="tartarusReady" data-i18n="snd.reset"></button></div>
+        <div><span data-i18n="snd.tartarusFull"></span><button class="btn" data-sndtest="tartarusFull">▶</button><em class="muted" data-sndname="tartarusFull"></em><button class="btn" data-sndfile="tartarusFull" data-i18n="snd.file"></button><button class="btn" data-sndreset="tartarusFull" data-i18n="snd.reset"></button></div>
+        <div><span data-i18n="snd.stock"></span><button class="btn" data-sndtest="stock">▶</button><em class="muted" data-sndname="stock"></em><button class="btn" data-sndfile="stock" data-i18n="snd.file"></button><button class="btn" data-sndreset="stock" data-i18n="snd.reset"></button></div>
+      </div>
+
+      <div data-i18n="set.stock"></div>
+      <div><label><input type="checkbox" id="sStock"> <span data-i18n="set.stockLabel"></span></label> <button class="btn" id="sStockTest" data-i18n="set.stockTest" style="margin-left:8px;padding:3px 10px"></button></div>
+
+      <div data-i18n="set.hub"></div>
+      <div><input id="sHub" style="width:360px"> <button class="btn" id="saveHub" data-i18n="btn.save"></button></div>
+      <div class="help"><span data-i18n="set.hubHelp"></span> <b id="zoneNow"></b></div>
+
+      <div data-i18n="set.opacity"></div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><input type="range" id="sOpacity" min="0.4" max="1" step="0.02"> <label><input type="checkbox" id="sSolid"> <span data-i18n="set.solid"></span></label></div>
+
+      <div data-i18n="set.scale"></div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><input type="range" id="sScale" min="0.6" max="2" step="0.05"> <span class="muted" data-i18n="set.scaleHint"></span></div>
+
+      <div data-i18n="set.updates"></div>
+      <div><button class="btn" id="sCheckUpd" data-i18n="set.checkUpdates"></button> <span class="muted" id="sUpdMsg"></span></div>
+
+      <div data-i18n="set.shortcuts"></div>
+      <div class="muted" data-i18n="set.shortcutsList"></div>
+    </div>
+  </section>
+</main>
+</div>
+<div id="onboarding"></div>
+<script src="../i18n.js"></script>
+<script src="common.js"></script>
+<script src="dashboard.js"></script>
+<script src="build.js"></script>
+<script src="profile.js"></script>
+<script src="meta.js"></script>
+<script src="home.js"></script>
+
+</body>
+</html>

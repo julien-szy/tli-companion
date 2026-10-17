@@ -1,0 +1,18 @@
+# Dépendances et builds
+node_modules/
+dist/
+dist-beta/
+
+# Données locales et secrets (jamais publiés)
+server/data/
+server/deploy/host.txt
+.env
+*.local.json
+
+# Icônes du jeu (propriété de XD Inc.), hébergées sur le site mais pas dans le dépôt
+server/public/icons/
+
+# Divers
+*.log
+.DS_Store
+Thumbs.db

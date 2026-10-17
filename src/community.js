@@ -1,0 +1,92 @@
+// Client du serveur communautaire (partage des sessions, prix partagés).
+const zlib = require('zlib');
+class CommunityClient {
+  constructor(settings, save) {
+    this.settings = settings; // settings.server = { url, token, userId, name }
+    this.save = save;
+    this.queue = new Map();   // prix HdV observés en attente d'envoi : id -> { id, price, ts }
+  }
+
+  get cfg() { return this.settings.server; }
+  get registered() { return !!(this.cfg && this.cfg.token); }
+
+  async _req(method, path, body, authed = true, gzip = false) {
+    const headers = { 'Content-Type': 'application/json', 'X-TLI-Version': require('electron').app.getVersion() };
+    if (gzip) headers['Content-Encoding'] = 'gzip';
+    if (authed === 'optional') { if (this.registered) headers.Authorization = `Bearer ${this.cfg.token}`; }
+    else if (authed) {
+      if (!this.registered) throw new Error('no username yet');
+      headers.Authorization = `Bearer ${this.cfg.token}`;
+    }
+    const res = await fetch(this.cfg.url.replace(/\/$/, '') + path, {
+      method, headers, signal: AbortSignal.timeout(gzip ? 60000 : 15000),
+      body: body ? (gzip ? zlib.gzipSync(JSON.stringify(body)) : JSON.stringify(body)) : undefined,
+    });
+    const json = await res.json().catch(() => ({}));
+    // 426 = version trop ancienne pour le serveur : on prévient l'app pour qu'elle cherche la mise à jour tout de suite.
+    if (res.status === 426 && this.onOutdated) this.onOutdated();
+    if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
+    return json;
+  }
+
+  async register(name) {
+    if (this.registered) {
+      const r = await this._req('PATCH', '/api/me', { name });
+      this.cfg.name = r.name;
+    } else {
+      const r = await this._req('POST', '/api/register', { name }, false);
+      Object.assign(this.cfg, { token: r.token, userId: r.userId, name: r.name });
+    }
+    this.save();
+    return { name: this.cfg.name };
+  }
+
+  share(report) { return this._req('POST', '/api/reports', report); }
+  uploadMeta(payload) { return this._req('POST', '/api/meta', payload, this.registered, true); }
+  metaPlayers(server, season, mode, hero, { sort = 'rank', limit = 50, offset = 0 } = {}) {
+    const q = new URLSearchParams({ server, season: String(season), mode: String(mode), hero: String(hero), sort, limit: String(limit), offset: String(offset) });
+    return this._req('GET', `/api/meta/players?${q}`, null, false);
+  }
+  aiStatus() { return this._req('GET', '/api/ai/status', null, false); }
+  aiChat(body) { return this._req('POST', '/api/ai/chat', body, 'optional', true); }
+  communityPrices() { return this._req('GET', '/api/prices/community', null, false); }
+  version() { return this._req('GET', '/api/version', null, false); }
+  metaIndex() { return this._req('GET', '/api/meta/index', null, false); }
+  metaSnapshot(server, season, mode) {
+    const q = new URLSearchParams({ server, season: String(season), mode: String(mode) });
+    return this._req('GET', `/api/meta?${q}`, null, false);
+  }
+  voteHero(heroId, key) { return this._req('POST', '/api/heromap', { heroId, key }, this.registered); }
+  heroMap() { return this._req('GET', '/api/heromap', null, false); }
+  shareBuild(build) { return this._req('POST', '/api/builds', build); }
+  unshareBuild(id) { return this._req('DELETE', `/api/builds/${id}`); }
+  listBuilds(heroKey) { return this._req('GET', '/api/builds' + (heroKey ? `?hero=${encodeURIComponent(heroKey)}` : ''), null, false); }
+  getBuild(id) {
+    if (!/^[0-9a-f-]{36}$/.test(id)) throw new Error('invalid id');
+    return this._req('GET', `/api/builds/${id}`, null, false);
+  }
+  unshare(id) { return this._req('DELETE', `/api/reports/${id}`); }
+  siteUrl(path = '/') { return this.cfg.url.replace(/\/$/, '') + path; }
+
+  queuePrice(id, price, ts) { this.queue.set(id, { id, price, ts }); }
+
+  async flushPrices() {
+    if (!this.registered || !this.queue.size) return 0;
+    const observations = [...this.queue.values()];
+    this.queue.clear();
+    try {
+      const r = await this._req('POST', '/api/prices', { observations });
+      return r.accepted;
+    } catch (e) {
+      for (const o of observations) if (!this.queue.has(o.id)) this.queue.set(o.id, o); // on réessaiera
+      throw e;
+    }
+  }
+
+  async fetchPrices() {
+    const r = await this._req('GET', '/api/prices', null, false);
+    return r.prices || {};
+  }
+}
+
+module.exports = { CommunityClient };

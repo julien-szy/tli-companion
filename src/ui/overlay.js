@@ -1,0 +1,121 @@
+const $ = (id) => document.getElementById(id);
+let seen = new Set();
+let firstRender = true;
+
+$('btnCollapse').onclick = () => tli.action('collapse');
+$('btnDash').onclick = () => tli.action('dashboard');
+$('btnHide').onclick = () => tli.action('hideOverlay');
+let recording = false;
+$('btnRec').onclick = () => tli.action(recording ? 'stopFarm' : 'startFarm');
+// Double-clic sur la barre = réduire / agrandir
+document.querySelector('.mini').ondblclick = () => tli.action('collapse');
+
+// Icônes « agrandir » / « réduire » (coins vers l'extérieur ou vers l'intérieur).
+const IC_EXPAND = '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>';
+const IC_COLLAPSE = '<path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/>';
+
+function setVal(el, v, signed = true) {
+  el.textContent = fe(v, signed);
+  el.className = el.className.replace(/\b(pos|neg|zero)\b/g, '').trim() + ' ' + cls(v);
+}
+
+tli.onState((s) => {
+  if (setLang(s.settings.lang)) { firstRender = true; $('recent').dataset.html = ''; }
+  const collapsed = s.settings.overlay.collapsed;
+  document.body.classList.toggle('collapsed', collapsed);
+  $('icCollapse').innerHTML = collapsed ? IC_EXPAND : IC_COLLAPSE;
+  $('btnCollapse').title = t(collapsed ? 'ov.expand' : 'ov.collapse.title');
+  document.body.classList.toggle('solid', !!s.settings.overlay.solid);
+
+  // Bouton d'enregistrement : orange « Démarrer », vert « REC 12:34 » pendant une session.
+  recording = s.recording;
+  $('btnRec').classList.toggle('on', recording);
+  $('recLbl').textContent = recording ? `REC ${dur(s.session.realTimeMs)}` : t('btn.start');
+  $('btnRec').title = t(recording ? 'ov.recStop' : 'ov.recStart');
+  $('pubAsk').hidden = !(recording && s.farmPublish === null);
+
+  // Avertissements
+  let warn = '';
+  if (s.status.state === 'nolog') warn = t('warn.nolog');
+  else if (s.status.state === 'loading') warn = t('warn.loading', { pct: Math.round(s.status.progress * 100) });
+  else if (s.status.state === 'error') warn = t('warn.error', { msg: s.status.error || '' });
+  else if (!s.snapshotReady) warn = t('warn.nobag');
+  $('warn').hidden = !warn;
+  $('warn').textContent = warn;
+
+  const ss = s.session;
+  setVal($('perHour'), ss.perHour, false);
+  setVal($('sPerHour'), ss.perHour, false);
+  setVal($('sProfit'), ss.profit);
+  $('sRuns').textContent = ss.runs;
+  setVal($('sAvg'), ss.avgPerRun);
+  $('sAvgT').textContent = ss.runs ? dur(ss.avgRunMs) : '–';
+  $('sTime').textContent = dur(s.timeMode === 'map' ? ss.mapTimeMs : ss.realTimeMs);
+  setVal($('sCost'), ss.cost);
+  $('sCostBox').title = costTip(ss.costBreakdown);
+
+  // Compteur Tartarus (x/48), avec le repère d'entrée à 36.
+  const tt = s.tartarus;
+  $('tart').hidden = !tt;
+  if (tt) {
+    $('tartVal').textContent = `${tt.value}/${tt.max}`;
+    $('tartFill').style.width = `${Math.min(100, (tt.value / tt.max) * 100)}%`;
+    $('tartMark').style.left = `${(tt.entry / tt.max) * 100}%`;
+    $('tart').className = 'tart' + (tt.value >= tt.max ? ' full' : tt.value >= tt.entry ? ' ready' : '');
+    $('tart').title = t('tart.tip', { entry: tt.entry, max: tt.max });
+  }
+
+  // Carte en cours (ou dernière carte quand on est au repaire)
+  const c = s.current || s.lastRun;
+  $('curLabel').textContent = t(s.current ? 'ov.currentMap' : s.lastRun ? 'ov.lastMap' : 'ov.inHideout');
+  if (c) {
+    setVal($('curProfit'), c.profit);
+    $('curName').textContent = c.name;
+    $('curTime').textContent = dur(c.durationMs);
+    $('curCost').textContent = c.cost ? t('ov.costOf', { fe: fe(c.cost, true) }) : '';
+    setVal($('miniMap'), c.profit);
+    $('miniMapLbl').textContent = s.current ? dur(c.durationMs) : t('ov.last');
+  } else {
+    $('curProfit').textContent = '–'; $('curProfit').className = '';
+    $('curName').textContent = t('ov.waiting');
+    $('curTime').textContent = ''; $('curCost').textContent = '';
+    $('miniMap').textContent = '–'; $('miniMapLbl').textContent = t('ov.map');
+  }
+
+  // Derniers drops (les nouveaux clignotent)
+  const html = s.recent.slice(0, 12).map((e) => {
+    const key = `${e.ts}|${e.id}|${e.delta}`;
+    const isNew = !firstRender && !seen.has(key);
+    return `<div class="row${isNew ? ' new' : ''}" data-k="${esc(key)}">${icon(e.img)}<span class="n" title="${esc(e.name)} — ${esc(zoneLabel(e.zone))}">${esc(e.name)}</span><span class="q">${qty(e.delta)}</span><span class="val ${cls(e.value)}">${fe(e.value, true)}</span></div>`;
+  }).join('');
+  const box = $('recent');
+  if (box.dataset.html !== html) { box.innerHTML = html; box.dataset.html = html; }
+  seen = new Set(s.recent.map((e) => `${e.ts}|${e.id}|${e.delta}`));
+  firstRender = false;
+});
+
+$('pubYes').onclick = () => tli.action('farmPublish', true);
+$('pubNo').onclick = () => tli.action('farmPublish', false);
+
+// Alerte de stock (balises, compas, sondes…) : bandeau quelques secondes + son.
+let stockTimer = null;
+tli.onStockAlert((a) => {
+  const box = $('stockAlert');
+  box.innerHTML = `${a.img ? `<img src="${esc(a.img)}" alt="">` : ''}<span>${esc(stockText(a))}</span>`;
+  box.classList.toggle('last', a.qty <= 1);
+  box.hidden = false;
+  if (a.sound) alertSound(a);
+  clearTimeout(stockTimer);
+  stockTimer = setTimeout(() => (box.hidden = true), a.qty <= 1 ? 15000 : 8000);
+});
+
+// Coin de redimensionnement : tirer pour agrandir / réduire le widget.
+$('grip').addEventListener('pointerdown', (e) => {
+  e.preventDefault();
+  $('grip').setPointerCapture(e.pointerId);
+  tli.action('resizeStart');
+});
+const stopResize = () => tli.action('resizeEnd');
+$('grip').addEventListener('pointerup', stopResize);
+$('grip').addEventListener('lostpointercapture', stopResize);
+window.addEventListener('blur', stopResize);

@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TLI Companion — your Torchlight: Infinite companion</title>
+<meta name="description" content="Free Windows app for Torchlight: Infinite: live profit overlay, farm sessions, builds with a purchase advisor, class meta and leaderboards.">
+<meta property="og:title" content="TLI Companion">
+<meta property="og:description" content="Live profit overlay, farm sessions, builds and class meta for Torchlight: Infinite.">
+<meta property="og:image" content="/img/home.png">
+<link rel="icon" type="image/svg+xml" href="/logo.svg">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header class="site" data-page="home"></header>
+<main>
+  <section class="hero">
+    <div>
+      <h1 data-i18n-html="heroTitle"></h1>
+      <p class="lead" data-i18n="heroLead"></p>
+      <div class="ctas">
+        <a class="btn primary big" id="dlBtn" href="/download"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 3v12M7 10l5 5 5-5M4 21h16"/></svg><span data-i18n="downloadWin"></span></a>
+        <a class="btn big" href="/meta" data-i18n="seeMeta"></a>
+      </div>
+      <p class="small" id="verInfo"></p>
+    </div>
+    <div class="shotwrap">
+      <img class="shot" src="/img/home.png" alt="TLI Companion">
+      <img class="overlay-shot" src="/img/overlay.png" alt="">
+    </div>
+  </section>
+
+  <div class="numbers">
+    <div><b id="nPlayers">–</b><span data-i18n="nPlayers"></span></div>
+    <div><b id="nClasses">28</b><span data-i18n="nClasses"></span></div>
+    <div><b id="nSessions">–</b><span data-i18n="nSessions"></span></div>
+    <div><b id="nBuilds">–</b><span data-i18n="nBuilds"></span></div>
+  </div>
+
+  <section class="section">
+    <h2 data-i18n="featuresTitle"></h2>
+    <p class="sub" data-i18n="featuresSub"></p>
+    <div class="features">
+      <div class="feature"><div class="fi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg></div><h3 data-i18n="f1t"></h3><p data-i18n="f1p"></p></div>
+      <div class="feature"><div class="fi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M9 2h6"/></svg></div><h3 data-i18n="f2t"></h3><p data-i18n="f2p"></p></div>
+      <div class="feature"><div class="fi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z"/></svg></div><h3><span data-i18n="f3t"></span><span class="soon" data-i18n="soonBadge"></span></h3><p data-i18n="f3p"></p></div>
+      <div class="feature"><div class="fi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></div><h3 data-i18n="f4t"></h3><p data-i18n="f4p"></p></div>
+      <div class="feature"><div class="fi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M15 9.5a3 3 0 0 0-3-1.5c-1.7 0-3 1-3 2.2 0 3 6 1.5 6 4.6 0 1.2-1.3 2.2-3 2.2a3 3 0 0 1-3-1.5M12 6v12"/></svg></div><h3 data-i18n="f5t"></h3><p data-i18n="f5p"></p></div>
+      <div class="feature"><div class="fi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg></div><h3 data-i18n="f6t"></h3><p data-i18n="f6p"></p></div>
+    </div>
+  </section>
+
+  <section class="section split">
+    <div><h3 data-i18n="showcase1t"></h3><p class="muted" data-i18n="showcase1p"></p><ul id="sc1"></ul></div>
+    <img class="shot" src="/img/session.png" alt="">
+  </section>
+  <section class="section split">
+    <img class="shot" src="/img/build.png" alt="">
+    <div><h3 data-i18n="showcase2t"></h3><p class="muted" data-i18n="showcase2p"></p><ul id="sc2"></ul></div>
+  </section>
+
+  <section class="section">
+    <h2 data-i18n="howTitle"></h2>
+    <p class="sub" data-i18n="howSub"></p>
+    <div class="steps3">
+      <div><h3 data-i18n="s1t"></h3><p data-i18n="s1p"></p></div>
+      <div><h3 data-i18n="s2t"></h3><p data-i18n="s2p"></p></div>
+      <div><h3 data-i18n="s3t"></h3><p data-i18n="s3p"></p></div>
+    </div>
+  </section>
+
+  <section class="section faq">
+    <h2 data-i18n="faqTitle"></h2>
+    <details open><summary data-i18n="q1"></summary><p data-i18n="a1"></p></details>
+    <details><summary data-i18n="q2"></summary><p data-i18n="a2"></p></details>
+    <details><summary data-i18n="q3"></summary><p data-i18n="a3"></p></details>
+    <details><summary data-i18n="q4"></summary><p data-i18n="a4"></p></details>
+  </section>
+
+  <section class="section">
+    <div class="supportband">
+      <div style="font-size:44px">☕</div>
+      <div style="flex:1;min-width:240px"><h2 data-i18n="supTitle"></h2><p class="muted" data-i18n="supText"></p></div>
+      <a class="btn coffee big" href="https://buymeacoffee.com/snoopiisz" target="_blank" rel="noopener" data-i18n="supCta"></a>
+    </div>
+  </section>
+
+  <div class="ctaband">
+    <div><h2 data-i18n="ctaTitle"></h2><p class="muted" data-i18n="ctaText"></p></div>
+    <a class="btn primary big" href="/download" data-i18n="downloadWin"></a>
+  </div>
+</main>
+<footer class="site"></footer>
+<script src="/layout.js"></script>
+<script src="/common.js"></script>
+<script src="/home.js"></script>
+</body>
+</html>

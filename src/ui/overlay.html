@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' https://cdn.tlidb.com https://tlicompanion.com; style-src 'self' 'unsafe-inline'; script-src 'self'; media-src 'self' data:">
+<title>TLI Companion</title>
+<style>
+  :root {
+    --bg: rgba(14, 16, 21, 0.86); --line: rgba(255,255,255,0.08); --text: #e8e6e3; --muted: #8b8f98;
+    --accent: #ff8a3d; --pos: #5fd38d; --neg: #ff6b6b; --rec: #2fbf71;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: transparent; color: var(--text); font: 13px/1.35 "Segoe UI", system-ui, sans-serif; overflow: hidden; user-select: none; }
+  body.solid { --bg: rgb(14, 16, 21); }
+  .grip { position: absolute; right: 5px; bottom: 5px; width: 14px; height: 14px; cursor: nwse-resize; z-index: 5; opacity: .45; -webkit-app-region: no-drag;
+    background: linear-gradient(135deg, transparent 0 45%, var(--muted) 45% 52%, transparent 52% 64%, var(--muted) 64% 71%, transparent 71% 83%, var(--muted) 83% 90%, transparent 90%); }
+  .grip:hover { opacity: 1; }
+  .panel { position: absolute; inset: 4px; background: var(--bg); border: 1px solid var(--line); border-radius: 12px;
+           box-shadow: 0 6px 24px rgba(0,0,0,0.45); overflow: hidden; display: flex; flex-direction: column; }
+
+  /* Barre du haut : bouton d'enregistrement, FE/h, icônes */
+  .bar { display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 6px 0 8px; -webkit-app-region: drag; flex: none; border-bottom: 1px solid var(--line); }
+  .collapsed .bar { border-bottom: 0; }
+  button { background: transparent; border: 0; color: var(--muted); border-radius: 6px; cursor: pointer; font: inherit; -webkit-app-region: no-drag; }
+  .rec { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 11px; border-radius: 7px; font-size: 12px; font-weight: 700;
+         background: rgba(255,138,61,0.16); color: var(--accent); border: 1px solid rgba(255,138,61,0.45); white-space: nowrap; }
+  .rec:hover { background: rgba(255,138,61,0.28); }
+  .rec .ic { width: 0; height: 0; border-left: 8px solid currentColor; border-top: 5px solid transparent; border-bottom: 5px solid transparent; }
+  .rec.on { background: var(--rec); color: #06140b; border-color: transparent; }
+  .rec.on:hover { background: #3ad081; }
+  .rec.on .ic { width: 8px; height: 8px; border: 0; border-radius: 50%; background: #06140b; animation: blink 1.2s ease-in-out infinite; }
+  @keyframes blink { 50% { opacity: .35; } }
+  .mini { display: flex; gap: 10px; align-items: baseline; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; }
+  .mini b { font-size: 15px; font-variant-numeric: tabular-nums; }
+  .mini small { color: var(--muted); font-size: 11px; }
+  body:not(.collapsed) .mini-only { display: none; }
+  .icons { display: flex; gap: 2px; }
+  .icons button { width: 26px; height: 26px; display: grid; place-items: center; }
+  .icons button:hover { background: rgba(255,255,255,0.08); color: var(--text); }
+  .icons svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+  .body { padding: 8px 10px 10px; display: flex; flex-direction: column; gap: 8px; flex: 1; min-height: 0; }
+  .collapsed .body { display: none; }
+  .pos { color: var(--pos); } .neg { color: var(--neg); } .zero { color: var(--muted); }
+  .k { color: var(--muted); font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em; }
+
+  /* Carte en cours */
+  .now { background: rgba(255,255,255,0.035); border-radius: 9px; padding: 8px 10px; }
+  .now .top { display: flex; justify-content: space-between; align-items: center; }
+  .now .big { display: flex; align-items: baseline; gap: 6px; margin-top: 2px; }
+  .now .big b { font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.1; }
+  .now .big small { color: var(--muted); font-size: 12px; }
+  .now .sub { display: flex; justify-content: space-between; gap: 8px; color: var(--muted); font-size: 11.5px; margin-top: 2px; }
+  .now .sub span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .now .time { font-variant-numeric: tabular-nums; font-weight: 600; color: var(--text); }
+
+  /* 3 chiffres de la session */
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .stat { background: rgba(255,255,255,0.035); border-radius: 8px; padding: 6px 8px; }
+  .stat .v { font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .line { display: flex; justify-content: space-between; color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+  .line b { color: var(--text); font-weight: 600; }
+  [title] { cursor: default; }
+
+  /* Derniers drops */
+  .list { display: flex; flex-direction: column; gap: 2px; overflow: hidden; flex: 1; min-height: 0; }
+  .row { display: grid; grid-template-columns: 18px 1fr auto auto; gap: 6px; align-items: center; font-size: 12px; padding: 2px 0; }
+  .row .n { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .row .q { color: var(--muted); font-variant-numeric: tabular-nums; }
+  .row .val { font-variant-numeric: tabular-nums; min-width: 46px; text-align: right; }
+  .row.new { animation: flash 1.2s ease-out; }
+  @keyframes flash { from { background: rgba(255,138,61,0.25); } to { background: transparent; } }
+  .ico { width: 18px; height: 18px; object-fit: contain; display: inline-block; }
+
+  /* Bandeaux */
+  .warn { background: rgba(255,138,61,0.12); color: var(--accent); border-radius: 6px; padding: 6px 8px; font-size: 12px; }
+  .stock { display: flex; align-items: center; gap: 8px; background: rgba(255,190,60,0.14); border: 1px solid rgba(255,190,60,0.45); color: #ffd27a; border-radius: 6px; padding: 6px 8px; font-size: 12.5px; font-weight: 600; }
+  .stock.last { background: rgba(255,90,90,0.16); border-color: rgba(255,90,90,0.55); color: #ff9a9a; animation: stockPulse 1s ease-in-out 3; }
+  .stock img { width: 22px; height: 22px; object-fit: contain; }
+  @keyframes stockPulse { 50% { box-shadow: 0 0 0 3px rgba(255,90,90,0.25); } }
+  .pubask { display: flex; align-items: center; gap: 6px; background: rgba(255,138,61,0.12); border: 1px solid rgba(255,138,61,0.35); border-radius: 6px; padding: 6px 8px; font-size: 12px; }
+  .pubask span { flex: 1; min-width: 0; }
+  .pubask button { font-size: 11.5px; padding: 3px 8px; border-radius: 5px; border: 1px solid rgba(255,255,255,.15); background: rgba(255,255,255,.06); color: inherit; }
+  .pubask button.yes { background: var(--accent); color: #1a1208; border-color: transparent; font-weight: 600; }
+  .tart { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+  .tart b { font-variant-numeric: tabular-nums; min-width: 42px; text-align: right; }
+  .tart.ready b { color: var(--accent); } .tart.full b { color: var(--neg); }
+  .tbar { position: relative; flex: 1; height: 6px; border-radius: 3px; background: rgba(255,255,255,0.08); overflow: visible; }
+  .tbar i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 3px; background: #c0843a; }
+  .tart.ready .tbar i { background: var(--accent); } .tart.full .tbar i { background: var(--neg); }
+  .tbar em { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--text); opacity: .6; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div class="panel">
+  <div class="bar">
+    <button class="rec" id="btnRec"><span class="ic"></span><span id="recLbl"></span></button>
+    <div class="mini">
+      <span><b id="perHour">–</b> <small data-i18n="fe.h"></small></span>
+      <span class="mini-only"><b id="miniMap">–</b> <small id="miniMapLbl"></small></span>
+    </div>
+    <div class="icons">
+      <button id="btnDash" data-i18n-title="ov.dash.title"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/></svg></button>
+      <button id="btnCollapse"><svg viewBox="0 0 24 24" id="icCollapse"></svg></button>
+      <button id="btnHide" data-i18n-title="ov.hide.title"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+  </div>
+  <div class="body">
+    <div id="warn" class="warn" hidden></div>
+    <div id="stockAlert" class="stock" hidden></div>
+    <div id="pubAsk" class="pubask" hidden><span data-i18n="ov.pubAsk"></span>
+      <button id="pubYes" class="yes" data-i18n="ov.pubYes"></button><button id="pubNo" data-i18n="ov.pubNo"></button></div>
+
+    <div class="now">
+      <div class="top"><span class="k" id="curLabel"></span><span class="time" id="curTime"></span></div>
+      <div class="big"><b id="curProfit">–</b><small>FE</small></div>
+      <div class="sub"><span id="curName"></span><span id="curCost"></span></div>
+    </div>
+
+    <div class="grid">
+      <div class="stat"><div class="k" data-i18n="stat.session"></div><div class="v" id="sProfit">–</div></div>
+      <div class="stat"><div class="k" data-i18n="ov.perHourShort"></div><div class="v" id="sPerHour">–</div></div>
+      <div class="stat"><div class="k" data-i18n="stat.maps"></div><div class="v" id="sRuns">0</div></div>
+    </div>
+    <div class="line">
+      <span><span data-i18n="ov.avgMapShort"></span> <b id="sAvg">–</b></span>
+      <span><span data-i18n="ov.avgTimeShort"></span> <b id="sAvgT">–</b></span>
+      <span id="sCostBox"><span data-i18n="ov.costShort"></span> <b id="sCost">–</b></span>
+      <span><span data-i18n="ov.totalShort"></span> <b id="sTime">0:00</b></span>
+    </div>
+    <div class="tart" id="tart" hidden><span class="k">Tartarus</span><div class="tbar"><i id="tartFill"></i><em id="tartMark"></em></div><b id="tartVal"></b></div>
+
+    <div class="k" data-i18n="ov.recentDrops"></div>
+    <div class="list" id="recent"></div>
+  </div>
+</div>
+<script src="../i18n.js"></script>
+<div class="grip" id="grip" data-i18n-title="ov.resize"></div>
+<script src="common.js"></script>
+<script src="overlay.js"></script>
+</body>
+</html>

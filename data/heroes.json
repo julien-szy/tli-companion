@@ -1,0 +1,229 @@
+{
+ "source": "tlidb.com/en/Hero (noms et portraits) ; ids du jeu déduits du Hero Ranking",
+ "heroes": [
+  {
+   "key": "anger",
+   "hero": "Berserker Rehan",
+   "trait": "Anger",
+   "portrait": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Portrait/Rehan/UI_Portrait_Rehan_01_128.webp",
+   "url": "https://tlidb.com/en/Anger",
+   "gameId": 1001
+  },
+  {
+   "key": "seething_silhouette",
+   "hero": "Berserker Rehan",
+   "trait": "Seething Silhouette",
+   "portrait": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Portrait/Rehan/UI_Portrait_Rehan_02_128.webp",
+   "url": "https://tlidb.com/en/Seething_Silhouette",
+   "gameId": 1002
+  },
+  {
+   "key": "ranger_of_glory",
+   "hero": "Divineshot Carino",
+   "trait": "Ranger of Glory",
+   "portrait": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Portrait/Carino/UI_Portrait_Carino_01_128.webp",
+   "url": "https://tlidb.com/en/Ranger_of_Glory",
+   "gameId": 2001
+  },
+  {
+   "key": "lethal_flash",
+   "hero": "Divineshot Carino",
+   "trait": "Lethal Flash",
+   "portrait": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Portrait/Carino/UI_Portrait_Carino_02_128.webp",
+   "url": "https://tlidb.com/en/Lethal_Flash",
+   "gameId": 2002
+  },
+  {
+   "key": "zealot_of_war",
+   "hero": "Divineshot Carino",
+   "trait": "Zealot of War",
+   "portrait": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Portrait/Carino/UI_Portrait_Carino_03_128.webp",
+   "url": "https://tlidb.com/en/Zealot_of_War",
+   "gameId": 2003
+  },
+  {
+   "key": "wind_stalker",
+   "hero": "Cateye Erika",
+   "trait": "Wind Stalker",
+   "portrait": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Portrait/Erika/UI_Portrait_Erika_01_128.webp",
+   "url": "https://tlidb.com/en/Wind_Stalker",
+   "gameId": 3001
+  },
+  {
+   "key": "lightning_shadow",
+   "hero": "Cateye Erika",
+   "trait": "Lightning Shadow",
+   "portrait": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Portrait/Erika/UI_Portrait_Erika_02_128.webp",
+   "url": "https://tlidb.com/en/Lightning_Shadow",
+   "gameId": 3002
+  },
+  {
+   "key": "vendettas_sting",
+   "hero": "Cateye Erika",
+   "trait": "Vendetta's Sting",
+   "portrait": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Portrait/Erika/UI_Portrait_Erika_03_128.webp",
+   "url": "https://tlidb.com/en/Vendettas_Sting",
+   "gameId": 3003
+  },
+  {
+   "key": "blast_nova",
+   "hero": "Escapist Bing",
+   "trait": "Blast Nova",
+   "portrait": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Portrait/Bing/UI_Portrait_Bing_01_128.webp",
+   "url": "https://tlidb.com/en/Blast_Nova",
+   "gameId": 4001
+  },
+  {
+   "key": "creative_genius",
+   "hero": "Escapist Bing",
+   "trait": "Creative Genius",
+   "portrait": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Portrait/Bing/UI_Portrait_Bing_02_128.webp",
+   "url": "https://tlidb.com/en/Creative_Genius",
+   "gameId": 4002
+  },
+  {
+   "key": "flame_of_pleasure",
+   "hero": "Frostfire Gemma",
+   "trait": "Flame of Pleasure",
+   "portrait": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Portrait/Gemma/UI_Portrait_Gemma_03_128.webp",
+   "url": "https://tlidb.com/en/Flame_of_Pleasure",
+   "gameId": 5000
+  },
+  {
+   "key": "frostbitten_heart",
+   "hero": "Frostfire Gemma",
+   "trait": "Frostbitten Heart",
+   "portrait": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Portrait/Gemma/UI_Portrait_Gemma_02_128.webp",
+   "url": "https://tlidb.com/en/Frostbitten_Heart",
+   "gameId": 5001
+  },
+  {
+   "key": "ice-fire_fusion",
+   "hero": "Frostfire Gemma",
+   "trait": "Ice-Fire Fusion",
+   "portrait": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Portrait/Gemma/UI_Portrait_Gemma_01_128.webp",
+   "url": "https://tlidb.com/en/Ice-Fire_Fusion",
+   "gameId": 5002
+  },
+  {
+   "key": "wisdom_of_the_gods",
+   "hero": "Oracle Thea",
+   "trait": "Wisdom of The Gods",
+   "portrait": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Portrait/Thea/UI_Portrait_Thea_01_128.webp",
+   "url": "https://tlidb.com/en/Wisdom_of_The_Gods",
+   "gameId": 7001
+  },
+  {
+   "key": "incarnation_of_the_gods",
+   "hero": "Oracle Thea",
+   "trait": "Incarnation of The Gods",
+   "portrait": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Portrait/Thea/UI_Portrait_Thea_02_128.webp",
+   "url": "https://tlidb.com/en/Incarnation_of_the_Gods",
+   "gameId": 7002
+  },
+  {
+   "key": "blasphemer",
+   "hero": "Oracle Thea",
+   "trait": "Blasphemer",
+   "portrait": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Portrait/Thea/UI_Portrait_Thea_03_128.webp",
+   "url": "https://tlidb.com/en/Blasphemer",
+   "gameId": 7003
+  },
+  {
+   "key": "spacetime_illusion",
+   "hero": "Spacetime Witness Youga",
+   "trait": "Spacetime Illusion",
+   "portrait": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Portrait/Youga/UI_Portrait_Youga_01_128.webp",
+   "url": "https://tlidb.com/en/Spacetime_Illusion",
+   "gameId": 8001
+  },
+  {
+   "key": "spacetime_elapse",
+   "hero": "Spacetime Witness Youga",
+   "trait": "Spacetime Elapse",
+   "portrait": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Portrait/Youga/UI_Portrait_Youga_02_128.webp",
+   "url": "https://tlidb.com/en/Spacetime_Elapse",
+   "gameId": 8002
+  },
+  {
+   "key": "the_ultimate_one",
+   "hero": "Spacetime Witness Youga",
+   "trait": "The Ultimate One",
+   "portrait": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Portrait/Youga/UI_Portrait_Youga_03_128.webp",
+   "url": "https://tlidb.com/en/The_Ultimate_One",
+   "gameId": 8003
+  },
+  {
+   "key": "order_calling",
+   "hero": "Commander Moto",
+   "trait": "Order Calling",
+   "portrait": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Portrait/Moto/UI_Portrait_Moto_01_128.webp",
+   "url": "https://tlidb.com/en/Order_Calling",
+   "gameId": 9001
+  },
+  {
+   "key": "charge_calling",
+   "hero": "Commander Moto",
+   "trait": "Charge Calling",
+   "portrait": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Portrait/Moto/UI_Portrait_Moto_02_128.webp",
+   "url": "https://tlidb.com/en/Charge_Calling",
+   "gameId": 9002
+  },
+  {
+   "key": "high_court_chariot",
+   "hero": "Lightbringer Rosa",
+   "trait": "High Court Chariot",
+   "portrait": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Portrait/Rosa/UI_Portrait_Rosa_01_128.webp",
+   "url": "https://tlidb.com/en/High_Court_Chariot",
+   "gameId": 15001
+  },
+  {
+   "key": "unsullied_blade",
+   "hero": "Lightbringer Rosa",
+   "trait": "Unsullied Blade",
+   "portrait": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Portrait/Rosa/UI_Portrait_Rosa_02_128.webp",
+   "url": "https://tlidb.com/en/Unsullied_Blade",
+   "gameId": 15002
+  },
+  {
+   "key": "growing_breeze",
+   "hero": "The Forsaken Iris",
+   "trait": "Growing Breeze",
+   "portrait": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Portrait/Iris/UI_Portrait_Iris_01_128.webp",
+   "url": "https://tlidb.com/en/Growing_Breeze",
+   "gameId": 16001
+  },
+  {
+   "key": "vigilant_breeze",
+   "hero": "The Forsaken Iris",
+   "trait": "Vigilant Breeze",
+   "portrait": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Portrait/Iris/UI_Portrait_Iris_02_128.webp",
+   "url": "https://tlidb.com/en/Vigilant_Breeze",
+   "gameId": 16002
+  },
+  {
+   "key": "sing_with_the_tide",
+   "hero": "Tide Whisper Selena",
+   "trait": "Sing with the Tide",
+   "portrait": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Portrait/Selena/UI_Portrait_Selena_01_128.webp",
+   "url": "https://tlidb.com/en/Sing_with_the_Tide",
+   "gameId": 17001
+  },
+  {
+   "key": "dance_of_the_deep",
+   "hero": "Tide Whisper Selena",
+   "trait": "Dance of the Deep",
+   "portrait": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Portrait/Selena/UI_Portrait_Selena_02_128.webp",
+   "url": "https://tlidb.com/en/Dance_of_the_Deep",
+   "gameId": 17002
+  },
+  {
+   "key": "licorice_note",
+   "hero": "Scent Weaver Sage",
+   "trait": "Licorice Note",
+   "portrait": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Portrait/Sage/UI_Portrait_Sage_01_128.webp",
+   "url": "https://tlidb.com/en/Licorice_Note",
+   "gameId": 18001
+  }
+ ]
+}

@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TLI Companion — Farming strategies</title>
+<link rel="icon" type="image/svg+xml" href="/logo.svg">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header class="site" data-page="strategies"></header>
+<main>
+  <h1 class="page-title" data-i18n="pageTitle"></h1>
+  <p class="muted" data-i18n="stratTagline" style="margin:-6px 0 16px"></p>
+  <div class="filters">
+    <label class="flt"><span data-i18n="fClass"></span><select id="hero"><option value="" data-i18n="allClasses"></option></select></label>
+    <label class="flt"><span data-i18n="fMap"></span><select id="region"><option value="" data-i18n="allMaps"></option></select></label>
+    <label class="flt"><span data-i18n="fTier"></span><select id="tier"><option value="" data-i18n="allTiers"></option></select></label>
+    <label class="flt"><span data-i18n="fTag"></span><select id="tag"><option value="" data-i18n="allTags"></option></select></label>
+    <label class="flt"><span data-i18n="fItem"></span><select id="item"><option value="" data-i18n="allItems"></option></select></label>
+    <label class="flt"><span data-i18n="fServer"></span><select id="server"><option value="" data-i18n="allServers"></option></select></label>
+    <button class="btn" id="reset" hidden data-i18n="resetFilters"></button>
+  </div>
+  <h2 class="section-title" data-i18n="bestTitle"></h2>
+  <p class="muted" data-i18n="bestSub" style="margin:-4px 0 10px"></p>
+  <table class="best">
+    <thead><tr><th class="r">#</th><th data-i18n="colStrategy"></th><th class="hide-sm" data-i18n="colItems"></th><th class="r hide-sm" data-i18n="colSessions"></th><th class="r hide-sm" data-i18n="colHours"></th><th class="r" data-i18n="colPerHourNow"></th><th class="r hide-sm" data-i18n="colPerHourThen"></th></tr></thead>
+    <tbody id="best"></tbody>
+  </table>
+  <div class="filters" style="margin-top:34px" id="allTitle">
+    <h2 class="section-title" style="margin:0;flex:1" data-i18n="allTitle"></h2>
+    <label class="flt"><span data-i18n="fSort"></span><select id="sort">
+      <option value="perhour" data-i18n="sortPerHour"></option>
+      <option value="perhourmap" data-i18n="sortPerHourMap"></option>
+      <option value="profit" data-i18n="sortProfit"></option>
+      <option value="likes" data-i18n="sortLikes"></option>
+      <option value="recent" data-i18n="sortRecent"></option>
+    </select></label>
+  </div>
+  <p class="muted" id="totals" style="margin:-6px 0 10px"></p>
+  <table>
+    <thead><tr><th data-i18n="colStrategy"></th><th data-i18n="colClass"></th><th class="hide-sm" data-i18n="colPlayer"></th><th class="r" data-i18n="colMaps"></th><th class="r hide-sm" data-i18n="colDuration"></th><th class="r" data-i18n="colProfit"></th><th class="r" data-i18n="colPerHour"></th><th class="r hide-sm">♥</th></tr></thead>
+    <tbody id="rows"></tbody>
+  </table>
+</main>
+<footer class="site"></footer>
+<script src="/layout.js"></script>
+<script src="/common.js"></script>
+<script src="/strategies.js"></script>
+</body>
+</html>

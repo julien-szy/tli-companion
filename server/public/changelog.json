@@ -1,0 +1,146 @@
+{
+  "releases": [
+    {
+      "version": "0.9.13",
+      "date": "2026-10-17",
+      "en": [
+        "Community prices now come from the TLI Companion server (a copy refreshed every 15 minutes), so they load even when the TITrack price service is blocked on your network. TITrack is still used directly as a backup.",
+        "Prices seen by TLI Companion players at the auction house are now used right away (even from a single player when less than 24 h old) and preferred over TITrack when they are more recent.",
+        "New \"Prices to check\" list in the Prices tab: items from your bag and drops with no price or an old one (bound items excluded, they cannot be traded). Select them in your bag and use the price-check button to fill the shared price base for everyone."
+      ],
+      "fr": [
+        "Les prix communautaires viennent maintenant du serveur TLI Companion (une copie mise à jour toutes les 15 minutes) : ils se chargent même quand le service de prix TITrack est bloqué sur ton réseau. TITrack reste utilisé directement en secours.",
+        "Les prix vus à l'hôtel des ventes par les joueurs de TLI Companion sont maintenant utilisés tout de suite (même d'un seul joueur s'ils ont moins de 24 h) et préférés à TITrack quand ils sont plus récents.",
+        "Nouvelle liste « Prix à vérifier » dans l'onglet Prix : les objets de ton sac et de tes drops sans prix ou avec un prix ancien (hors objets liés, qui ne s'échangent pas). Sélectionne-les dans ton sac et utilise le bouton de recherche de prix pour remplir la base de prix commune."
+      ]
+    },
+    {
+      "version": "0.9.12",
+      "date": "2026-10-17",
+      "en": [
+        "Profit fix: items with no known name (\"Item #4210\") are no longer counted in profit (some had absurd community prices, up to 88,888 FE) and are hidden from the drop lists. Give one a name or a manual price in the Prices tab to count it again. The Prices tab also shows how many players back each community price.",
+        "New \"Check for updates\" button in Settings, and the app now looks for the update right away when the server says your version is too old."
+      ],
+      "fr": [
+        "Correction du profit : les objets sans nom connu (« Item #4210 ») ne sont plus comptés dans le profit (certains avaient des prix communautaires absurdes, jusqu'à 88 888 FE) et sont masqués des listes de drops. Donne-lui un nom ou un prix manuel dans l'onglet Prix pour le compter à nouveau. L'onglet Prix indique aussi combien de joueurs confirment chaque prix communautaire.",
+        "Nouveau bouton « Rechercher une mise à jour » dans les Réglages, et l'app cherche la mise à jour tout de suite quand le serveur indique que ta version est trop ancienne."
+      ]
+    },
+    {
+      "version": "0.9.11",
+      "date": "2026-10-17",
+      "en": [
+        "Redesigned in-game widget: a clear Start / REC button (green while recording), simple icons, and only the essentials (current map, session profit, FE/h, maps, latest drops).",
+        "Tartarus counter in the widget (x/48, with a mark at 36) and an alert with sound when it reaches 36 (you can enter Tartarus) and 48 (full). Can be turned off in Settings.",
+        "Tartarus alerts have their own sounds: a bright chime at 36 and horn calls with a gong when full (48). Low stock keeps its beeps (1 at 10, 2 at 5, 3 for the last one). You can replace any of them with your own sound file (.wav/.mp3) in Settings, with a play button to listen.",
+        "New \"Efficiency\" counter: time in maps vs between maps (bag, shopping) vs AFK (no activity for over 3 min), also shown in each farm session sheet.",
+        "New setting \"Ignore cheap loot\": loot worth less than X FE per item is no longer counted in profit and FE/h.",
+        "Hover the map cost to see what it is made of (e.g. 12 × beacon = 240 FE).",
+        "Quick filters in Farm sessions (Timemark, map, strategy type, sorting) and in History (Timemark, map).",
+        "Prices tab: all items with a price are listed (not only the first 300), with source filter, sorting and a \"Show more\" button.",
+        "Prices tab: unidentified items (\"Item #1674\") are hidden by default, and you can give them a name.",
+        "Tartarus now shows as \"Tartarus\" instead of its internal name (ZhongZuiDiYu), including in your past runs and sessions.",
+        "Updates are checked every 15 minutes, and a required update installs itself right away (except during a farm session).",
+        "Settings: fixed the layout of the stock alert row and the class list shown in English.",
+        "The \"What's new\" window now also shows for players coming from an older version."
+      ],
+      "fr": [
+        "Widget en jeu repensé : un bouton Démarrer / REC clair (vert pendant l'enregistrement), des icônes simples et seulement l'essentiel (carte en cours, profit de la session, FE/h, cartes, derniers drops).",
+        "Compteur Tartarus dans le widget (x/48, avec un repère à 36) et alerte avec son quand il atteint 36 (tu peux entrer dans Tartarus) et 48 (plein). Désactivable dans les Réglages.",
+        "Les alertes Tartarus ont leurs propres sons : un carillon lumineux à 36 et des appels de cor avec un gong quand c'est plein (48). Le stock bas garde ses bips (1 à 10, 2 à 5, 3 pour le dernier). Tu peux remplacer chacun par ton propre fichier son (.wav/.mp3) dans les Réglages, avec un bouton pour l'écouter.",
+        "Nouveau compteur « Efficacité » : temps en carte, entre les cartes (sac, achats) et AFK (aucune activité pendant plus de 3 min), aussi affiché dans chaque fiche de session.",
+        "Nouveau réglage « Ignorer le petit loot » : le loot qui vaut moins de X FE à l'unité n'est plus compté dans le profit ni le FE/h.",
+        "Survole le coût des cartes pour voir son détail (ex. 12 × balise = 240 FE).",
+        "Filtres rapides dans Sessions de farm (Timemark, carte, type de stratégie, tri) et dans l'Historique (Timemark, carte).",
+        "Onglet Prix : tous les objets qui ont un prix sont listés (pas seulement les 300 premiers), avec filtre par source, tri et bouton « Voir plus ».",
+        "Onglet Prix : les objets non identifiés (« Item #1674 ») sont masqués par défaut, et tu peux leur donner un nom.",
+        "Tartarus s'affiche maintenant « Tartarus » au lieu de son nom interne (ZhongZuiDiYu), y compris dans tes anciennes cartes et sessions.",
+        "Les mises à jour sont vérifiées toutes les 15 minutes, et une mise à jour obligatoire s'installe tout de suite (sauf pendant une session de farm).",
+        "Réglages : correction de la mise en page de la ligne des alertes de stock et de la liste des classes affichée en anglais.",
+        "La fenêtre « Nouveautés » s'affiche aussi pour les joueurs qui venaient d'une ancienne version."
+      ]
+    },
+    {
+      "version": "0.9.10",
+      "date": "2026-10-17",
+      "en": [
+        "Fixed the blank (white) TLI Companion shortcut icon on the desktop and Start menu.",
+        "The app's popups now always appear in your language (some were shown in English).",
+        "New \"What's new\" window after each update, with the list of changes.",
+        "The publish question is now asked each time you start a farm session (in the main window or directly in the in-game widget), instead of at every startup.",
+        "Low stock alert with a short sound when you have 10, then 5, then only 1 beacon, compass or probe left (can be turned off in Settings).",
+        "The in-game widget can be resized by dragging its bottom-right corner.",
+        "New option to make the widget fully opaque (Settings)."
+      ],
+      "fr": [
+        "Correction de l'icône blanche du raccourci TLI Companion sur le Bureau et dans le menu Démarrer.",
+        "Les fenêtres de l'app s'affichent maintenant toujours dans ta langue (certaines apparaissaient en anglais).",
+        "Nouvelle fenêtre « Nouveautés » après chaque mise à jour, avec la liste des modifications.",
+        "La question de publication est maintenant posée à chaque début de session de farm (dans la fenêtre principale ou directement dans le widget en jeu), au lieu de chaque démarrage.",
+        "Alerte de stock avec un petit son quand il te reste 10, puis 5, puis 1 seule balise, compas ou sonde (désactivable dans les Réglages).",
+        "Le widget en jeu se redimensionne en tirant son coin en bas à droite.",
+        "Nouvelle option pour rendre le widget complètement opaque (Réglages)."
+      ]
+    },
+    {
+      "version": "0.9.9",
+      "date": "2026-10-17",
+      "en": [
+        "Very old versions are now asked to download the new version.",
+        "The app can show a mandatory update screen when a version is no longer supported."
+      ],
+      "fr": [
+        "Les très anciennes versions sont invitées à télécharger la nouvelle version.",
+        "L'app peut afficher un écran de mise à jour obligatoire quand une version n'est plus prise en charge."
+      ]
+    },
+    {
+      "version": "0.9.8",
+      "date": "2026-10-17",
+      "en": [
+        "The game log is found on more PCs: Steam on any drive, official launcher, Epic, game folders on every drive.",
+        "The app checks for the log again every 10 seconds (no restart needed after turning on \"Enable Log\").",
+        "Clear help on the Home screen when the log is missing, with \"Choose UE_game.log\" and \"Open the game folder\" buttons."
+      ],
+      "fr": [
+        "Le log du jeu est trouvé sur plus de PC : Steam sur n'importe quel disque, launcher officiel, Epic, dossiers de jeux sur tous les disques.",
+        "L'app recherche le log toutes les 10 secondes (plus besoin de la relancer après avoir activé « Enable Log »).",
+        "Aide claire sur l'accueil quand le log manque, avec les boutons « Choisir UE_game.log » et « Ouvrir le dossier du jeu »."
+      ]
+    },
+    {
+      "version": "0.9.7",
+      "date": "2026-10-17",
+      "en": [
+        "When you stop a farm session, the app asks whether to save it, with a name, strategy type and notes, and whether to publish it.",
+        "At startup the app asks whether you want to publish your farm sessions to help other players.",
+        "Removed the empty blue bar at the top of the window."
+      ],
+      "fr": [
+        "À l'arrêt d'une session de farm, l'app propose de l'enregistrer (nom, type de stratégie, notes) et de la publier.",
+        "Au démarrage, l'app demande si tu veux publier tes sessions de farm pour aider les autres joueurs.",
+        "Suppression de la barre bleue vide en haut de la fenêtre."
+      ]
+    },
+    {
+      "version": "0.9.6",
+      "date": "2026-10-17",
+      "en": [
+        "Meta tab: the ranking is picked by its date instead of a leaderboard number."
+      ],
+      "fr": [
+        "Onglet Méta : le classement se choisit par sa date au lieu d'un numéro de classement."
+      ]
+    },
+    {
+      "version": "0.9.5",
+      "date": "2026-10-17",
+      "en": [
+        "Meta tab: separate filters for source, region, season and mode."
+      ],
+      "fr": [
+        "Onglet Méta : filtres séparés pour la source, la région, la saison et le mode."
+      ]
+    }
+  ]
+}

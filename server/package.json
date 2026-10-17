@@ -1,0 +1,10 @@
+{
+  "name": "tli-companion-server",
+  "version": "0.1.0",
+  "description": "Serveur communautaire TLI Companion (partage des sessions de farm, prix partagés)",
+  "main": "server.js",
+  "private": true,
+  "engines": { "node": ">=22.13" },
+  "scripts": { "start": "node server.js" },
+  "license": "MIT"
+}
