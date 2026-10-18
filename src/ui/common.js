@@ -71,7 +71,8 @@ function comingSoon(title, text, small = false) {
 }
 
 // ---------- Alerte de stock : petit son (1 bip à 10, 2 à 5, 3 plus aigus pour le dernier) ----------
-function stockBeep(level) {
+function stockBeep(level, vol = 1) {
+  if (vol <= 0) return;
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
     const n = level <= 1 ? 3 : level <= 5 ? 2 : 1;
@@ -81,7 +82,7 @@ function stockBeep(level) {
       const t0 = ctx.currentTime + i * 0.22;
       o.type = 'sine'; o.frequency.value = freq;
       g.gain.setValueAtTime(0.0001, t0);
-      g.gain.exponentialRampToValueAtTime(0.25, t0 + 0.02);
+      g.gain.exponentialRampToValueAtTime(Math.max(0.0002, 0.25 * vol), t0 + 0.02);
       g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.18);
       o.connect(g).connect(ctx.destination);
       o.start(t0); o.stop(t0 + 0.2);
@@ -89,7 +90,7 @@ function stockBeep(level) {
     setTimeout(() => ctx.close(), 1500);
   } catch { /* pas de son disponible */ }
 }
-const stockText = (a) => a.text || (a.qty <= 1 ? t('stock.last', { name: a.name }) : t('stock.left', { n: a.qty, name: a.name }));
+const stockText = (a) => a.text || (a.qty <= 0 ? t('stock.empty', { name: a.name }) : a.qty <= 1 ? t('stock.last', { name: a.name }) : t('stock.left', { n: a.qty, name: a.name }));
 
 // Infobulle du coût des cartes : « 12 × Balise = 240 FE » par ligne.
 function costTip(list) {
@@ -100,15 +101,17 @@ function costTip(list) {
 // ---------- Sons Tartarus, bien distincts des bips de stock ----------
 // 36 : carillon montant (do-mi-sol-do), « c'est prêt ».
 // 48 : sirène à deux tons répétée, « c'est plein, vas-y ».
-function tartarusSound(kind) {
+function tartarusSound(kind, vol = 1) {
+  if (vol <= 0) return;
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const note = (freq, start, len, type, vol) => {
+    const level = vol;
+    const note = (freq, start, len, type, v) => {
       const o = ctx.createOscillator(), g = ctx.createGain();
       const t0 = ctx.currentTime + start;
       o.type = type; o.frequency.value = freq;
       g.gain.setValueAtTime(0.0001, t0);
-      g.gain.exponentialRampToValueAtTime(vol, t0 + 0.015);
+      g.gain.exponentialRampToValueAtTime(Math.max(0.0002, v * level), t0 + 0.015);
       g.gain.exponentialRampToValueAtTime(0.0001, t0 + len);
       o.connect(g).connect(ctx.destination);
       o.start(t0); o.stop(t0 + len + 0.02);
@@ -132,13 +135,16 @@ function tartarusSound(kind) {
 let playing = null;
 async function alertSound(a) {
   const spec = a.soundSpec || 'synth';
+  // Volume réglé pour ce son dans les Réglages (0 = muet).
+  const vol = a.volume == null ? 1 : Math.min(1, Math.max(0, +a.volume));
+  if (vol <= 0) return;
   if (spec !== 'synth') {
     const url = await tli.soundData(spec);
     if (url) {
       try {
         if (playing) playing.pause();
         const au = new Audio(url);
-        au.volume = 0.9;
+        au.volume = 0.9 * vol;
         playing = au;
         await au.play();
         // Les alarmes de Windows sont longues : on coupe en douceur après 5 s.
@@ -147,6 +153,6 @@ async function alertSound(a) {
       } catch { /* lecture impossible : son synthétique */ }
     }
   }
-  if (a.kind && a.kind.startsWith('tartarus')) tartarusSound(a.kind);
-  else stockBeep(a.level);
+  if (a.kind && a.kind.startsWith('tartarus')) tartarusSound(a.kind, vol);
+  else stockBeep(a.level, vol);
 }

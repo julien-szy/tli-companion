@@ -349,18 +349,29 @@ tli.onStockAlert((a) => { flash(stockText(a)); if (a.sound) alertSound(a); });
 function renderSounds(s) {
   document.querySelectorAll('[data-sndname]').forEach((el) => {
     const v = s.settings.sounds[el.dataset.sndname] || 'builtin';
-    el.textContent = v.startsWith('file:') ? t('snd.myFile', { name: v.split(/[\\/]/).pop() }) : t(el.dataset.sndname === 'stock' ? 'snd.builtinBeeps' : 'snd.builtin');
+    el.textContent = v.startsWith('file:') ? t('snd.myFile', { name: v.split(/[\\/]/).pop() }) : t(el.dataset.sndname === 'stock' || el.dataset.sndname === 'beacon' ? 'snd.builtinBeeps' : 'snd.builtin');
     document.querySelector(`[data-sndreset="${el.dataset.sndname}"]`).hidden = !v.startsWith('file:');
+  });
+  document.querySelectorAll('[data-sndvol]').forEach((r) => {
+    const v = (s.settings.volumes || {})[r.dataset.sndvol] ?? 100;
+    if (document.activeElement !== r) r.value = v;
+    document.querySelector(`[data-sndvolv="${r.dataset.sndvol}"]`).textContent = `${r.value} %`;
   });
 }
 document.querySelectorAll('[data-sndfile]').forEach((b) => (b.onclick = () => tli.action('pickSound', b.dataset.sndfile)));
 document.querySelectorAll('[data-sndreset]').forEach((b) => (b.onclick = () => tli.action('resetSound', b.dataset.sndreset)));
+// Volume de chaque son : enregistré en lâchant le curseur, et on fait entendre le résultat.
+document.querySelectorAll('[data-sndvol]').forEach((r) => {
+  r.oninput = () => { document.querySelector(`[data-sndvolv="${r.dataset.sndvol}"]`).textContent = `${r.value} %`; };
+  r.onchange = () => { tli.action('soundVolume', { key: r.dataset.sndvol, v: +r.value }); document.querySelector(`[data-sndtest="${r.dataset.sndvol}"]`).click(); };
+});
 let testLevel = 10;
 document.querySelectorAll('[data-sndtest]').forEach((b) => (b.onclick = async () => {
   const k = b.dataset.sndtest;
   // Stock : chaque clic fait entendre le palier suivant (1, 2 puis 3 bips).
-  if (k === 'stock') testLevel = testLevel === 10 ? 5 : testLevel === 5 ? 1 : 10;
-  alertSound({ soundSpec: await tli.soundSpec(k), kind: k === 'stock' ? 'stock' : k === 'tartarusFull' ? 'tartarus-full' : 'tartarus-ready', level: k === 'stock' ? testLevel : 5 });
+  if (k === 'stock' || k === 'beacon') testLevel = testLevel === 10 ? 5 : testLevel === 5 ? 1 : 10;
+  const volEl = document.querySelector(`[data-sndvol="${k}"]`);
+  alertSound({ volume: volEl ? +volEl.value / 100 : 1, soundSpec: await tli.soundSpec(k), kind: ['stock', 'beacon', 'beaconEmpty'].includes(k) ? 'stock' : k === 'tartarusFull' ? 'tartarus-full' : 'tartarus-ready', level: k === 'beaconEmpty' ? 0 : ['stock', 'beacon'].includes(k) ? testLevel : 5 });
 }));
 $('refreshCommunity').onclick = () => tli.action('refreshCommunity');
 $('saveHub').onclick = () => tli.action('hubPatterns', $('sHub').value);

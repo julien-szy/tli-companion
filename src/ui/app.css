@@ -441,3 +441,7 @@ aside.side .brand .ver { display: block; font-size: 10px; font-weight: 500; colo
 #wcAll { align-self: flex-start; }
 .sess-hero.rec.paused { background: linear-gradient(135deg, rgba(255,176,32,.12), rgba(255,176,32,.02) 45%, var(--panel)); border-color: rgba(255,176,32,.4); }
 .sess-hero.rec.paused .sess-label { color: #ffc44d; } .sess-hero.rec.paused .sess-label .dot { background: #ffb020; box-shadow: none; animation: none; }
+.sounds .sndvol { display: inline-flex; align-items: center; gap: 6px; margin-left: 6px; min-width: 0; }
+.sounds .sndvol input { width: 110px; accent-color: var(--accent); }
+.sounds .sndvol b { font-size: 12px; color: var(--muted); font-weight: 500; min-width: 38px; }
+.sounds .sndvol { min-width: 0 !important; }

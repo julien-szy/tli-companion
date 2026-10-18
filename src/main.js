@@ -49,7 +49,8 @@ const DEFAULTS = {
   stockAlerts: true,     // alerte (avec son) quand il reste 10, 5 puis 1 balise / compas / sonde
   tartarusAlerts: true,  // alerte (avec son) quand le compteur Tartarus atteint 36 (entrée possible) puis 48 (plein)
   // Son de chaque alerte : « builtin » (son intégré : bips pour le stock, sons créés pour Tartarus) ou « file:<chemin> » (fichier du joueur).
-  sounds: { tartarusReady: 'builtin', tartarusFull: 'builtin', stock: 'builtin' },
+  sounds: { tartarusReady: 'builtin', tartarusFull: 'builtin', stock: 'builtin', beacon: 'builtin', beaconEmpty: 'builtin' },
+  volumes: { tartarusReady: 100, tartarusFull: 100, stock: 100, beacon: 100, beaconEmpty: 100 }, // volume de chaque son d'alerte, en %
   minLootValue: 0,       // loot qui vaut moins de X FE pièce : ignoré dans le profit (0 = tout compter)
   shareFarmStats: true,  // stats de farm ANONYMES envoyées à chaque session (désactivable)
   farmStatsNotice: false,
@@ -71,6 +72,7 @@ settings = {
   ...DEFAULTS, ...settings,
   overlay: { ...DEFAULTS.overlay, ...(settings.overlay || {}) },
   server: { ...DEFAULTS.server, ...(settings.server || {}) },
+  volumes: { ...DEFAULTS.volumes, ...(settings.volumes || {}) },
   sounds: Object.fromEntries(Object.entries({ ...DEFAULTS.sounds, ...(settings.sounds || {}) }).map(([k, v]) => [k, String(v).startsWith('file:') ? v : 'builtin'])),
 };
 delete settings.overlay.clickThrough; // option retirée (0.3.0)
@@ -354,8 +356,9 @@ tracker.on('delta', (e) => {
 });
 
 // ---------------- Sons des alertes ----------------
-const SOUND_KEYS = ['tartarusReady', 'tartarusFull', 'stock'];
-const BUILTIN_SOUNDS = { tartarusReady: 'tartarus-ready.wav', tartarusFull: 'tartarus-full.wav' };
+// stock = compas, sondes et autres consommables ; beacon = balises (10, 5, dernière) ; beaconEmpty = plus aucune balise.
+const SOUND_KEYS = ['tartarusReady', 'tartarusFull', 'stock', 'beacon', 'beaconEmpty'];
+const BUILTIN_SOUNDS = { tartarusReady: 'tartarus-ready-voice.mp3', tartarusFull: 'tartarus-full.wav', beaconEmpty: 'beacon-empty-voice.mp3' }; // 36 : voix « It's time to Tartarus » (ElevenLabs)
 // Son à jouer : fichier du joueur, son intégré créé pour l'app (Tartarus) ou bips (stock).
 function soundSpecFor(key) {
   const v = settings.sounds[key] || 'builtin';
@@ -395,23 +398,28 @@ tracker.on('tartarus', ({ prev, value }) => {
 // ---------------- Alertes de stock ----------------
 // Objets consommés à l'ouverture des cartes (balises, compas, sondes…) : alerte à 10, 5 puis au dernier.
 const STOCK_LEVELS = [10, 5, 1];
+const BEACON_LEVELS = [10, 5, 1, 0]; // balises : aussi une alerte quand on utilise la dernière
 function checkStock(id) {
   if (!tracker.visible(id)) return; // objet sans nom : pas d'alerte « Item #1234 »
   meta.data.mapConsumables = meta.data.mapConsumables || {};
   const known = meta.data.mapConsumables;
   const qty = tracker.bagQty(id);
-  const level = STOCK_LEVELS.slice().reverse().find((l) => qty <= l) ?? null; // 1, 5 ou 10
+  const beacon = items.get(id).type === '信标';
+  const levels = beacon ? BEACON_LEVELS : STOCK_LEVELS;
+  const level = levels.slice().reverse().find((l) => qty <= l) ?? null; // 0, 1, 5 ou 10
   const prev = known[id] ? known[id].level : null;
   known[id] = { level: qty > STOCK_LEVELS[0] ? null : (prev != null && level != null ? Math.min(prev, level) : level) };
   meta.save();
   if (!settings.stockAlerts || level == null || (prev != null && level >= prev)) return;
   const it = items.get(id);
-  sendAlert({ id, name: it.name, img: it.img, qty, level });
+  sendAlert({ id, name: it.name, img: it.img, qty, level, beacon });
 }
 // Son joué par une seule fenêtre : le widget s'il est affiché (en jeu), sinon la fenêtre principale.
+const soundVolume = (key) => Math.min(100, Math.max(0, +((settings.volumes || {})[key] ?? 100))) / 100;
 function sendAlert(alert) {
-  const key = alert.kind === 'tartarus-full' ? 'tartarusFull' : alert.kind === 'tartarus-ready' ? 'tartarusReady' : 'stock';
-  alert = { ...alert, soundSpec: soundSpecFor(key) };
+  const key = alert.kind === 'tartarus-full' ? 'tartarusFull' : alert.kind === 'tartarus-ready' ? 'tartarusReady'
+    : alert.beacon ? (alert.level === 0 ? 'beaconEmpty' : 'beacon') : 'stock';
+  alert = { ...alert, soundSpec: soundSpecFor(key), volume: soundVolume(key) };
   const ovShown = overlay && !overlay.isDestroyed() && overlay.isVisible();
   if (ovShown) overlay.webContents.send('stockAlert', { ...alert, sound: true });
   if (dashboard && !dashboard.isDestroyed()) dashboard.webContents.send('stockAlert', { ...alert, sound: !ovShown });
@@ -1314,6 +1322,7 @@ ipcMain.handle('action', async (_e, name, arg) => {
     case 'shareMeta': settings.shareMeta = !!arg; saveSettings(); if (arg) uploadRankings(); break;
     case 'stockAlerts': settings.stockAlerts = !!arg; saveSettings(); break;
     case 'tartarusAlerts': settings.tartarusAlerts = !!arg; saveSettings(); break;
+    case 'soundVolume': if (arg && SOUND_KEYS.includes(arg.key)) { settings.volumes[arg.key] = Math.min(100, Math.max(0, Math.round(+arg.v || 0))); saveSettings(); } break;
     case 'resetSound': if (SOUND_KEYS.includes(arg)) { settings.sounds[arg] = 'builtin'; saveSettings(); } break;
     case 'pickSound': {
       if (!SOUND_KEYS.includes(arg)) break;

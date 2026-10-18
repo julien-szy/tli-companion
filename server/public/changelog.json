@@ -1,6 +1,20 @@
 {
   "releases": [
     {
+      "version": "1.0.6",
+      "date": "2026-10-18",
+      "en": [
+        "Volume slider for each alert sound (Tartarus 36, Tartarus 48, low stock) in Settings, from 0 % (muted) to 100 %. Releasing the slider plays the sound at the new volume.",
+        "New built-in Tartarus 36 alert: a voice saying \"It's time to Tartarus\".",
+        "Beacons and compasses now have separate alert sounds (each with its own file and volume), and a new voice alert plays when you use your last beacon."
+      ],
+      "fr": [
+        "Curseur de volume pour chaque son d'alerte (Tartarus 36, Tartarus 48, stock bas) dans les Réglages, de 0 % (muet) à 100 %. Lâcher le curseur fait entendre le son au nouveau volume.",
+        "Nouvelle alerte intégrée Tartarus 36 : une voix qui dit « It's time to Tartarus ».",
+        "Les balises et les compas ont maintenant des sons d'alerte séparés (chacun avec son fichier et son volume), et une nouvelle alerte vocale se déclenche quand tu utilises ta dernière balise."
+      ]
+    },
+    {
       "version": "1.0.5",
       "date": "2026-10-18",
       "en": [
