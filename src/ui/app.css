@@ -430,3 +430,12 @@ main tr.dim td { opacity: .55; }
 .bag-warn .bw-ico { flex: none; width: 32px; height: 32px; border-radius: 50%; background: #ffb020; color: #1a1006; font-weight: 800; font-size: 18px; display: flex; align-items: center; justify-content: center; }
 aside.side .brand { flex-direction: column; gap: 4px; }
 aside.side .brand .ver { display: block; font-size: 10px; font-weight: 500; color: var(--muted); letter-spacing: .02em; }
+
+/* Réglages > Contenu du widget */
+.wcfg { display: flex; flex-direction: column; gap: 8px; }
+.wc-group { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.wc-g { width: 120px; color: var(--muted); font-size: 12px; }
+.wc-item { display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); font-size: 12.5px; color: var(--muted); cursor: pointer; }
+.wc-item.on { border-color: rgba(255,138,61,.45); background: rgba(255,138,61,.12); color: var(--text); }
+.wc-item input { accent-color: var(--accent); margin: 0; }
+#wcAll { align-self: flex-start; }

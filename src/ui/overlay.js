@@ -3,7 +3,7 @@ let seen = new Set();
 let firstRender = true;
 
 $('btnCollapse').onclick = () => tli.action('collapse');
-$('btnDash').onclick = () => tli.action('dashboard');
+$('btnDash').onclick = () => tli.action('dashboardToggle');
 $('btnHide').onclick = () => tli.action('hideOverlay');
 $('updBtn').onclick = () => tli.action('installUpdate');
 $('btnLock').onclick = () => tli.action('lock', true);
@@ -24,6 +24,13 @@ function setVal(el, v, signed = true) {
 tli.onState((s) => {
   if (setLang(s.settings.lang)) { firstRender = true; $('recent').dataset.html = ''; }
   const collapsed = s.settings.overlay.collapsed;
+  // Infos choisies dans Réglages > Contenu du widget : les autres sont masquées.
+  const off = new Set(s.settings.overlay.hide || []);
+  document.querySelectorAll('[data-w]').forEach((el) => el.classList.toggle('woff', off.has(el.dataset.w)));
+  const nStats = ['session', 'perHour', 'maps'].filter((k) => !off.has(k)).length;
+  $('statGrid').classList.toggle('woff', !nStats);
+  $('statGrid').style.gridTemplateColumns = `repeat(${Math.max(1, nStats)}, 1fr)`;
+  $('infoLine').classList.toggle('woff', ['avg', 'avgTime', 'cost', 'total'].every((k) => off.has(k)));
   document.body.classList.toggle('collapsed', collapsed);
   $('icCollapse').innerHTML = collapsed ? IC_EXPAND : IC_COLLAPSE;
   $('btnCollapse').title = t(collapsed ? 'ov.expand' : 'ov.collapse.title');
@@ -44,7 +51,8 @@ tli.onState((s) => {
   // Bouton d'enregistrement : orange « Démarrer », vert « REC 12:34 » pendant une session.
   recording = s.recording;
   $('btnRec').classList.toggle('on', recording);
-  $('recLbl').textContent = recording ? `REC ${dur(s.session.realTimeMs)}` : t('btn.start');
+  // Bouton compact : ▶ seul à l'arrêt, ● + chrono pendant une session.
+  $('recLbl').textContent = recording ? dur(s.session.realTimeMs) : '';
   $('btnRec').title = t(recording ? 'ov.recStop' : 'ov.recStart');
 
   // Mise à jour téléchargée : bouton pour redémarrer tout de suite (sinon elle s'installe toute seule au repaire).
@@ -101,7 +109,7 @@ tli.onState((s) => {
   }
 
   // Derniers drops (les nouveaux clignotent)
-  const html = s.recent.slice(0, 12).map((e) => {
+  const html = s.recent.slice(0, 40).map((e) => {
     const key = `${e.ts}|${e.id}|${e.delta}`;
     const isNew = !firstRender && !seen.has(key);
     return `<div class="row${isNew ? ' new' : ''}" data-k="${esc(key)}">${icon(e.img)}<span class="n" title="${esc(e.name)} — ${esc(zoneLabel(e.zone))}">${esc(e.name)}</span><span class="q">${qty(e.delta)}</span><span class="val ${cls(e.value)}">${fe(e.value, true)}</span></div>`;

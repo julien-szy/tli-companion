@@ -22,7 +22,7 @@
   .bar { display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 6px 0 8px; -webkit-app-region: drag; flex: none; border-bottom: 1px solid var(--line); }
   .collapsed .bar { border-bottom: 0; }
   button { background: transparent; border: 0; color: var(--muted); border-radius: 6px; cursor: pointer; font: inherit; -webkit-app-region: no-drag; }
-  .rec { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 11px; border-radius: 7px; font-size: 12px; font-weight: 700;
+  .rec { display: inline-flex; align-items: center; justify-content: center; gap: 5px; height: 26px; min-width: 30px; padding: 0 8px; border-radius: 7px; font-size: 11.5px; font-weight: 700;
          background: rgba(255,138,61,0.16); color: var(--accent); border: 1px solid rgba(255,138,61,0.45); white-space: nowrap; }
   .rec:hover { background: rgba(255,138,61,0.28); }
   .rec .ic { width: 0; height: 0; border-left: 8px solid currentColor; border-top: 5px solid transparent; border-bottom: 5px solid transparent; }
@@ -39,7 +39,10 @@
   .icons button:hover { background: rgba(255,255,255,0.08); color: var(--text); }
   .icons svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 
-  .body { padding: 8px 10px 10px; display: flex; flex-direction: column; gap: 8px; flex: 1; min-height: 0; }
+  .body { padding: 8px 10px 10px; display: flex; flex-direction: column; gap: 8px; flex: 1; min-height: 0; overflow: hidden; }
+  /* Widget plus petit : les blocs gardent leur taille et ce qui dépasse est caché ; plus grand : plus de drops. */
+  .body > * { flex: none; }
+  .body > .list { flex: 1 1 auto; }
   .collapsed .body { display: none; }
   .pos { color: var(--pos); } .neg { color: var(--neg); } .zero { color: var(--muted); }
   .k { color: var(--muted); font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em; }
@@ -103,7 +106,7 @@
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.14); border-radius: 6px; }
   ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.25); }
-  [hidden] { display: none !important; }
+  [hidden], .woff { display: none !important; }
 </style>
 </head>
 <body>
@@ -112,7 +115,7 @@
     <button class="rec" id="btnRec"><span class="ic"></span><span id="recLbl"></span></button>
     <span class="lockmark" id="lockMark"><svg viewBox="0 0 24 24"><path d="M12 17v4M8 3h8l-1 7 3 3H6l3-3z"/></svg></span>
     <div class="mini">
-      <span><b id="perHour">–</b> <small data-i18n="fe.h"></small></span>
+      <span data-w="barPerHour"><b id="perHour">–</b> <small data-i18n="fe.h"></small></span>
       <span class="mini-only"><b id="miniMap">–</b> <small id="miniMapLbl"></small></span>
     </div>
     <div class="icons">
@@ -127,27 +130,27 @@
     <div id="updReady" class="updready" hidden><span id="updText"></span><button id="updBtn" class="yes"></button></div>
     <div id="stockAlert" class="stock" hidden></div>
 
-    <div class="now">
+    <div class="now" data-w="now">
       <div class="top"><span class="k" id="curLabel"></span><span class="time" id="curTime"></span></div>
       <div class="big"><b id="curProfit">–</b><small>FE</small></div>
       <div class="sub"><span id="curName"></span><span id="curCost"></span></div>
     </div>
 
-    <div class="grid">
-      <div class="stat"><div class="k" data-i18n="stat.session"></div><div class="v" id="sProfit">–</div></div>
-      <div class="stat"><div class="k" data-i18n="ov.perHourShort"></div><div class="v" id="sPerHour">–</div></div>
-      <div class="stat"><div class="k" data-i18n="stat.maps"></div><div class="v" id="sRuns">0</div></div>
+    <div class="grid" id="statGrid">
+      <div class="stat" data-w="session"><div class="k" data-i18n="stat.session"></div><div class="v" id="sProfit">–</div></div>
+      <div class="stat" data-w="perHour"><div class="k" data-i18n="ov.perHourShort"></div><div class="v" id="sPerHour">–</div></div>
+      <div class="stat" data-w="maps"><div class="k" data-i18n="stat.maps"></div><div class="v" id="sRuns">0</div></div>
     </div>
-    <div class="line">
-      <span><span data-i18n="ov.avgMapShort"></span> <b id="sAvg">–</b></span>
-      <span><span data-i18n="ov.avgTimeShort"></span> <b id="sAvgT">–</b></span>
-      <span id="sCostBox"><span data-i18n="ov.costShort"></span> <b id="sCost">–</b></span>
-      <span><span data-i18n="ov.totalShort"></span> <b id="sTime">0:00</b></span>
+    <div class="line" id="infoLine">
+      <span data-w="avg"><span data-i18n="ov.avgMapShort"></span> <b id="sAvg">–</b></span>
+      <span data-w="avgTime"><span data-i18n="ov.avgTimeShort"></span> <b id="sAvgT">–</b></span>
+      <span id="sCostBox" data-w="cost"><span data-i18n="ov.costShort"></span> <b id="sCost">–</b></span>
+      <span data-w="total"><span data-i18n="ov.totalShort"></span> <b id="sTime">0:00</b></span>
     </div>
-    <div class="tart" id="tart" hidden><span class="k">Tartarus</span><div class="tbar"><i id="tartFill"></i><em id="tartMark"></em></div><b id="tartVal"></b></div>
+    <div class="tart" id="tart" data-w="tartarus" hidden><span class="k">Tartarus</span><div class="tbar"><i id="tartFill"></i><em id="tartMark"></em></div><b id="tartVal"></b></div>
 
-    <div class="k" data-i18n="ov.recentDrops"></div>
-    <div class="list" id="recent"></div>
+    <div class="k" data-i18n="ov.recentDrops" data-w="drops"></div>
+    <div class="list" id="recent" data-w="drops"></div>
   </div>
 </div>
 <script src="../i18n.js"></script>

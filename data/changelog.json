@@ -5,6 +5,20 @@
   },
   "releases": [
     {
+      "version": "1.0.3",
+      "date": "2026-10-18",
+      "en": [
+        "Widget: drag its bottom-right corner to change its width and height freely. The content keeps its size: make it smaller to hide the drops, or bigger to see more drops. The text size setting is still in Settings. Smaller Start/REC button, and a wider collapsed widget.",
+        "The widget's full scan button (and Ctrl+Shift+D) now opens the main window, and hides it again on a second click.",
+        "New Widget tab in Settings: choose exactly what the widget shows (FE/h, current map, each stat, info line, Tartarus bar, drops). Opacity and text size moved there too."
+      ],
+      "fr": [
+        "Widget : tire son coin en bas à droite pour changer librement sa largeur et sa hauteur. Le contenu garde sa taille : rapetisse-le pour cacher les drops, ou agrandis-le pour en voir plus. La taille du texte reste réglable dans les Réglages. Bouton Démarrer/REC plus petit et widget réduit plus large.",
+        "Le bouton scan complet du widget (et Ctrl+Maj+D) ouvre la fenêtre principale, et la cache au second clic.",
+        "Nouvel onglet Widget dans les Réglages : choisis exactement ce que le widget affiche (FE/h, carte en cours, chaque stat, ligne d'infos, barre Tartarus, drops). L'opacité et la taille du texte y sont aussi."
+      ]
+    },
+    {
       "version": "1.0.2",
       "date": "2026-10-18",
       "en": [

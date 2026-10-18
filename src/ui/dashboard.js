@@ -12,7 +12,7 @@ const GROUPS = {
   farm: ['live', 'bag', 'sessions', 'runs', 'items', 'history'],
   char: ['build', 'meta', 'advisor'],
   market: ['prices'],
-  settings: ['settings'],
+  settings: ['settings', 'widget'],
 };
 const groupOf = (name) => Object.keys(GROUPS).find((g) => GROUPS[g].includes(name)) || 'home';
 const lastSub = {};
@@ -367,6 +367,27 @@ $('saveHub').onclick = () => tli.action('hubPatterns', $('sHub').value);
 $('sOpacity').onchange = (e) => tli.action('opacity', +e.target.value);
 $('sScale').onchange = (e) => tli.action('scale', +e.target.value);
 $('sSolid').onchange = (e) => tli.action('solid', e.target.checked);
+// Réglages > Contenu du widget : une case par info, regroupées comme dans le widget.
+const WIDGET_GROUPS = [
+  ['wc.g.top', ['barPerHour']],
+  ['wc.g.map', ['now']],
+  ['wc.g.stats', ['session', 'perHour', 'maps']],
+  ['wc.g.line', ['avg', 'avgTime', 'cost', 'total']],
+  ['wc.g.other', ['tartarus', 'drops']],
+];
+function renderWidgetCfg(s) {
+  const box = $('wCfg');
+  if (!box) return;
+  const off = new Set(s.settings.overlay.hide || []);
+  const sig = [...off].sort().join(',') + '|' + (window.LANG || '');
+  if (box.dataset.sig === sig) return;
+  box.dataset.sig = sig;
+  box.innerHTML = WIDGET_GROUPS.map(([g, keys]) => `<div class="wc-group"><span class="wc-g">${esc(t(g))}</span>${keys.map((k) =>
+    `<label class="wc-item ${off.has(k) ? '' : 'on'}"><input type="checkbox" data-wk="${k}" ${off.has(k) ? '' : 'checked'}> ${esc(t('wc.k.' + k))}</label>`).join('')}</div>`).join('')
+    + `<button class="btn ghost" id="wcAll" style="margin-top:6px">${esc(t('wc.all'))}</button>`;
+  box.querySelectorAll('input[data-wk]').forEach((c) => (c.onchange = () => tli.action('widgetShow', { key: c.dataset.wk, show: c.checked })));
+  $('wcAll').onclick = () => tli.action('widgetShowAll');
+}
 $('sLock').onchange = (e) => tli.action('lock', e.target.checked);
 
 let searchTimer;
@@ -444,6 +465,7 @@ tli.onState((s) => {
   }
   $('zoneNow').textContent = s.zone.name;
   recording = s.recording;
+  renderWidgetCfg(s);
   document.querySelector('aside.side button[data-grp="farm"]').classList.toggle('rec', !!recording);
   $('farmToggle').textContent = recording ? t('sess.stop', { time: dur(ss.realTimeMs) }) : t('sess.start');
   $('farmToggle').style.background = recording ? 'var(--neg)' : '';

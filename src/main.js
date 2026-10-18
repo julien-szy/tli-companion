@@ -55,8 +55,15 @@ const DEFAULTS = {
   farmStatsNotice: false, // information « stats anonymes » déjà montrée
   onboarded: false,      // guide du premier lancement terminé
 };
-const COLLAPSED = { w: 330, h: 48 };
+const COLLAPSED = { w: 420, h: 48 };
 const EXPANDED = { w: 340, h: 520 };
+// Taille du widget choisie en tirant son coin (avant le zoom de « Taille du widget ») :
+// largeur et hauteur libres, le contenu ne change pas d'échelle, on voit juste plus ou moins de choses.
+const WIDGET_MIN = { w: 260, h: 110 }, WIDGET_MAX = { w: 900, h: 1400 }, COLLAPSED_MIN_W = 300;
+function widgetSize() {
+  const o = settings.overlay;
+  return o.collapsed ? { w: o.cw || COLLAPSED.w, h: COLLAPSED.h } : { w: o.w || EXPANDED.w, h: o.h || EXPANDED.h };
+}
 
 let settings = loadJson(SETTINGS_FILE, {});
 settings = {
@@ -489,7 +496,7 @@ setInterval(broadcast, 1000); // chronos
 
 function createOverlay() {
   const o = settings.overlay;
-  const size = o.collapsed ? COLLAPSED : EXPANDED;
+  const size = widgetSize();
   const wa = screen.getPrimaryDisplay().workArea;
   overlay = new BrowserWindow({
     width: Math.round(size.w * o.scale), height: Math.round(size.h * o.scale),
@@ -513,7 +520,7 @@ function setCollapsed(c) {
   settings.overlay.collapsed = c;
   saveSettings();
   if (!overlay) return;
-  const size = c ? COLLAPSED : EXPANDED;
+  const size = widgetSize();
   const s = settings.overlay.scale;
   overlay.setResizable(true);
   overlay.setSize(Math.round(size.w * s), Math.round(size.h * s));
@@ -545,11 +552,11 @@ function applyOpacity() {
 }
 
 // Redimensionner le widget en tirant son coin : on suit la souris depuis le processus principal
-// (indépendant du zoom de la page) et on change l'échelle du widget.
+// (indépendant du zoom de la page) et on change sa largeur et sa hauteur, sans toucher au zoom.
 const SCALE_MIN = 0.6, SCALE_MAX = 2;
 let resizeTimer = null;
 function applyScale(s) {
-  const size = settings.overlay.collapsed ? COLLAPSED : EXPANDED;
+  const size = widgetSize();
   overlay.setResizable(true);
   overlay.setSize(Math.round(size.w * s), Math.round(size.h * s));
   overlay.setResizable(false);
@@ -557,18 +564,24 @@ function applyScale(s) {
 }
 function startResize() {
   if (!overlay || resizeTimer) return;
-  const size = settings.overlay.collapsed ? COLLAPSED : EXPANDED;
+  const o = settings.overlay;
+  const size = widgetSize();
   const start = screen.getCursorScreenPoint();
-  const s0 = settings.overlay.scale;
-  const w0 = size.w * s0, h0 = size.h * s0;
+  const s = o.scale || 1;
   const t0 = Date.now();
+  const clamp = (v, a, b) => Math.round(Math.min(b, Math.max(a, v)));
   resizeTimer = setInterval(() => {
     if (!overlay || overlay.isDestroyed() || Date.now() - t0 > 30000) return endResize();
     const p = screen.getCursorScreenPoint();
-    // Le plus grand des deux déplacements (largeur ou hauteur) donne la nouvelle taille, proportions gardées.
-    const k = Math.max((w0 + p.x - start.x) / w0, (h0 + p.y - start.y) / h0);
-    const s = Math.min(SCALE_MAX, Math.max(SCALE_MIN, Math.round(s0 * k * 100) / 100));
-    if (Math.abs(s - settings.overlay.scale) >= 0.01) { settings.overlay.scale = s; applyScale(s); }
+    const w = clamp(size.w + (p.x - start.x) / s, o.collapsed ? COLLAPSED_MIN_W : WIDGET_MIN.w, WIDGET_MAX.w);
+    // Widget réduit : seule la largeur change.
+    const h = o.collapsed ? size.h : clamp(size.h + (p.y - start.y) / s, WIDGET_MIN.h, WIDGET_MAX.h);
+    const cur = widgetSize();
+    if (w === cur.w && h === cur.h) return;
+    if (o.collapsed) o.cw = w; else { o.w = w; o.h = h; }
+    overlay.setResizable(true);
+    overlay.setSize(Math.round(w * s), Math.round(h * s));
+    overlay.setResizable(false);
   }, 16);
 }
 function endResize() {
@@ -578,6 +591,12 @@ function endResize() {
 }
 
 // nav (facultatif) : onglet ou « session:<id> » à afficher à l'ouverture.
+// Ouvre la fenêtre principale, ou la cache si elle est déjà affichée (bouton du widget, Ctrl+Maj+D).
+function toggleDashboard() {
+  if (dashboard && !dashboard.isDestroyed() && dashboard.isVisible() && !dashboard.isMinimized()) dashboard.hide();
+  else openDashboard();
+  if (process.env.TLI_SHOT) console.log('DASH visible =', dashboard.isVisible());
+}
 function openDashboard(nav) {
   nav = typeof nav === 'string' ? nav : null;
   if (dashboard && !dashboard.isDestroyed()) {
@@ -1273,6 +1292,8 @@ ipcMain.handle('action', async (_e, name, arg) => {
   switch (name) {
     case 'collapse': setCollapsed(arg ?? !settings.overlay.collapsed); break;
     case 'dashboard': openDashboard(typeof arg === 'string' ? arg : null); break;
+    // Bouton du widget : ouvre la fenêtre principale, ou la cache si elle est déjà affichée.
+    case 'dashboardToggle': toggleDashboard(); break;
     // Masquer le widget alors que la fenêtre principale est fermée : on la rouvre (sinon plus rien de visible).
     case 'hideOverlay': if (overlay) overlay.hide(); if (!dashboard) openDashboard('home'); break;
     case 'toggleOverlay': toggleOverlay(); break;
@@ -1317,6 +1338,16 @@ ipcMain.handle('action', async (_e, name, arg) => {
     case 'resizeStart': startResize(); break;
     case 'resizeEnd': endResize(); break;
     case 'solid': settings.overlay.solid = !!arg; saveSettings(); applyOpacity(); break;
+    // Contenu du widget : arg = { key, show }.
+    case 'widgetShow': {
+      const KEYS = ['barPerHour', 'now', 'session', 'perHour', 'maps', 'avg', 'avgTime', 'cost', 'total', 'tartarus', 'drops'];
+      if (!arg || !KEYS.includes(arg.key)) break;
+      const hide = new Set(settings.overlay.hide || []);
+      if (arg.show) hide.delete(arg.key); else hide.add(arg.key);
+      settings.overlay.hide = [...hide]; saveSettings(); broadcast();
+      break;
+    }
+    case 'widgetShowAll': settings.overlay.hide = []; saveSettings(); broadcast(); break;
     case 'lock': setLocked(arg === undefined ? !settings.overlay.locked : arg); break;
     case 'community':
       settings.communityPrices = !!arg; saveSettings();
@@ -1427,17 +1458,24 @@ async function debugScreenshots(dir) {
     console.log('LOCK déverrouillé, déplaçable =', overlay.isMovable());
   }
   if (process.env.TLI_WIDGET_TEST) {
-    // Simule un glisser du coin : +150 px vers la droite, puis mode opaque.
+    // Simule des glisser du coin : plus large et plus haut, puis plus petit (le contenu ne doit pas changer d'échelle).
     const real = screen.getCursorScreenPoint.bind(screen);
-    const start = real(); let dx = 0;
-    screen.getCursorScreenPoint = () => ({ x: start.x + dx, y: start.y });
-    startResize();
-    for (let i = 0; i < 10; i++) { dx += 15; await wait(40); }
-    endResize(); screen.getCursorScreenPoint = real;
-    console.log('WIDGET scale', settings.overlay.scale, overlay.getSize());
-    settings.overlay.solid = true; applyOpacity(); broadcast(); await wait(800);
-    fs.writeFileSync(path.join(dir, 'widget-big-solid.png'), (await overlay.webContents.capturePage()).toPNG());
-    settings.overlay.scale = 1; settings.overlay.solid = false; applyScale(1); saveSettings();
+    const drag = async (tx, ty, name) => {
+      const start = real(); let dx = 0, dy = 0;
+      screen.getCursorScreenPoint = () => ({ x: start.x + dx, y: start.y + dy });
+      startResize();
+      for (let i = 1; i <= 10; i++) { dx = (tx * i) / 10; dy = (ty * i) / 10; await wait(40); }
+      endResize(); screen.getCursorScreenPoint = real; await wait(600);
+      console.log('WIDGET', name, widgetSize(), overlay.getSize(), 'scale', settings.overlay.scale);
+      fs.writeFileSync(path.join(dir, `widget-${name}.png`), (await overlay.webContents.capturePage()).toPNG());
+    };
+    await drag(120, 260, 'bigger');
+    await drag(-200, -560, 'smaller');
+    setCollapsed(true); await wait(500);
+    fs.writeFileSync(path.join(dir, 'widget-collapsed.png'), (await overlay.webContents.capturePage()).toPNG());
+    console.log('WIDGET collapsed', widgetSize(), overlay.getSize());
+    setCollapsed(false);
+    delete settings.overlay.w; delete settings.overlay.h; delete settings.overlay.cw; applyScale(settings.overlay.scale); saveSettings();
   }
   if (process.env.TLI_STOCK_TEST) {
     // Simule 3 ouvertures de carte : 10, 5 puis 1 balise restante.
@@ -1565,7 +1603,7 @@ if (!app.requestSingleInstanceLock()) {
     } else openDashboard('home');
     setupUpdates();
     globalShortcut.register('CommandOrControl+Shift+F', () => { if (overlay) setCollapsed(!settings.overlay.collapsed); });
-    globalShortcut.register('CommandOrControl+Shift+D', openDashboard);
+    globalShortcut.register('CommandOrControl+Shift+D', toggleDashboard);
     globalShortcut.register('CommandOrControl+Shift+H', toggleOverlay);
     globalShortcut.register('CommandOrControl+Shift+L', () => setLocked(!settings.overlay.locked));
     if (settings.communityPrices && Date.now() - prices.communityFetchedAt > 15 * 60000) refreshCommunity();
