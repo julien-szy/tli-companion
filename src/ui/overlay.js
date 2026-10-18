@@ -5,6 +5,7 @@ let firstRender = true;
 $('btnCollapse').onclick = () => tli.action('collapse');
 $('btnDash').onclick = () => tli.action('dashboard');
 $('btnHide').onclick = () => tli.action('hideOverlay');
+$('updBtn').onclick = () => tli.action('installUpdate');
 $('btnLock').onclick = () => tli.action('lock', true);
 let recording = false;
 $('btnRec').onclick = () => tli.action(recording ? 'stopFarm' : 'startFarm');
@@ -45,6 +46,11 @@ tli.onState((s) => {
   $('btnRec').classList.toggle('on', recording);
   $('recLbl').textContent = recording ? `REC ${dur(s.session.realTimeMs)}` : t('btn.start');
   $('btnRec').title = t(recording ? 'ov.recStop' : 'ov.recStart');
+
+  // Mise à jour téléchargée : bouton pour redémarrer tout de suite (sinon elle s'installe toute seule au repaire).
+  const ready = s.update && s.update.state === 'ready';
+  $('updReady').hidden = !ready;
+  if (ready) { $('updText').textContent = t('ov.updReady', { v: s.update.version }); $('updBtn').textContent = t('ov.updRestart'); }
 
   // Avertissements
   let warn = '';

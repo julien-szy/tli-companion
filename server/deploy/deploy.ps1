@@ -12,6 +12,9 @@ $root = Split-Path $PSScriptRoot -Parent
 $ssh = @("-i", $Key, "-o", "IdentitiesOnly=yes")
 
 $tmp = Join-Path $env:TEMP "tli-server.tgz"
-tar -czf $tmp -C $root server.js db.js sanitize.js ai.js titrack.js package.json public
+$parts = @("server.js", "db.js", "sanitize.js", "ai.js", "titrack.js", "package.json", "public")
+# Extensions locales (non publiées) : envoyées si elles existent sur ce PC.
+if (Test-Path (Join-Path $root "local")) { $parts += "local" }
+tar -czf $tmp -C $root @parts
 scp @ssh $tmp "${Host_}:/tmp/tli-server.tgz"
 ssh @ssh $Host_ "tar -xzf /tmp/tli-server.tgz -C /opt/tli-server && rm /tmp/tli-server.tgz && systemctl restart tli-server && sleep 1 && systemctl is-active tli-server && curl -s http://127.0.0.1:8080/api/health"

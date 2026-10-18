@@ -16,3 +16,7 @@ server/public/icons/
 *.log
 .DS_Store
 Thumbs.db
+
+# Fichiers locaux
+scripts/local/
+server/local/

@@ -1,6 +1,18 @@
 {
   "releases": [
     {
+      "version": "0.9.16",
+      "date": "2026-10-18",
+      "en": [
+        "Updates now install by themselves: once downloaded, the app updates at the hideout when you are idle for 2 minutes (never during a farm session or in a map) and comes back exactly as it was. The widget also shows an \"Update ready · Restart\" button.",
+        "The global farming strategy now learns from every map you play, not only from farm sessions started with the Start button (anonymous, can be turned off in Settings)."
+      ],
+      "fr": [
+        "Les mises à jour s'installent maintenant toutes seules : une fois téléchargée, l'app se met à jour au repaire quand tu es inactif depuis 2 minutes (jamais pendant une session de farm ni dans une carte) et revient exactement comme avant. Le widget affiche aussi un bouton « Mise à jour prête · Redémarrer ».",
+        "La stratégie de farm globale apprend maintenant de toutes les cartes que tu joues, pas seulement des sessions lancées avec le bouton Démarrer (anonyme, désactivable dans les Réglages)."
+      ]
+    },
+    {
       "version": "0.9.15",
       "date": "2026-10-18",
       "en": [

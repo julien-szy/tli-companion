@@ -161,6 +161,7 @@ function reportPath(id) {
 }
 
 function beginFarm() {
+  autoStatsFlush();
   tracker.startFarm();
 }
 
@@ -405,7 +406,67 @@ function sendAlert(alert) {
   if (ovShown) overlay.webContents.send('stockAlert', { ...alert, sound: true });
   if (dashboard && !dashboard.isDestroyed()) dashboard.webContents.send('stockAlert', { ...alert, sound: !ovShown });
 }
-tracker.on('runEnded', (run) => { try { appendHistory(run); } catch (e) { console.error(e); } });
+tracker.on('runEnded', (run) => {
+  try { appendHistory(run); } catch (e) { console.error(e); }
+  // Hors session de farm (bouton Démarrer) : les cartes jouées alimentent quand même les stats anonymes.
+  if (!tracker.session.recording) autoStatsAdd(run);
+});
+
+// ---------------- Stats anonymes automatiques (toutes les cartes, sans « Démarrer ») ----------------
+// Les cartes enchaînées sur le même type de balise (région + Timemark) forment un lot, envoyé
+// quand il atteint 10 cartes, quand le joueur change de carte, après 20 min sans carte ou à la fermeture.
+const AUTO_MAX_RUNS = 10, AUTO_IDLE_MS = 20 * 60000;
+let autoRuns = [];
+let autoIdleTimer = null;
+const mapKey = (name) => { const m = /^(.*?)\s*Beacon\s*\(Timemark\s*(\d+)\)/i.exec(name || ''); return m ? `${m[1].trim()}|${m[2]}` : name || '?'; };
+function autoStatsAdd(run) {
+  if (!settings.shareFarmStats) return;
+  if (autoRuns.length && mapKey(autoRuns[0].name) !== mapKey(run.name)) autoStatsFlush();
+  autoRuns.push(run);
+  if (autoRuns.length >= AUTO_MAX_RUNS) autoStatsFlush();
+  clearTimeout(autoIdleTimer);
+  autoIdleTimer = setTimeout(autoStatsFlush, AUTO_IDLE_MS);
+}
+function autoStatsFlush() {
+  clearTimeout(autoIdleTimer);
+  const runs = autoRuns;
+  autoRuns = [];
+  if (runs.length < 3 || !settings.shareFarmStats) return null;
+  const first = runs[0], last = runs[runs.length - 1];
+  const realMs = Math.max(0, last.endedAt - first.startedAt);
+  if (realMs < 5 * 60000) return null;
+  const loot = {}, cost = {};
+  let mapMs = 0;
+  for (const r of runs) {
+    mapMs += Math.max(0, r.endedAt - r.startedAt);
+    for (const id in r.loot) loot[id] = (loot[id] || 0) + r.loot[id];
+    for (const id in r.cost) cost[id] = (cost[id] || 0) + r.cost[id];
+  }
+  const profit = tracker.lootValueOf(loot) + tracker.valueOf(cost);
+  const heroes = {};
+  for (const r of runs) if (r.heroId != null) heroes[r.heroId] = (heroes[r.heroId] || 0) + 1;
+  const heroId = Object.keys(heroes).sort((a, b) => heroes[b] - heroes[a])[0];
+  const ctx = farmContext();
+  const body = {
+    id: require('crypto').randomUUID(), anonId: settings.anonId,
+    heroId: heroId != null ? +heroId : null, mainMap: first.name, strategyTag: null,
+    server: ctx.server, season: ctx.season,
+    runs: runs.length, realMs, mapMs, afkMs: 0, profit, perHour: profit / (realMs / 3600000),
+    loot: tracker.itemList(loot).filter((i) => i.qty > 0).slice(0, 150).map((i) => ({ id: i.id, qty: i.qty, unit: i.unit })),
+    consumables: tracker.itemList(cost).filter((i) => i.qty < 0).slice(0, 40).map((i) => ({ id: i.id, name: i.name, img: i.img, qty: i.qty, unit: i.unit })),
+  };
+  return community.sendFarmStats(body).catch((e) => console.error('Stats anonymes (auto) :', e.message));
+}
+// Fermeture de l'app : on envoie le dernier lot (3 s maximum) avant de quitter.
+let quittingAfterFlush = false;
+app.on('before-quit', (e) => {
+  if (quittingAfterFlush || autoRuns.length < 3) return;
+  const p = autoStatsFlush();
+  if (!p) return;
+  e.preventDefault();
+  quittingAfterFlush = true;
+  Promise.race([p, new Promise((r) => setTimeout(r, 3000))]).then(() => app.quit());
+});
 setInterval(broadcast, 1000); // chronos
 
 // ---------------- Fenêtres ----------------
@@ -921,9 +982,35 @@ async function checkMinVersion() {
     updateRequired = v.minVersion && verNum(app.getVersion()) < verNum(v.minVersion) ? { min: v.minVersion, latest: v.version } : null;
     broadcast();
     // Version trop ancienne : on vérifie la mise à jour tout de suite plutôt qu'au prochain passage.
+    if (updateRequired && updateState.state === 'ready') startSafeInstall();
     if (updateRequired && (updateState.state === 'idle' || updateState.state === 'uptodate') && app.isPackaged && !process.env.PORTABLE_EXECUTABLE_DIR) autoUpdater.checkForUpdates().catch(() => {});
   } catch { /* hors ligne */ }
 }
+// ---------------- Installation automatique des mises à jour ----------------
+// Une mise à jour téléchargée s'installe toute seule quand c'est sans gêne : pas de session de farm,
+// pas dans une carte, et aucune activité dans le log depuis 2 min (ou tout de suite si elle est obligatoire).
+// L'app redémarre en arrière-plan et revient dans le même état (fenêtres ouvertes ou non).
+let safeInstallTimer = null;
+function installUpdateNow() {
+  settings.restoreAfterUpdate = {
+    dashboard: !!(dashboard && !dashboard.isDestroyed() && dashboard.isVisible()),
+    overlay: !!(overlay && !overlay.isDestroyed() && overlay.isVisible()),
+  };
+  saveSettings();
+  autoUpdater.quitAndInstall(true, true);
+}
+function safeToInstall() {
+  if (tracker.session.recording || tracker.session.currentRun) return false;
+  if (updateRequired) return true;
+  return Date.now() - (tracker.session.lastActivity || 0) > 2 * 60000;
+}
+function startSafeInstall() {
+  clearInterval(safeInstallTimer);
+  safeInstallTimer = setInterval(() => {
+    if (updateState.state === 'ready' && safeToInstall()) { clearInterval(safeInstallTimer); installUpdateNow(); }
+  }, 30000);
+}
+
 function setupUpdates() {
   // Version minimale : vérifiée aussi pour la version portable.
   checkMinVersion();
@@ -946,8 +1033,8 @@ function setupUpdates() {
   autoUpdater.on('download-progress', (p) => { updateState = { ...updateState, state: 'downloading', percent: Math.round(p.percent) }; broadcastThrottled(); });
   autoUpdater.on('update-downloaded', (i) => {
     updateState = { state: 'ready', version: i.version }; broadcast();
-    // Mise à jour obligatoire : installée tout de suite, sauf pendant une session de farm (l'écran bloquant propose alors de redémarrer).
-    if (updateRequired && !tracker.session.recording) setTimeout(() => autoUpdater.quitAndInstall(true, true), 3000);
+    // Installée toute seule au bon moment (voir installWhenSafe), plus vite si elle est obligatoire.
+    startSafeInstall();
   });
   autoUpdater.on('error', (e) => { updateState = { state: 'error', message: String(e && e.message || e).slice(0, 200) }; console.error('Mise à jour :', updateState.message); });
   const check = () => autoUpdater.checkForUpdates().catch(() => {});
@@ -1129,7 +1216,7 @@ ipcMain.handle('action', async (_e, name, arg) => {
     case 'openOllama': shell.openExternal('https://ollama.com/download/windows'); break;
     case 'downloadUpdate': shell.openExternal(community.siteUrl('/download')); break;
     case 'checkUpdates': lastForcedCheck = 0; checkUpdatesNow(); break;
-    case 'installUpdate': if (updateState.state === 'ready') setImmediate(() => autoUpdater.quitAndInstall(true, true)); break;
+    case 'installUpdate': if (updateState.state === 'ready') setImmediate(installUpdateNow); break;
     case 'onboarded': settings.onboarded = true; saveSettings(); break;
     case 'seenVersion': settings.lastSeenVersion = app.getVersion(); saveSettings(); break;
     case 'shareFarmStats': settings.shareFarmStats = !!arg; saveSettings(); break;
@@ -1246,6 +1333,27 @@ async function debugScreenshots(dir) {
     await dashboard.webContents.executeJavaScript("document.getElementById('bEdit').click()"); await wait(1000);
     await dashboard.webContents.executeJavaScript(`const i = document.querySelector('[data-search]'); i.value = 'thunder'; i.dispatchEvent(new Event('input'));`); await wait(1200);
     await shot('build-edit.png');
+  }
+  if (process.env.TLI_UPD_TEST) {
+    // Simulation : mise à jour prête, installation remplacée par un message.
+    autoUpdater.quitAndInstall = () => console.log('UPD installation lancée, état sauvé =', JSON.stringify(settings.restoreAfterUpdate));
+    updateState = { state: 'ready', version: '9.9.9' }; broadcast(); await wait(1000);
+    fs.writeFileSync(path.join(dir, 'overlay-update.png'), (await overlay.webContents.capturePage()).toPNG());
+    tracker.session.lastActivity = Date.now();
+    console.log('UPD actif il y a 0 s -> sûr ?', safeToInstall());
+    tracker.session.lastActivity = Date.now() - 3 * 60000;
+    console.log('UPD inactif 3 min au repaire -> sûr ?', safeToInstall());
+    tracker.session.recording = true;
+    console.log('UPD pendant une session de farm -> sûr ?', safeToInstall());
+    tracker.session.recording = false;
+    if (safeToInstall()) installUpdateNow();
+  }
+  if (process.env.TLI_AUTO_TEST) {
+    // 4 cartes simulées sans « Démarrer » (2 min chacune) : le lot doit partir vers le serveur.
+    const t0 = Date.now() - 12 * 60000;
+    for (let i = 0; i < 4; i++) autoStatsAdd({ name: 'Thunder Wastes Beacon (Timemark 7)', startedAt: t0 + i * 180000, endedAt: t0 + i * 180000 + 120000, loot: { 100300: 40 }, cost: { 5001: -1 }, heroId: 8003 });
+    const r = await autoStatsFlush();
+    console.log('AUTO', JSON.stringify(r));
   }
   if (process.env.TLI_LOCK_TEST) {
     setLocked(true); await wait(900);
@@ -1383,7 +1491,13 @@ if (!app.requestSingleInstanceLock()) {
     // La grande fenêtre s'ouvre au démarrage ; le widget (overlay) seulement à la demande.
     if (process.env.TLI_SHOT) createOverlay(); // captures de test
     createTray();
-    openDashboard('home');
+    // Redémarrage après une mise à jour automatique : on revient dans le même état, sans ouvrir de fenêtre en plus.
+    const restore = settings.restoreAfterUpdate;
+    if (restore) {
+      delete settings.restoreAfterUpdate; saveSettings();
+      if (restore.overlay) createOverlay();
+      if (restore.dashboard || !restore.overlay) openDashboard('home');
+    } else openDashboard('home');
     setupUpdates();
     globalShortcut.register('CommandOrControl+Shift+F', () => { if (overlay) setCollapsed(!settings.overlay.collapsed); });
     globalShortcut.register('CommandOrControl+Shift+D', openDashboard);

@@ -25,6 +25,9 @@ for (const row of db.prepare('SELECT id, main_map FROM reports WHERE region IS N
 }
 const sha256 = (s) => crypto.createHash('sha256').update(s).digest('hex');
 
+// Extensions locales facultatives (dossier non publié) : sans elles, le serveur fonctionne pareil.
+const ext = (() => { try { return require('./local')({ db, DATA_DIR, clientIp: (req) => clientIp(req), sha256 }); } catch { return {}; } })();
+
 // ---------------- Utilitaires HTTP ----------------
 
 class HttpError extends Error {
@@ -646,6 +649,7 @@ function serveDownload(req, res, name) {
   }
   // Installateur, et pour les mises à jour automatiques : latest.yml + fichier .blockmap (téléchargement différentiel).
   if (!/^[\w.-]+\.(exe|blockmap)$/.test(name) && name !== 'latest.yml') return send(res, 404, 'not found');
+  if (ext.onDownload) ext.onDownload(req, name);
   const file = path.join(DOWNLOAD_DIR, name);
   fs.stat(file, (err, st) => {
     if (err || !st.isFile()) return send(res, 404, 'not found');
@@ -697,6 +701,7 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname.startsWith('/api/')) {
       rateLimit('ip:' + clientIp(req), 600, 60000);
       checkClientVersion(req, url.pathname);
+      if (ext.onApiRequest) ext.onApiRequest(req);
       for (const r of routes) {
         if (r.method !== req.method) continue;
         const m = r.pattern.exec(url.pathname);

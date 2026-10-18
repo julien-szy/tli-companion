@@ -64,6 +64,7 @@ function openDb(dataDir) {
     CREATE INDEX IF NOT EXISTS farm_stats_group ON farm_stats(region, timemark, strategy_tag);
     CREATE INDEX IF NOT EXISTS farm_stats_created ON farm_stats(created_at);
 
+
     CREATE TABLE IF NOT EXISTS builds (
       id          TEXT PRIMARY KEY,
       user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,

@@ -327,14 +327,15 @@ function setVal(el, v, signed = true) { el.textContent = fe(v, signed); el.class
 
 // Fenêtre « Nouveautés » une fois après chaque mise à jour.
 let whatsNewChecked = false;
+let whatsNewDone = false; // la fenêtre « Nouveautés » passe avant l'information sur les stats anonymes
 async function whatsNewModal() {
   const w = await tli.whatsNew();
-  if (!w || $('cYes')) return;
+  if (!w) { whatsNewDone = true; return; }
   modal(`<h1>${esc(t('wn.title', { v: w.version }))}</h1>
     <div class="body wn">${w.releases.map((r) => `<h3>v${esc(r.version)} <span class="muted">· ${esc(new Date(r.date + 'T12:00:00').toLocaleDateString(LOCALE))}</span></h3>
       <ul>${(r[LANG] || r.en).map((x) => `<li>${esc(x)}</li>`).join('')}</ul>`).join('')}</div>
     <div class="foot"><span></span><button class="btn primary big" id="wnOk">${esc(t('wn.ok'))}</button></div>`);
-  $('wnOk').onclick = () => { modal(''); tli.action('seenVersion'); };
+  $('wnOk').onclick = () => { modal(''); whatsNewDone = true; tli.action('seenVersion'); };
 }
 
 tli.onState((s) => {
@@ -342,7 +343,8 @@ tli.onState((s) => {
   // Après ce passage (la langue choisie est appliquée plus bas) : sinon les fenêtres s'affichent en anglais.
   if (!whatsNewChecked && s.settings.onboarded) { whatsNewChecked = true; setTimeout(whatsNewModal, 0); }
   // Session de farm qui démarre sans réponse : on demande (la question disparaît si le widget a répondu).
-  if (s.recording && !s.settings.farmStatsNotice) setTimeout(farmStatsNotice, 0);
+  // Information unique : dès que l'app est prête (toutes les cartes jouées comptent, pas seulement les sessions).
+  if (s.settings.onboarded && whatsNewDone && !s.settings.farmStatsNotice && !$('wnOk')) setTimeout(farmStatsNotice, 0);
   if (setLang(s.settings.lang)) {
     // Langue changée : on redessine ce qui est généré en JS.
     $('feed').dataset.h = '';
