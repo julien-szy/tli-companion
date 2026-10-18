@@ -803,6 +803,18 @@ ipcMain.handle('whatsNew', () => {
   return { version: cur, releases };
 });
 ipcMain.handle('getReport', (_e, id) => loadJson(reportPath(id), null));
+// Avis du joueur : on ne transmet que ces champs texte, bornés (la version part dans l'en-tête habituel).
+ipcMain.handle('sendFeedback', async (_e, f) => {
+  if (!f || typeof f !== 'object') return { ok: false, error: 'invalid' };
+  const body = {
+    type: ['bug', 'idea', 'question', 'other'].includes(f.type) ? f.type : 'other',
+    message: String(f.message || '').slice(0, 2000),
+    contact: String(f.contact || '').slice(0, 100),
+    source: 'app', lang: settings.lang === 'fr' ? 'fr' : 'en',
+  };
+  try { await community.sendFeedback(body); return { ok: true }; }
+  catch (e) { return { ok: false, error: String(e.message || e).slice(0, 200) }; }
+});
 // « Ton FE/h face à la communauté » sur la carte principale de la session (même région de balise et Timemark).
 ipcMain.handle('compareStats', async (_e, id) => {
   const r = loadJson(reportPath(id), null);
@@ -1414,6 +1426,7 @@ async function debugScreenshots(dir) {
       fs.writeFileSync(path.join(dir, `tab-${process.env.TLI_TAB}.png`), (await dashboard.webContents.capturePage()).toPNG());
     }
     if (process.env.TLI_EVAL) console.log('EVAL', JSON.stringify(await dashboard.webContents.executeJavaScript(process.env.TLI_EVAL)));
+    if (process.env.TLI_EVAL) fs.writeFileSync(path.join(dir, 'after-eval.png'), (await dashboard.webContents.capturePage()).toPNG());
   }
   if (process.env.TLI_FARM_TEST) {
     const shot = async (name) => fs.writeFileSync(path.join(dir, name), (await dashboard.webContents.capturePage()).toPNG());

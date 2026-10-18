@@ -64,6 +64,19 @@ function openDb(dataDir) {
     CREATE INDEX IF NOT EXISTS farm_stats_group ON farm_stats(region, timemark, strategy_tag);
     CREATE INDEX IF NOT EXISTS farm_stats_created ON farm_stats(created_at);
 
+    -- Avis des joueurs (bug, idée, question) : texte brut uniquement, aucune pièce jointe, aucune IP.
+    CREATE TABLE IF NOT EXISTS feedback (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      created_at INTEGER NOT NULL,
+      type       TEXT NOT NULL,
+      message    TEXT NOT NULL,
+      contact    TEXT,
+      version    TEXT,
+      source     TEXT NOT NULL,
+      lang       TEXT
+    );
+    CREATE INDEX IF NOT EXISTS feedback_created ON feedback(created_at);
+
 
     CREATE TABLE IF NOT EXISTS builds (
       id          TEXT PRIMARY KEY,

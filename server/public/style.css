@@ -168,3 +168,9 @@ header.site nav .ver { font-size: 11px; padding: 1px 6px; border-radius: 999px; 
 .sdetail ul { list-style: none; margin: 0; padding: 0; } .sdetail li { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 13px; flex-wrap: wrap; }
 .sdetail .mshare { min-width: 44px; color: var(--accent); font-weight: 600; font-variant-numeric: tabular-nums; }
 .sdetail .small { font-size: 12px; margin-top: 6px; }
+
+.fb-bg { position: fixed; inset: 0; background: rgba(5,6,9,.75); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 16px; }
+.fb-modal { position: relative; width: min(560px, 100%); background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 22px 24px; display: flex; flex-direction: column; gap: 10px; }
+.fb-modal h2 { margin: 0; } .fb-modal label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); }
+.fb-modal textarea, .fb-modal input, .fb-modal select { font: inherit; color: var(--text); background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+.fb-modal textarea { resize: vertical; } .fb-foot { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }

@@ -41,6 +41,12 @@ window.SITE_STR = {
     reqTitle: 'Requirements', req1t: 'Windows 10 / 11', req1p: '64-bit', req2t: 'Torchlight: Infinite', req2p: 'Steam or standalone, "Enable Log" turned on',
     req3t: 'About 300 MB', req3p: 'disk space once installed',
     pnTitle: 'Patch notes',
+    fbLink: 'Give feedback', fbTitle: 'Give feedback', fbIntro: 'A bug, an idea, a question? Tell me here: every message is read.',
+    fbType: 'Type', fbBug: 'Bug', fbIdea: 'Idea / improvement', fbQuestion: 'Question', fbOther: 'Other',
+    fbMessage: 'Message', fbMessagePh: 'Describe the bug or your idea (at least 10 characters)…',
+    fbContact: 'Contact (optional)', fbContactPh: 'Discord name or email, only if you want an answer',
+    fbPrivacy: 'Only this text is sent, nothing else. No attachments.', fbSend: 'Send', fbCancel: 'Cancel',
+    fbThanks: 'Thanks! Your message has been sent.', fbTooShort: 'Please write at least 10 characters.', fbError: 'Could not send: {msg}',
     openSource: 'Source code on GitHub',
     logHelpTitle: 'The app says "Game log not found"?',
     logHelp1: 'Launch Torchlight: Infinite and open Settings → Other → click "Enable Log".',
@@ -98,6 +104,12 @@ window.SITE_STR = {
     reqTitle: 'Configuration', req1t: 'Windows 10 / 11', req1p: '64 bits', req2t: 'Torchlight: Infinite', req2p: 'Steam ou autonome, « Enable Log » activé',
     req3t: 'Environ 300 Mo', req3p: "d'espace disque une fois installé",
     pnTitle: 'Notes de version',
+    fbLink: 'Donner mon avis', fbTitle: 'Donner mon avis', fbIntro: 'Un bug, une idée, une question ? Dis-le ici : chaque message est lu.',
+    fbType: 'Type', fbBug: 'Bug', fbIdea: 'Idée / amélioration', fbQuestion: 'Question', fbOther: 'Autre',
+    fbMessage: 'Message', fbMessagePh: 'Décris le bug ou ton idée (10 caractères minimum)…',
+    fbContact: 'Contact (facultatif)', fbContactPh: 'Pseudo Discord ou email, seulement si tu veux une réponse',
+    fbPrivacy: 'Seul ce texte est envoyé, rien d’autre. Pas de pièce jointe.', fbSend: 'Envoyer', fbCancel: 'Annuler',
+    fbThanks: 'Merci ! Ton message a bien été envoyé.', fbTooShort: 'Écris au moins 10 caractères.', fbError: 'Envoi impossible : {msg}',
     openSource: 'Code source sur GitHub',
     logHelpTitle: "L'app affiche « Log du jeu introuvable » ?",
     logHelp1: 'Lance Torchlight: Infinite et ouvre Paramètres → Autres → clique sur « Enable Log ».',
@@ -133,6 +145,11 @@ function renderLayout() {
   }
   const footer = document.querySelector('footer.site');
   if (footer) footer.innerHTML = `<div style="margin-bottom:8px"><a href="${SUPPORT_URL}" target="_blank" rel="noopener" style="color:#ffdd00">☕ ${esc(t('supFooter'))}</a></div><div>${esc(t('footerLine'))} · <a href="https://github.com/julien-szy/tli-companion" target="_blank" rel="noopener">${esc(t('openSource'))}</a></div><div>${esc(t('footerCredits'))}</div><div id="appVer" style="margin-top:8px"></div>`;
+  // Lien « Donner mon avis » (formulaire texte seul, voir openFeedback).
+  const fbl = document.createElement('div');
+  fbl.style.marginTop = '6px';
+  fbl.innerHTML = `<a href="#" id="fbOpen">💬 ${esc(t('fbLink'))}</a>`;
+  if (footer) { footer.prepend(fbl); document.getElementById('fbOpen').onclick = (e) => { e.preventDefault(); openFeedback(); }; }
   // Version actuelle de l'app (pied de page + bouton Télécharger).
   fetch('/api/version').then((r) => r.json()).then((v) => {
     if (!v || !v.version) return;
@@ -141,4 +158,45 @@ function renderLayout() {
     const dl = document.querySelector('header.site nav a[href="/download"]');
     if (dl && !dl.querySelector('.ver')) dl.insertAdjacentHTML('beforeend', ` <span class="ver">v${v.version.replace(/[^\d.]/g, '')}</span>`);
   }).catch(() => {});
+}
+
+// Formulaire d'avis : texte brut seulement, envoyé à /api/feedback. Le champ « website » est un piège à robots (invisible).
+function openFeedback() {
+  let box = document.getElementById('fbModal');
+  if (box) box.remove();
+  box = document.createElement('div');
+  box.id = 'fbModal';
+  box.className = 'fb-bg';
+  box.innerHTML = `<div class="fb-modal" role="dialog" aria-modal="true">
+    <h2>${esc(t('fbTitle'))}</h2><p class="muted">${esc(t('fbIntro'))}</p>
+    <label>${esc(t('fbType'))}<select id="fbType"><option value="bug">${esc(t('fbBug'))}</option><option value="idea">${esc(t('fbIdea'))}</option><option value="question">${esc(t('fbQuestion'))}</option><option value="other">${esc(t('fbOther'))}</option></select></label>
+    <label>${esc(t('fbMessage'))}<textarea id="fbMsg" rows="6" maxlength="2000" placeholder="${esc(t('fbMessagePh'))}"></textarea></label>
+    <label>${esc(t('fbContact'))}<input id="fbContact" maxlength="100" placeholder="${esc(t('fbContactPh'))}"></label>
+    <input id="fbWebsite" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px;width:1px;height:1px" aria-hidden="true">
+    <p class="muted" style="font-size:12px">${esc(t('fbPrivacy'))}</p>
+    <p id="fbOut" hidden></p>
+    <div class="fb-foot"><button class="btn" id="fbCancel">${esc(t('fbCancel'))}</button><button class="btn primary" id="fbSend">${esc(t('fbSend'))}</button></div>
+  </div>`;
+  document.body.appendChild(box);
+  const close = () => box.remove();
+  box.onclick = (e) => { if (e.target === box) close(); };
+  document.getElementById('fbCancel').onclick = close;
+  document.getElementById('fbSend').onclick = async () => {
+    const out = document.getElementById('fbOut');
+    const message = document.getElementById('fbMsg').value.trim();
+    if (message.length < 10) { out.hidden = false; out.className = 'neg'; out.textContent = t('fbTooShort'); return; }
+    document.getElementById('fbSend').disabled = true;
+    try {
+      const res = await fetch('/api/feedback', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: document.getElementById('fbType').value, message, contact: document.getElementById('fbContact').value.trim(),
+          website: document.getElementById('fbWebsite').value, source: 'site', lang: LANG }) });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(j.error || 'HTTP ' + res.status);
+      out.hidden = false; out.className = 'pos'; out.textContent = t('fbThanks');
+      setTimeout(close, 1800);
+    } catch (e) {
+      document.getElementById('fbSend').disabled = false;
+      out.hidden = false; out.className = 'neg'; out.textContent = t('fbError', { msg: e.message });
+    }
+  };
 }

@@ -204,4 +204,26 @@ function sanitizeFarmStats(b) {
   return out;
 }
 
-module.exports = { parseMapName, STRATEGY_TAGS, sanitizeReport, sanitizeBuild, sanitizeMeta, sanitizeFarmStats };
+// Avis d'un joueur : texte brut seulement. Caractères de contrôle et caractères invisibles retirés,
+// longueurs bornées, types connus. Rien n'est jamais interprété comme du HTML ou du SQL côté serveur.
+const FEEDBACK_TYPES = ['bug', 'idea', 'question', 'other'];
+const cleanText = (v, max) => (typeof v === 'string' ? v : '')
+  .normalize('NFC')
+  .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F\u200B-\u200F\u2028-\u202E\u2060-\u206F\uFEFF]/g, '')
+  .replace(/\r\n?/g, '\n').replace(/\n{4,}/g, '\n\n\n')
+  .trim().slice(0, max);
+function sanitizeFeedback(b) {
+  if (!b || typeof b !== 'object' || Array.isArray(b)) throw bad('invalid feedback');
+  if (b.website) throw bad('invalid feedback'); // champ piège invisible : seuls les robots le remplissent
+  const message = cleanText(b.message, 2000);
+  if (message.length < 10) throw bad('message too short');
+  const contact = cleanText(b.contact, 100).replace(/\n/g, ' ') || null;
+  return {
+    type: FEEDBACK_TYPES.includes(b.type) ? b.type : 'other',
+    message, contact,
+    source: b.source === 'app' ? 'app' : 'site',
+    lang: b.lang === 'fr' ? 'fr' : 'en',
+  };
+}
+
+module.exports = { parseMapName, STRATEGY_TAGS, sanitizeReport, sanitizeBuild, sanitizeMeta, sanitizeFarmStats, sanitizeFeedback };

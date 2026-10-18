@@ -9,6 +9,7 @@ contextBridge.exposeInMainWorld('tli', {
   setItemName: (id, name) => ipcRenderer.invoke('setItemName', id, name),
   priceTodo: () => ipcRenderer.invoke('priceTodo'),
   compareStats: (id) => ipcRenderer.invoke('compareStats', id),
+  sendFeedback: (f) => ipcRenderer.invoke('sendFeedback', f),
   setManualPrice: (id, price) => ipcRenderer.invoke('setManualPrice', id, price),
   action: (name, arg) => ipcRenderer.invoke('action', name, arg),
   onNavigate: (cb) => ipcRenderer.on('navigate', (_e, nav) => cb(nav)),

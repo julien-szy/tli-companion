@@ -21,6 +21,32 @@ function showTab(name) {
 }
 document.querySelectorAll('nav button[data-tab]').forEach((b) => (b.onclick = () => showTab(b.dataset.tab)));
 $('supportBtn').onclick = () => tli.openSupport();
+// « Donner mon avis » : texte brut seulement (type, message, contact facultatif), envoyé à tlicompanion.com.
+$('feedbackBtn').onclick = () => {
+  modal(`<h1>${esc(t('fb.title'))}</h1>
+    <p class="muted">${esc(t('fb.intro'))}</p>
+    <div class="body end-form">
+      <label>${esc(t('fb.type'))}<select id="fbType">${['bug', 'idea', 'question', 'other'].map((k) => `<option value="${k}">${esc(t('fb.t.' + k))}</option>`).join('')}</select></label>
+      <label>${esc(t('fb.message'))}<textarea id="fbMsg" rows="6" maxlength="2000" placeholder="${esc(t('fb.messagePh'))}"></textarea></label>
+      <span class="muted" id="fbCount" style="font-size:11px;text-align:right">0 / 2000</span>
+      <label>${esc(t('fb.contact'))}<input id="fbContact" maxlength="100" placeholder="${esc(t('fb.contactPh'))}"></label>
+      <p class="muted" style="font-size:12px">${esc(t('fb.privacy'))}</p>
+      <p id="fbMsgOut" style="font-size:13px" hidden></p>
+    </div>
+    <div class="foot"><button class="btn" id="fbCancel">${esc(t('fb.cancel'))}</button><button class="btn primary big" id="fbSend">${esc(t('fb.send'))}</button></div>`);
+  $('fbMsg').oninput = () => { $('fbCount').textContent = `${$('fbMsg').value.length} / 2000`; };
+  $('fbCancel').onclick = () => modal('');
+  $('fbSend').onclick = async () => {
+    const out = $('fbMsgOut');
+    const message = $('fbMsg').value.trim();
+    if (message.length < 10) { out.hidden = false; out.className = 'neg'; out.textContent = t('fb.tooShort'); return; }
+    $('fbSend').disabled = true;
+    const r = await tli.sendFeedback({ type: $('fbType').value, message, contact: $('fbContact').value.trim() });
+    out.hidden = false;
+    if (r && r.ok) { out.className = 'pos'; out.textContent = t('fb.thanks'); setTimeout(() => modal(''), 1800); }
+    else { $('fbSend').disabled = false; out.className = 'neg'; out.textContent = t('fb.error', { msg: (r && r.error) || '?' }); }
+  };
+};
 tli.onNavigate((nav) => {
   if (nav.startsWith('session:')) { showTab('sessions'); openSession(nav.slice(8)); }
   else if (nav.startsWith('endsession:')) { const id = nav.slice(11); showTab('sessions'); openSession(id).then(() => endSessionModal(id)); }

@@ -8,7 +8,7 @@ const zlib = require('zlib');
 const { openDb } = require('./db');
 const AI = require('./ai');
 const TITrack = require('./titrack');
-const { sanitizeReport, sanitizeBuild, sanitizeMeta, parseMapName, sanitizeFarmStats } = require('./sanitize');
+const { sanitizeReport, sanitizeBuild, sanitizeMeta, parseMapName, sanitizeFarmStats, sanitizeFeedback } = require('./sanitize');
 
 const PORT = +(process.env.PORT || 8080);
 const HOST = process.env.HOST || '127.0.0.1';
@@ -251,6 +251,19 @@ route('GET', /^\/api\/stats$/, () => {
     }
   }
   return { heroes, maps, totals, regions, tiers, tags, servers, items: Object.values(items).sort((a, b) => b.n - a.n).slice(0, 60) };
+});
+
+// ---------------- Avis des joueurs ----------------
+// Texte brut seulement (8 Ko max par envoi), requête préparée, 3 avis par heure et 10 par jour par adresse.
+route('POST', /^\/api\/feedback$/, async (req) => {
+  rateLimit('feedback-h:' + clientIp(req), 3, 3600000);
+  rateLimit('feedback-d:' + clientIp(req), 10, 86400000);
+  if (req.headers['content-encoding']) throw new HttpError(415, 'compressed body not accepted');
+  const f = sanitizeFeedback(await readJson(req, 8 * 1024));
+  const version = String(req.headers['x-tli-version'] || '').replace(/[^\w.-]/g, '').slice(0, 20) || null;
+  db.prepare('INSERT INTO feedback (created_at, type, message, contact, version, source, lang) VALUES (?, ?, ?, ?, ?, ?, ?)')
+    .run(Date.now(), f.type, f.message, f.contact, version, f.source, f.lang);
+  return { ok: true };
 });
 
 // ---------------- Statistiques de farm anonymes ----------------

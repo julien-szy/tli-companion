@@ -272,3 +272,6 @@ tr.ignored td:first-child::after { content: ' ·  < min'; font-size: 11px; color
 .cmp-rows b { text-align: right; font-variant-numeric: tabular-nums; }
 .cmp-bar { display: block; height: 8px; border-radius: 4px; background: #5a6170; }
 .cmp-bar.you { background: var(--accent); } .cmp-bar.top { background: var(--pos); }
+
+aside.side nav button.support.feedback { color: var(--text); }
+aside.side nav button.support.feedback:hover { background: rgba(255,255,255,.06); }
