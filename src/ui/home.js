@@ -160,7 +160,7 @@ const Home = (() => {
           <h2>${esc(t(s.current ? 'ov.currentMap' : 'ov.lastMap'))} <a data-go="history">${esc(t('h.history'))} →</a></h2>
           ${last ? `<div class="lastmap"><b>${esc(last.name)}</b><span class="${cls(last.profit)} lm-profit">${fe(last.profit, true)} FE</span></div>
             <div class="lm-sub muted"><span>${dur(last.durationMs)}</span><span>${esc(t('ov.costOf', { fe: fe(last.cost, true) }))}</span></div>`
-            : `<p class="muted">${esc(t('ov.waiting'))}</p>`}
+            : `<p class="muted">${esc(t(s.recording ? 'ov.waiting' : 'ov.pressStart'))}</p>`}
         </div>
         <div class="card hcard">
           <h2>${esc(t('ov.recentDrops'))} <a data-go="live">${esc(t('h.details'))} →</a></h2>

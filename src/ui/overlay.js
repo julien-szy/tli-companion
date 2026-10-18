@@ -109,7 +109,7 @@ tli.onState((s) => {
     $('miniMapLbl').textContent = s.current ? dur(c.durationMs) : t('ov.last');
   } else {
     $('curProfit').textContent = '–'; $('curProfit').className = '';
-    $('curName').textContent = t('ov.waiting');
+    $('curName').textContent = t(recording ? 'ov.waiting' : 'ov.pressStart');
     $('curTime').textContent = ''; $('curCost').textContent = '';
     $('miniMap').textContent = '–'; $('miniMapLbl').textContent = t('ov.map');
   }

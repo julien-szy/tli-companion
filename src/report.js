@@ -47,7 +47,7 @@ function buildReport(sess, tracker, { appVersion, title = '' } = {}) {
 
   const usedIds = new Set([...Object.keys(sess.loot), ...Object.keys(sess.cost)]);
   const prices = {};
-  for (const id of usedIds) prices[id] = tracker.prices.value(+id);
+  for (const id of usedIds) prices[id] = tracker.unitPrice(+id);
 
   return {
     version: REPORT_VERSION,

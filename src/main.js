@@ -418,8 +418,7 @@ function sendAlert(alert) {
 }
 tracker.on('runEnded', (run) => {
   try { appendHistory(run); } catch (e) { console.error(e); }
-  // Hors session de farm (bouton Démarrer) : les cartes jouées alimentent quand même les stats anonymes.
-  if (!tracker.session.recording) autoStatsAdd(run);
+  // Les cartes ne sont comptées que pendant une session de farm : les stats anonymes partent à la fin de la session.
 });
 
 // ---------------- Stats anonymes automatiques (toutes les cartes, sans « Démarrer ») ----------------
@@ -689,7 +688,7 @@ ipcMain.handle('searchPrices', (_e, opts) => {
 // Verdicts : sell (le tas vaut au moins le seuil), low (moins), noprice (prix inconnu ou non confirmé), bound (lié, invendable).
 // Compétences : leur prix dépend du niveau, que le log ne donne pas (le prix communautaire est souvent celui d'une version haut niveau).
 // Les légendaires et les organes ont un prix assez fixe : ils restent comptés.
-const VARIABLE_TYPES = new Set(['主动技能', '辅助技能', '崇高辅助技能', '华贵辅助技能', '被动技能', '塔罗斯技能', '始源塔罗斯技能']);
+const VARIABLE_TYPES = new Set(['主动技能', '辅助技能', '崇高辅助技能', '华贵辅助技能', '被动技能', '塔罗斯技能', '始源塔罗斯技能', '英雄追忆']);
 const isVariablePrice = (it) => VARIABLE_TYPES.has(it.type);
 ipcMain.handle('bagScan', (_e, opts) => {
   const min = Math.max(0, +((opts && opts.min) ?? 1) || 0);

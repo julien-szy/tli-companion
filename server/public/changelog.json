@@ -1,6 +1,18 @@
 {
   "releases": [
     {
+      "version": "1.0.5",
+      "date": "2026-10-18",
+      "en": [
+        "Nothing is counted until you press Start (▶): maps, drops and profit are only tracked during a farm session. Your bag is still followed for Scan my bag.",
+        "Hero memories (Memory of Origin, Discipline, Progress) are no longer counted when you pick them up (not in drops, not in profit): their affixes are random, so their price means nothing. Scan my bag lists them apart too."
+      ],
+      "fr": [
+        "Rien n'est compté tant que tu n'appuies pas sur Démarrer (▶) : cartes, drops et profit ne sont suivis que pendant une session de farm. Ton sac reste suivi pour Analyser mon sac.",
+        "Les souvenirs de héros (Memory of Origin, Discipline, Progress) ne sont plus comptés quand tu les ramasses (ni dans les drops, ni dans le profit) : leurs affixes sont aléatoires, leur prix ne veut rien dire. Analyser mon sac les met aussi à part."
+      ]
+    },
+    {
       "version": "1.0.4",
       "date": "2026-10-18",
       "en": [

@@ -10,6 +10,7 @@ const COST_PROTOS = new Set(['Spv3Open']);
 const IGNORED_PROTOS = new Set(['ResetItemsLayout']); // tri du sac : déplacements seulement
 
 const BEACON_TYPE = '信标';
+const NO_PROFIT_TYPES = new Set(['英雄追忆']); // souvenirs de héros : affixes aléatoires
 const { FE_ID: FE } = require('./parser'); // Flame Elementium : toujours compté, même sous le seuil
 // Hors carte sans aucune activité dans le log pendant plus de 3 min = AFK.
 const AFK_GAP_MS = 3 * 60 * 1000;
@@ -64,7 +65,7 @@ class Tracker extends EventEmitter {
       pausedAt: null,     // début de la pause en cours
       pauseAuto: false,   // pause mise automatiquement (AFK) : reprend dès la prochaine activité
     };
-    if (this.zone && !this.zone.hub) this._startRun(this.zone.path, Date.now());
+    if (recording && this.zone && !this.zone.hub) this._startRun(this.zone.path, Date.now());
     this.emit('changed');
   }
 
@@ -122,7 +123,7 @@ class Tracker extends EventEmitter {
   // Valeur totale du sac au prix actuel.
   netWorth() {
     let v = 0;
-    for (const { id, num } of this.slots.values()) v += num * this.prices.value(id);
+    for (const { id, num } of this.slots.values()) v += num * this.unitPrice(id);
     return v;
   }
 
@@ -223,6 +224,10 @@ class Tracker extends EventEmitter {
   _delta(id, delta, ts) {
     if (this.replay || !delta) return;
     if (this.proto && IGNORED_PROTOS.has(this.proto)) return;
+    // Hors session de farm : le sac est suivi, mais rien n'est compté (ni drops, ni coûts, ni profit).
+    if (!this.session.recording) return;
+    // Souvenirs de héros : pas comptés du tout (ni drop, ni profit), comme dans Analyser mon sac.
+    if (NO_PROFIT_TYPES.has((this.items.get(+id) || {}).type)) return;
     const s = this.session;
     const run = s.currentRun;
     let cat;
@@ -255,7 +260,8 @@ class Tracker extends EventEmitter {
     if (hub) {
       if (this.session.currentRun) this._endRun(ev.ts);
     } else if (!this.session.currentRun) {
-      if (!this.replay) this._startRun(path, ev.ts);
+      // Une carte n'est comptée que pendant une session de farm (bouton Démarrer).
+      if (!this.replay && this.session.recording) this._startRun(path, ev.ts);
     } else {
       this.session.currentRun.zones.push(shortName(path));
     }
@@ -301,26 +307,34 @@ class Tracker extends EventEmitter {
   endReplay(ts = Date.now()) {
     this.replay = false;
     this.proto = null;
-    if (!this.zone.hub && !this.session.currentRun) this._startRun(this.zone.path, ts);
+    if (this.session.recording && !this.zone.hub && !this.session.currentRun) this._startRun(this.zone.path, ts);
     this.emit('changed');
   }
 
   // ---------- Calculs pour l'affichage ----------
 
+  // Prix utilisé dans le profit. Les souvenirs de héros (Memory of Origin, Discipline, Progress) ont des affixes
+  // aléatoires : leur prix communautaire ne veut rien dire, ils comptent 0 sauf prix manuel.
+  unitPrice(id) {
+    const p = this.prices.get(+id);
+    if (p.source !== 'manuel' && NO_PROFIT_TYPES.has((this.items.get(+id) || {}).type)) return 0;
+    return p.price;
+  }
+
   valueOf(qtyMap) {
     let v = 0;
-    for (const id in qtyMap) v += qtyMap[id] * this.prices.value(+id);
+    for (const id in qtyMap) v += qtyMap[id] * this.unitPrice(+id);
     return v;
   }
 
   // Objet de loot sous le seuil choisi (« ignorer ce qui vaut moins de X FE ») : pas compté dans le profit.
   ignored(id) {
     const min = +this.settings.minLootValue || 0;
-    return min > 0 && +id !== FE && this.prices.value(+id) < min;
+    return min > 0 && +id !== FE && this.unitPrice(+id) < min;
   }
   lootValueOf(qtyMap) {
     let v = 0;
-    for (const id in qtyMap) if (!(qtyMap[id] > 0 && this.ignored(id))) v += qtyMap[id] * this.prices.value(+id);
+    for (const id in qtyMap) if (!(qtyMap[id] > 0 && this.ignored(id))) v += qtyMap[id] * this.unitPrice(+id);
     return v;
   }
 
@@ -346,8 +360,9 @@ class Tracker extends EventEmitter {
       const id = +k;
       const it = this.items.get(id);
       const p = this.prices.get(id);
+      const unit = this.unitPrice(id);
       const ignored = qtyMap[k] > 0 && this.ignored(id);
-      return { id, name: it.name, img: it.img, qty: qtyMap[k], unit: p.price, source: p.source, value: ignored ? 0 : qtyMap[k] * p.price, ...(ignored ? { ignored: true } : {}) };
+      return { id, name: it.name, img: it.img, qty: qtyMap[k], unit, source: p.source, value: ignored ? 0 : qtyMap[k] * unit, ...(ignored ? { ignored: true } : {}) };
     }).sort((a, b) => Math.abs(b.value) - Math.abs(a.value));
   }
 
@@ -412,7 +427,8 @@ class Tracker extends EventEmitter {
   _feedEntry(e) {
     const it = this.items.get(e.id);
     const p = this.prices.get(e.id);
-    return { ...e, name: it.name, img: it.img, unit: p.price, source: p.source, value: e.delta * p.price };
+    const unit = this.unitPrice(e.id);
+    return { ...e, name: it.name, img: it.img, unit, source: p.source, value: e.delta * unit };
   }
 
   fullData() {
