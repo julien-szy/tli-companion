@@ -1,13 +1,19 @@
 {
   "unreleased": {
-    "en": [
-      "New \"Give feedback\" button (bottom of the menu): report a bug, suggest an idea or ask a question directly from the app. Only your text and the app version are sent."
-    ],
-    "fr": [
-      "Nouveau bouton « Donner mon avis » (en bas du menu) : signale un bug, propose une idée ou pose une question directement depuis l'app. Seuls ton texte et la version de l'app sont envoyés."
-    ]
+    "en": [],
+    "fr": []
   },
   "releases": [
+    {
+      "version": "0.9.18",
+      "date": "2026-10-18",
+      "en": [
+        "New \"Give feedback\" button (bottom of the menu): report a bug, suggest an idea or ask a question directly from the app. Only your text and the app version are sent."
+      ],
+      "fr": [
+        "Nouveau bouton « Donner mon avis » (en bas du menu) : signale un bug, propose une idée ou pose une question directement depuis l'app. Seuls ton texte et la version de l'app sont envoyés."
+      ]
+    },
     {
       "version": "0.9.17",
       "date": "2026-10-18",
