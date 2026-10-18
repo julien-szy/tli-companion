@@ -5,6 +5,16 @@
   },
   "releases": [
     {
+      "version": "0.9.15",
+      "date": "2026-10-18",
+      "en": [
+        "Lock the in-game widget with the new pin button: it stays in place and your clicks go straight through to the game. Unlock it with Ctrl+Shift+L, from the tray icon menu or in Settings."
+      ],
+      "fr": [
+        "Verrouille le widget en jeu avec le nouveau bouton épingle : il ne bouge plus et tes clics passent directement au jeu. Déverrouille-le avec Ctrl+Maj+L, depuis le menu de l'icône près de l'horloge ou dans les Réglages."
+      ]
+    },
+    {
       "version": "0.9.14",
       "date": "2026-10-17",
       "en": [

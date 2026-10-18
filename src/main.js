@@ -42,7 +42,7 @@ const DEFAULTS = {
   timeMode: 'real',      // 'real' = temps réel de session ; 'map' = temps passé en carte
   communityPrices: true,
   hubPatterns: ['/XZ_'], // chemins de map considérés comme repaire / ville
-  overlay: { x: null, y: null, collapsed: false, opacity: 0.92, scale: 1, solid: false },
+  overlay: { x: null, y: null, collapsed: false, opacity: 0.92, scale: 1, solid: false, locked: false },
   server: { url: 'https://tlicompanion.com', token: null, userId: null, name: null },
   activeBuild: null,     // id du build suivi par le conseiller d'achat
   shareMeta: true,       // partage auto du Hero Ranking consulté (pseudos sauf profils masqués)
@@ -424,7 +424,7 @@ function createOverlay() {
   overlay.setAlwaysOnTop(true, 'screen-saver');
   overlay.setVisibleOnAllWorkspaces(true);
   overlay.loadFile(path.join(__dirname, 'ui', 'overlay.html'));
-  overlay.once('ready-to-show', () => { overlay.webContents.setZoomFactor(o.scale); overlay.showInactive(); applyOpacity(); broadcast(); });
+  overlay.once('ready-to-show', () => { overlay.webContents.setZoomFactor(o.scale); overlay.showInactive(); applyOpacity(); applyLock(); broadcast(); });
   overlay.on('moved', () => {
     const [x, y] = overlay.getPosition();
     settings.overlay.x = x; settings.overlay.y = y; saveSettings();
@@ -442,6 +442,22 @@ function setCollapsed(c) {
   overlay.setSize(Math.round(size.w * s), Math.round(size.h * s));
   overlay.setResizable(false);
   overlay.webContents.setZoomFactor(s);
+  broadcast();
+}
+
+// Widget verrouillé : il ne bouge plus et les clics passent au jeu à travers lui.
+// Déverrouillage : Ctrl+Maj+L, menu de l'icône près de l'horloge, ou case des Réglages.
+function applyLock() {
+  if (!overlay || overlay.isDestroyed()) return;
+  const locked = !!settings.overlay.locked;
+  overlay.setIgnoreMouseEvents(locked, { forward: true });
+  overlay.setMovable(!locked);
+}
+function setLocked(v) {
+  settings.overlay.locked = !!v;
+  saveSettings();
+  applyLock();
+  buildTrayMenu();
   broadcast();
 }
 
@@ -531,6 +547,7 @@ function buildTrayMenu() {
     { label: t('tray.dashboard'), click: openDashboard },
     { label: t('tray.toggleOverlay'), click: toggleOverlay },
     { label: t('tray.collapse'), click: () => setCollapsed(!settings.overlay.collapsed) },
+    { label: t('tray.lock'), type: 'checkbox', checked: !!settings.overlay.locked, click: (item) => setLocked(item.checked) },
     { type: 'separator' },
     { label: t('tray.farm'), click: () => (tracker.session.recording ? stopFarm('') : beginFarm()) },
     { label: t('tray.reset'), click: () => tracker.newSession() },
@@ -1149,6 +1166,7 @@ ipcMain.handle('action', async (_e, name, arg) => {
     case 'resizeStart': startResize(); break;
     case 'resizeEnd': endResize(); break;
     case 'solid': settings.overlay.solid = !!arg; saveSettings(); applyOpacity(); break;
+    case 'lock': setLocked(arg === undefined ? !settings.overlay.locked : arg); break;
     case 'community':
       settings.communityPrices = !!arg; saveSettings();
       if (arg) await refreshCommunity();
@@ -1228,6 +1246,13 @@ async function debugScreenshots(dir) {
     await dashboard.webContents.executeJavaScript("document.getElementById('bEdit').click()"); await wait(1000);
     await dashboard.webContents.executeJavaScript(`const i = document.querySelector('[data-search]'); i.value = 'thunder'; i.dispatchEvent(new Event('input'));`); await wait(1200);
     await shot('build-edit.png');
+  }
+  if (process.env.TLI_LOCK_TEST) {
+    setLocked(true); await wait(900);
+    fs.writeFileSync(path.join(dir, 'overlay-locked.png'), (await overlay.webContents.capturePage()).toPNG());
+    console.log('LOCK verrouillé, déplaçable =', overlay.isMovable(), '| menu =', tray ? 'ok' : 'absent');
+    setLocked(false); await wait(300);
+    console.log('LOCK déverrouillé, déplaçable =', overlay.isMovable());
   }
   if (process.env.TLI_WIDGET_TEST) {
     // Simule un glisser du coin : +150 px vers la droite, puis mode opaque.
@@ -1363,6 +1388,7 @@ if (!app.requestSingleInstanceLock()) {
     globalShortcut.register('CommandOrControl+Shift+F', () => { if (overlay) setCollapsed(!settings.overlay.collapsed); });
     globalShortcut.register('CommandOrControl+Shift+D', openDashboard);
     globalShortcut.register('CommandOrControl+Shift+H', toggleOverlay);
+    globalShortcut.register('CommandOrControl+Shift+L', () => setLocked(!settings.overlay.locked));
     if (settings.communityPrices && Date.now() - prices.communityFetchedAt > 15 * 60000) refreshCommunity();
     setInterval(refreshCommunity, 15 * 60000);
     syncServerPrices();

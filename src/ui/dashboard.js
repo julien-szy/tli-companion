@@ -318,6 +318,7 @@ $('saveHub').onclick = () => tli.action('hubPatterns', $('sHub').value);
 $('sOpacity').onchange = (e) => tli.action('opacity', +e.target.value);
 $('sScale').onchange = (e) => tli.action('scale', +e.target.value);
 $('sSolid').onchange = (e) => tli.action('solid', e.target.checked);
+$('sLock').onchange = (e) => tli.action('lock', e.target.checked);
 
 let searchTimer;
 $('pSearch').oninput = () => { clearTimeout(searchTimer); searchTimer = setTimeout(loadPrices, 200); };
@@ -387,6 +388,7 @@ tli.onState((s) => {
     $('sOpacity').value = s.settings.overlay.opacity;
     $('sScale').value = s.settings.overlay.scale;
     $('sSolid').checked = !!s.settings.overlay.solid;
+    $('sLock').checked = !!s.settings.overlay.locked;
     $('sOpacity').disabled = !!s.settings.overlay.solid;
   }
   $('zoneNow').textContent = s.zone.name;

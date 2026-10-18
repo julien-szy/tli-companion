@@ -5,6 +5,7 @@ let firstRender = true;
 $('btnCollapse').onclick = () => tli.action('collapse');
 $('btnDash').onclick = () => tli.action('dashboard');
 $('btnHide').onclick = () => tli.action('hideOverlay');
+$('btnLock').onclick = () => tli.action('lock', true);
 let recording = false;
 $('btnRec').onclick = () => tli.action(recording ? 'stopFarm' : 'startFarm');
 // Double-clic sur la barre = réduire / agrandir
@@ -26,6 +27,18 @@ tli.onState((s) => {
   $('icCollapse').innerHTML = collapsed ? IC_EXPAND : IC_COLLAPSE;
   $('btnCollapse').title = t(collapsed ? 'ov.expand' : 'ov.collapse.title');
   document.body.classList.toggle('solid', !!s.settings.overlay.solid);
+  // Verrouillé : rappel du raccourci quelques secondes juste après le verrouillage.
+  const locked = !!s.settings.overlay.locked;
+  if (locked && !document.body.classList.contains('locked')) {
+    $('lockHint').textContent = t('ov.lockedHint');
+    $('lockHint').hidden = false;
+    clearTimeout(window.lockHintTimer);
+    window.lockHintTimer = setTimeout(() => ($('lockHint').hidden = true), 6000);
+  }
+  if (!locked) $('lockHint').hidden = true;
+  document.body.classList.toggle('locked', locked);
+  $('btnLock').title = t('ov.lock');
+  $('lockMark').title = t('ov.lockedHint');
 
   // Bouton d'enregistrement : orange « Démarrer », vert « REC 12:34 » pendant une session.
   recording = s.recording;
