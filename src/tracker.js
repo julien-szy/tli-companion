@@ -60,6 +60,9 @@ class Tracker extends EventEmitter {
       feed: [],
       afkMs: 0,           // temps hors carte sans activité (pauses > 3 min)
       lastActivity: Date.now(),
+      pausedMs: 0,        // temps de pause terminé (non compté dans le temps de session ni le FE/h)
+      pausedAt: null,     // début de la pause en cours
+      pauseAuto: false,   // pause mise automatiquement (AFK) : reprend dès la prochaine activité
     };
     if (this.zone && !this.zone.hub) this._startRun(this.zone.path, Date.now());
     this.emit('changed');
@@ -67,11 +70,37 @@ class Tracker extends EventEmitter {
 
   startFarm() { this.newSession({ recording: true }); }
 
+  // ---------- Pause de la session de farm ----------
+  // Pause manuelle (bouton, Ctrl+Maj+P) : reprend au bouton ou à l'entrée dans une carte.
+  // Pause auto (3 min sans activité au repaire) : commence au dernier signe d'activité et reprend dès la suivante.
+  pause(auto = false, at = Date.now()) {
+    const s = this.session;
+    if (!s || !s.recording || s.pausedAt) return;
+    s.pausedAt = at; s.pauseAuto = auto;
+    this.emit('changed');
+  }
+  resume(at = Date.now()) {
+    const s = this.session;
+    if (!s || !s.pausedAt) return;
+    s.pausedMs += Math.max(0, at - s.pausedAt);
+    s.pausedAt = null; s.pauseAuto = false;
+    this.emit('changed');
+  }
+  togglePause() { if (this.session.pausedAt) this.resume(); else this.pause(false); }
+  pausedTotal(now = Date.now()) { const s = this.session; return s.pausedMs + (s.pausedAt ? Math.max(0, now - s.pausedAt) : 0); }
+  autoPauseCheck(now = Date.now()) {
+    const s = this.session;
+    if (this.replay || this.settings.autoPause === false || !s.recording || s.pausedAt || s.currentRun || (this.zone && !this.zone.hub)) return;
+    const since = Math.max(s.lastActivity, s.startedAt);
+    if (now - since > AFK_GAP_MS) this.pause(true, since);
+  }
+
   // Termine la session de farm et renvoie ses données brutes (voir report.js).
   stopFarm() {
     const s = this.session;
     const now = Date.now();
     if (s.currentRun) this._endRun(now);
+    if (s.pausedAt) this.resume(now);
     const ended = { ...s, endedAt: now, netWorthEnd: this.snapshotReady ? this.netWorth() : null };
     this.newSession();
     return ended;
@@ -108,7 +137,10 @@ class Tracker extends EventEmitter {
     if (!this.replay && this.session && ev.ts) {
       const s = this.session;
       const gap = ev.ts - Math.max(s.lastActivity, s.startedAt);
-      if (gap > AFK_GAP_MS && (!this.zone || this.zone.hub)) s.afkMs += gap;
+      // Pause auto : la moindre activité la termine. Le temps en pause n'est pas compté comme AFK.
+      const wasPaused = !!s.pausedAt;
+      if (s.pausedAt && s.pauseAuto && ev.ts > s.pausedAt) this.resume(ev.ts);
+      if (!wasPaused && gap > AFK_GAP_MS && (!this.zone || this.zone.hub)) s.afkMs += gap;
       if (ev.ts > s.lastActivity) s.lastActivity = ev.ts;
     }
     switch (ev.type) {
@@ -218,6 +250,8 @@ class Tracker extends EventEmitter {
     const path = this.pendingLevelPath || `level-${ev.levelId}`;
     this.pendingLevelPath = null;
     const hub = this.isHub(path);
+    // Entrer dans une carte termine la pause (on ne perd rien si on a oublié de la retirer).
+    if (!hub && this.session.pausedAt && !this.replay) this.resume(ev.ts);
     if (hub) {
       if (this.session.currentRun) this._endRun(ev.ts);
     } else if (!this.session.currentRun) {
@@ -330,10 +364,12 @@ class Tracker extends EventEmitter {
     let mapTime = 0;
     for (const r of s.runs) mapTime += Math.max(0, r.endedAt - r.startedAt);
     if (s.currentRun) mapTime += Math.max(0, now - s.currentRun.startedAt);
-    const realTime = Math.max(0, now - s.startedAt);
+    if (!this.replay) this.autoPauseCheck(now);
+    const pausedMs = this.pausedTotal(now);
+    const realTime = Math.max(mapTime, now - s.startedAt - pausedMs);
     const timeBase = this.settings.timeMode === 'map' ? mapTime : realTime;
     // Hors carte : actif (tri du sac, achats…) ou AFK (aucune activité > 3 min, y compris la pause en cours).
-    const idleNow = !s.currentRun && now - s.lastActivity > AFK_GAP_MS ? now - Math.max(s.lastActivity, s.startedAt) : 0;
+    const idleNow = !s.pausedAt && !s.currentRun && now - s.lastActivity > AFK_GAP_MS ? now - Math.max(s.lastActivity, s.startedAt) : 0;
     const afkTime = Math.min(Math.max(0, realTime - mapTime), s.afkMs + idleNow);
     const hubTime = Math.max(0, realTime - mapTime - afkTime);
     const perHour = timeBase > 60000 ? profit / (timeBase / 3600000) : 0;
@@ -358,6 +394,7 @@ class Tracker extends EventEmitter {
       netWorth: this.snapshotReady ? this.netWorth() : null,
       session: {
         startedAt: s.startedAt, realTimeMs: realTime, mapTimeMs: mapTime, hubTimeMs: hubTime, afkTimeMs: afkTime,
+        paused: !!s.pausedAt, pauseAuto: !!s.pauseAuto, pausedMs, pauseNowMs: s.pausedAt ? Math.max(0, now - s.pausedAt) : 0,
         efficiency: realTime > 60000 ? mapTime / realTime : null,
         // Détail du coût des cartes (balises, compas, sondes…) pour l'infobulle.
         costBreakdown: this.itemList(s.cost).filter((i) => i.qty < 0).slice(0, 10).map((i) => ({ name: i.name, qty: -i.qty, value: -i.value })),

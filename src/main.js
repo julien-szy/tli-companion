@@ -52,7 +52,8 @@ const DEFAULTS = {
   sounds: { tartarusReady: 'builtin', tartarusFull: 'builtin', stock: 'builtin' },
   minLootValue: 0,       // loot qui vaut moins de X FE pièce : ignoré dans le profit (0 = tout compter)
   shareFarmStats: true,  // stats de farm ANONYMES envoyées à chaque session (désactivable)
-  farmStatsNotice: false, // information « stats anonymes » déjà montrée
+  farmStatsNotice: false,
+  autoPause: true, // pause automatique de la session de farm après 3 min sans activité au repaire // information « stats anonymes » déjà montrée
   onboarded: false,      // guide du premier lancement terminé
 };
 const COLLAPSED = { w: 420, h: 48 };
@@ -1338,6 +1339,8 @@ ipcMain.handle('action', async (_e, name, arg) => {
     case 'resizeStart': startResize(); break;
     case 'resizeEnd': endResize(); break;
     case 'solid': settings.overlay.solid = !!arg; saveSettings(); applyOpacity(); break;
+    case 'pause': tracker.togglePause(); broadcast(); break;
+    case 'autoPause': settings.autoPause = !!arg; saveSettings(); break;
     // Contenu du widget : arg = { key, show }.
     case 'widgetShow': {
       const KEYS = ['barPerHour', 'now', 'session', 'perHour', 'maps', 'avg', 'avgTime', 'cost', 'total', 'tartarus', 'drops'];
@@ -1604,6 +1607,7 @@ if (!app.requestSingleInstanceLock()) {
     setupUpdates();
     globalShortcut.register('CommandOrControl+Shift+F', () => { if (overlay) setCollapsed(!settings.overlay.collapsed); });
     globalShortcut.register('CommandOrControl+Shift+D', toggleDashboard);
+    globalShortcut.register('CommandOrControl+Shift+P', () => { if (tracker.session.recording) { tracker.togglePause(); broadcast(); } });
     globalShortcut.register('CommandOrControl+Shift+H', toggleOverlay);
     globalShortcut.register('CommandOrControl+Shift+L', () => setLocked(!settings.overlay.locked));
     if (settings.communityPrices && Date.now() - prices.communityFetchedAt > 15 * 60000) refreshCommunity();

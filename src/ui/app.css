@@ -439,3 +439,5 @@ aside.side .brand .ver { display: block; font-size: 10px; font-weight: 500; colo
 .wc-item.on { border-color: rgba(255,138,61,.45); background: rgba(255,138,61,.12); color: var(--text); }
 .wc-item input { accent-color: var(--accent); margin: 0; }
 #wcAll { align-self: flex-start; }
+.sess-hero.rec.paused { background: linear-gradient(135deg, rgba(255,176,32,.12), rgba(255,176,32,.02) 45%, var(--panel)); border-color: rgba(255,176,32,.4); }
+.sess-hero.rec.paused .sess-label { color: #ffc44d; } .sess-hero.rec.paused .sess-label .dot { background: #ffb020; box-shadow: none; animation: none; }

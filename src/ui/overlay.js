@@ -4,6 +4,7 @@ let firstRender = true;
 
 $('btnCollapse').onclick = () => tli.action('collapse');
 $('btnDash').onclick = () => tli.action('dashboardToggle');
+$('btnPause').onclick = () => tli.action('pause');
 $('btnHide').onclick = () => tli.action('hideOverlay');
 $('updBtn').onclick = () => tli.action('installUpdate');
 $('btnLock').onclick = () => tli.action('lock', true);
@@ -51,8 +52,13 @@ tli.onState((s) => {
   // Bouton d'enregistrement : orange « Démarrer », vert « REC 12:34 » pendant une session.
   recording = s.recording;
   $('btnRec').classList.toggle('on', recording);
-  // Bouton compact : ▶ seul à l'arrêt, ● + chrono pendant une session.
+  // Bouton compact : ▶ seul à l'arrêt, ● + chrono pendant une session, ⏸ orange en pause.
+  const paused = recording && s.session.paused;
+  $('btnRec').classList.toggle('paused', paused);
   $('recLbl').textContent = recording ? dur(s.session.realTimeMs) : '';
+  $('btnPause').hidden = !recording;
+  $('btnPause').innerHTML = paused ? '<svg viewBox="0 0 24 24"><path d="M7 4l13 8-13 8z"/></svg>' : '<svg viewBox="0 0 24 24"><rect x="5" y="4" width="5" height="16" rx="1"/><rect x="14" y="4" width="5" height="16" rx="1"/></svg>';
+  $('btnPause').title = paused ? t(s.session.pauseAuto ? 'ov.resumeAuto' : 'ov.resume') : t('ov.pause');
   $('btnRec').title = t(recording ? 'ov.recStop' : 'ov.recStart');
 
   // Mise à jour téléchargée : bouton pour redémarrer tout de suite (sinon elle s'installe toute seule au repaire).

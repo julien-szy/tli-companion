@@ -367,6 +367,7 @@ $('saveHub').onclick = () => tli.action('hubPatterns', $('sHub').value);
 $('sOpacity').onchange = (e) => tli.action('opacity', +e.target.value);
 $('sScale').onchange = (e) => tli.action('scale', +e.target.value);
 $('sSolid').onchange = (e) => tli.action('solid', e.target.checked);
+$('sAutoPause').onchange = (e) => tli.action('autoPause', e.target.checked);
 // Réglages > Contenu du widget : une case par info, regroupées comme dans le widget.
 const WIDGET_GROUPS = [
   ['wc.g.top', ['barPerHour']],
@@ -460,6 +461,7 @@ tli.onState((s) => {
     $('sOpacity').value = s.settings.overlay.opacity;
     $('sScale').value = s.settings.overlay.scale;
     $('sSolid').checked = !!s.settings.overlay.solid;
+    $('sAutoPause').checked = s.settings.autoPause !== false;
     $('sLock').checked = !!s.settings.overlay.locked;
     $('sOpacity').disabled = !!s.settings.overlay.solid;
   }

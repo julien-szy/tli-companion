@@ -5,6 +5,18 @@
   },
   "releases": [
     {
+      "version": "1.0.4",
+      "date": "2026-10-18",
+      "en": [
+        "Pause button for farm sessions (widget, Home, or Ctrl+Shift+P): paused time is not counted in the session time or FE/h. Entering a map resumes the session automatically.",
+        "Auto pause: after 3 min without activity in the hideout, the session pauses by itself (the 3 min aren't counted either) and resumes as soon as you do something. Can be turned off in Settings."
+      ],
+      "fr": [
+        "Bouton pause pour les sessions de farm (widget, Accueil ou Ctrl+Maj+P) : le temps de pause n'est pas compté dans la durée de session ni le FE/h. Entrer dans une carte reprend la session automatiquement.",
+        "Pause automatique : après 3 min sans activité au repaire, la session se met en pause toute seule (ces 3 min ne sont pas comptées non plus) et reprend dès que tu fais quelque chose. Désactivable dans les Réglages."
+      ]
+    },
+    {
       "version": "1.0.3",
       "date": "2026-10-18",
       "en": [

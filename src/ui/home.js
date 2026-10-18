@@ -118,6 +118,7 @@ const Home = (() => {
       stop: '<svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>',
       widget: '<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M8 21h8"/></svg>',
       list: '<svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>',
+      pause: '<svg viewBox="0 0 24 24"><path d="M9 5v14M15 5v14"/></svg>',
     };
     root().innerHTML = `
       <div class="hello">
@@ -131,9 +132,9 @@ const Home = (() => {
         </div>
       </div>
       ${setup}
-      <section class="sess-hero ${s.recording ? 'rec' : ''}">
+      <section class="sess-hero ${s.recording ? (ss.paused ? 'rec paused' : 'rec') : ''}">
         <div class="sess-main">
-          <div class="sess-label"><span class="dot"></span>${esc(s.recording ? t('h.recording', { time: dur(ss.realTimeMs) }) : t('h.session'))}</div>
+          <div class="sess-label"><span class="dot"></span>${esc(!s.recording ? t('h.session') : ss.paused ? t(ss.pauseAuto ? 'h.pausedAuto' : 'h.paused', { time: dur(ss.pauseNowMs) }) : t('h.recording', { time: dur(ss.realTimeMs) }))}</div>
           <div class="sess-profit ${cls(ss.profit)}">${fe(ss.profit, true)}<small>FE</small></div>
           <div class="sess-kpis">
             <div><span>${esc(t('k.perHour'))}</span><b>${fe(ss.perHour)}</b></div>
@@ -149,6 +150,7 @@ const Home = (() => {
         </div>
         <div class="sess-side">
           <button class="btn hero-cta ${s.recording ? 'stop' : 'primary'}" id="hFarm">${s.recording ? I.stop : I.play}<span>${esc(s.recording ? t('h.stopShort') : t('sess.start'))}</span></button>
+          ${s.recording ? `<button class="btn ghost" id="hPause">${ss.paused ? I.play : I.pause}<span>${esc(t(ss.paused ? 'h.resume' : 'h.pause'))}</span></button>` : ''}
           <button class="btn ghost" id="hWidget">${I.widget}<span>${esc(s.overlayVisible ? t('h.hideOverlay') : t('h.showOverlay'))}</span></button>
           <button class="btn ghost" data-go="live">${I.list}<span>${esc(t('h.liveDetails'))}</span></button>
         </div>
@@ -175,6 +177,7 @@ const Home = (() => {
     bindCarousel();
     $('hFarm').onclick = () => tli.action(s.recording ? 'stopFarm' : 'startFarm');
     $('hWidget').onclick = () => tli.action('toggleOverlay');
+    if ($('hPause')) $('hPause').onclick = () => tli.action('pause');
     $('hSupport').onclick = () => tli.openSupport();
   }
 

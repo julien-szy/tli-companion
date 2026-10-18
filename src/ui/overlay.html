@@ -28,6 +28,11 @@
   .rec .ic { width: 0; height: 0; border-left: 8px solid currentColor; border-top: 5px solid transparent; border-bottom: 5px solid transparent; }
   .rec.on { background: var(--rec); color: #06140b; border-color: transparent; }
   .rec.on:hover { background: #3ad081; }
+  .rec.paused { background: rgba(255,176,32,.18); color: #ffc44d; border-color: rgba(255,176,32,.55); }
+  .rec.paused .ic { width: 8px; height: 9px; border: 0; border-left: 3px solid currentColor; border-right: 3px solid currentColor; border-radius: 0; background: none; animation: none; }
+  .pausebtn { width: 26px; height: 26px; display: grid; place-items: center; border-radius: 7px; border: 1px solid var(--line); color: var(--text); flex: none; }
+  .pausebtn:hover { background: rgba(255,255,255,.08); }
+  .pausebtn svg { width: 12px; height: 12px; fill: currentColor; }
   .rec.on .ic { width: 8px; height: 8px; border: 0; border-radius: 50%; background: #06140b; animation: blink 1.2s ease-in-out infinite; }
   @keyframes blink { 50% { opacity: .35; } }
   .mini { display: flex; gap: 10px; align-items: baseline; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; }
@@ -113,6 +118,7 @@
 <div class="panel">
   <div class="bar">
     <button class="rec" id="btnRec"><span class="ic"></span><span id="recLbl"></span></button>
+    <button class="pausebtn" id="btnPause" hidden></button>
     <span class="lockmark" id="lockMark"><svg viewBox="0 0 24 24"><path d="M12 17v4M8 3h8l-1 7 3 3H6l3-3z"/></svg></span>
     <div class="mini">
       <span data-w="barPerHour"><b id="perHour">–</b> <small data-i18n="fe.h"></small></span>

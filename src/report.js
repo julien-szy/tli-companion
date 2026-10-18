@@ -11,7 +11,8 @@ function buildReport(sess, tracker, { appVersion, title = '' } = {}) {
   const costV = tracker.valueOf(sess.cost);
   const otherV = tracker.valueOf(sess.other);
   const profit = lootV + costV;
-  const realMs = Math.max(0, sess.endedAt - sess.startedAt);
+  // Les pauses (bouton ou AFK automatique) ne comptent pas dans la durée de la session.
+  const realMs = Math.max(0, sess.endedAt - sess.startedAt - (sess.pausedMs || 0));
   const mapMs = runs.reduce((a, r) => a + Math.max(0, r.endedAt - r.startedAt), 0);
   const perHour = (ms) => (ms > 60000 ? profit / (ms / 3600000) : 0);
 
@@ -67,6 +68,7 @@ function buildReport(sess, tracker, { appVersion, title = '' } = {}) {
       afkMs: Math.min(Math.max(0, realMs - mapMs), sess.afkMs || 0),
       hubMs: Math.max(0, realMs - mapMs - Math.min(Math.max(0, realMs - mapMs), sess.afkMs || 0)),
       minLootValue: +tracker.settings.minLootValue || 0,
+      pausedMs: sess.pausedMs || 0,
     },
     strategy: {
       maps: Object.values(maps).sort((a, b) => b.runs - a.runs),
