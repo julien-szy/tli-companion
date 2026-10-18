@@ -5,6 +5,18 @@
   },
   "releases": [
     {
+      "version": "1.0.2",
+      "date": "2026-10-18",
+      "en": [
+        "New \"Scan my bag\" page (Farm tab): every item in your bag with its price, stack value and a verdict (worth selling, low value, no price), with an adjustable threshold. Skills are set apart because their price depends on their level. Always double-check prices at the Auction House before selling, especially those older than 1 day (shown in red).",
+        "The app version is shown again under the logo, so you can check you are up to date."
+      ],
+      "fr": [
+        "Nouvelle page « Analyser mon sac » (onglet Farm) : chaque objet de ton sac avec son prix, la valeur du tas et un verdict (à vendre, faible valeur, sans prix), avec un seuil réglable. Les compétences sont mises à part car leur prix dépend de leur niveau. Vérifie toujours les prix à l'hôtel des ventes avant de vendre, surtout ceux de plus d'un jour (en rouge).",
+        "Le numéro de version est de nouveau affiché sous le logo, pour vérifier que tu es à jour."
+      ]
+    },
+    {
       "version": "1.0.1",
       "date": "2026-10-18",
       "en": [

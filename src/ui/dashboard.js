@@ -9,7 +9,7 @@ let openReportId = null; // fiche de session affichée, pour la retraduire si la
 // Ajouter une page = l'ajouter à une famille ici, sans toucher au rail.
 const GROUPS = {
   home: ['home'],
-  farm: ['live', 'sessions', 'runs', 'items', 'history'],
+  farm: ['live', 'bag', 'sessions', 'runs', 'items', 'history'],
   char: ['build', 'meta', 'advisor'],
   market: ['prices'],
   settings: ['settings'],
@@ -20,7 +20,7 @@ function renderSubTabs(g, name) {
   const bar = $('subTabs');
   const tabs = GROUPS[g];
   bar.hidden = tabs.length < 2;
-  bar.innerHTML = tabs.length < 2 ? '' : tabs.map((x) => `<button data-tab="${x}" class="${x === name ? 'on' : ''}">${esc(t('tab.' + x))}</button>`).join('');
+  bar.innerHTML = tabs.length < 2 ? '' : tabs.map((x) => `<button data-tab="${x}" class="${x === name ? 'on' : ''}">${esc(t('tab.' + x))}${x === 'bag' ? ' <span class="tag beta">NEW</span>' : ''}</button>`).join('');
   bar.querySelectorAll('button').forEach((b) => (b.onclick = () => showTab(b.dataset.tab)));
 }
 function showTab(name) {
@@ -39,6 +39,7 @@ function showTab(name) {
   if (name === 'build') Build.show();
   if (name === 'meta') MetaTab.show();
   if (name === 'advisor') showAdvisor();
+  if (name === 'bag') Bag.show();
   refresh(true);
 }
 document.querySelectorAll('aside.side button[data-grp]').forEach((b) => (b.onclick = () => showTab(b.dataset.grp)));
@@ -745,3 +746,66 @@ function renderUpdateBar(s) {
 
 ['sfTier', 'sfMap', 'sfTag', 'sfSort'].forEach((id) => ($(id).onchange = renderSessions));
 ['hfTier', 'hfMap'].forEach((id) => ($(id).onchange = () => renderHistory()));
+
+// ---------- Analyser mon sac (bêta) ----------
+// Ce qui vaut le coup d'être vendu dans le sac, avec le prix utilisé et sa fraîcheur.
+const Bag = (() => {
+  let filter = 'all';
+  let min = 1;
+  try { min = +localStorage.getItem('bagMin') || 1; } catch {}
+  let timer = null;
+  const ago = (ts) => {
+    if (!ts) return '';
+    const h = (Date.now() - ts) / 3600000;
+    return h < 1 ? t('bag.agoMin', { n: Math.max(1, Math.round(h * 60)) }) : h < 48 ? t('bag.agoH', { n: Math.round(h) }) : t('bag.agoD', { n: Math.round(h / 24) });
+  };
+  const VERDICT = { sell: 'loot', low: '', noprice: 'cost', variable: 'var', bound: '' };
+  async function render() {
+    const v = $('bagView');
+    if (!v || tab !== 'bag') return;
+    const d = await tli.bagScan({ min });
+    if (!d.ready && !d.rows.length) {
+      v.innerHTML = `<div class="card bag-empty"><h2>${esc(t('bag.notReady'))}</h2><p class="muted">${esc(t('bag.notReadyHelp'))}</p></div>`;
+      return;
+    }
+    const rows = filter === 'all' ? d.rows : d.rows.filter((r) => r.verdict === filter);
+    const chip = (k, n) => `<button class="fchip ${filter === k ? 'on' : ''}" data-f="${k}">${esc(t('bag.f.' + k))} <b>${n}</b></button>`;
+    const focus = document.activeElement && document.activeElement.id === 'bagMin';
+    v.innerHTML = `
+      <div class="bag-head">
+        <div><h2>${esc(t('bag.title'))}</h2><p class="muted">${esc(t('bag.intro'))}</p></div>
+        <button class="btn ghost" id="bagRefresh">${esc(t('btn.refresh'))}</button>
+      </div>
+      <div class="bag-warn"><span class="bw-ico">!</span><div><b>${esc(t('bag.warnTitle'))}</b><p>${esc(d.staleSell ? t(d.staleSell === 1 ? 'bag.warnStale1' : 'bag.warnStale', { n: d.staleSell }) : t('bag.warnText'))}</p></div></div>
+      <div class="bag-kpis">
+        <div class="kpi"><div class="k">${esc(t('bag.k.total'))}</div><div class="v">${fe(d.totals.all)} FE</div></div>
+        <div class="kpi"><div class="k">${esc(t('bag.k.sell'))}</div><div class="v pos">${fe(d.totals.sell)} FE</div><div class="s muted">${esc(t('bag.nItems', { n: d.counts.sell }))}</div></div>
+        <div class="kpi"><div class="k">${esc(t('bag.k.low'))}</div><div class="v">${fe(d.totals.low)} FE</div><div class="s muted">${esc(t('bag.nItems', { n: d.counts.low }))}</div></div>
+        <div class="kpi"><div class="k">${esc(t('bag.k.noprice'))}</div><div class="v ${d.counts.noprice ? 'neg' : ''}">${d.counts.noprice}</div><div class="s muted">${esc(t('bag.checkAh'))}</div></div>
+      </div>
+      <div class="tools">
+        ${chip('all', d.counts.all)}${chip('sell', d.counts.sell)}${chip('low', d.counts.low)}${chip('noprice', d.counts.noprice)}${d.counts.variable ? chip('variable', d.counts.variable) : ''}${d.counts.bound ? chip('bound', d.counts.bound) : ''}
+        <label class="muted bag-min">${esc(t('bag.minLabel'))} <input id="bagMin" type="number" min="0" step="0.5" value="${min}" style="width:76px"> FE</label>
+      </div>
+      <table><thead><tr><th>${esc(t('col.item'))}</th><th class="r">${esc(t('col.quantity'))}</th><th class="r">${esc(t('col.unit'))}</th><th class="r">${esc(t('bag.col.stack'))}</th><th>${esc(t('bag.col.price'))}</th><th>${esc(t('bag.col.verdict'))}</th></tr></thead><tbody>
+      ${rows.map((r) => `<tr class="${r.verdict === 'low' || r.verdict === 'bound' ? 'dim' : ''}">
+          <td>${icon(r.img)}${esc(r.name)}</td><td class="r">${nf0.format(r.qty)}</td><td class="r muted" title="${r.verdict === 'variable' ? esc(t('bag.varTip')) : ''}">${r.verdict === 'variable' ? (r.unit ? esc(t('bag.upTo', { p: unit(r.unit) })) : '–') : unit(r.unit)}</td>
+          <td class="r"><b class="${r.verdict === 'sell' ? 'pos' : ''}">${r.unit && r.verdict !== 'variable' ? fe(r.value) : '–'}</b></td>
+          <td class="muted" style="font-size:12px">${r.unit ? `${esc(srcLabel(r.source))}${r.players ? ' · ' + esc(t('prices.players', { n: r.players })) : ''}${r.ts ? ` · <span class="${r.stale ? 'neg' : ''}">${esc(ago(r.ts))}</span>` : ''}` : ''}</td>
+          <td><span class="tag ${VERDICT[r.verdict]}">${esc(t('bag.v.' + r.verdict))}</span></td></tr>`).join('')
+        || `<tr><td colspan="6" class="muted">${esc(t('bag.none'))}</td></tr>`}
+      </tbody></table>
+      ${d.counts.variable ? `<p class="muted" style="margin-top:10px;font-size:12px">${esc(t('bag.varNote', { n: d.counts.variable }))}</p>` : ''}
+      ${d.hidden ? `<p class="muted" style="margin-top:6px;font-size:12px">${esc(t('bag.hidden', { n: d.hidden }))}</p>` : ''}`;
+    v.querySelectorAll('[data-f]').forEach((b) => (b.onclick = () => { filter = b.dataset.f; render(); }));
+    $('bagRefresh').onclick = () => render();
+    $('bagMin').onchange = () => { min = Math.max(0, +$('bagMin').value || 0); try { localStorage.setItem('bagMin', String(min)); } catch {} render(); };
+    if (focus) $('bagMin').focus();
+  }
+  function show() {
+    render();
+    clearInterval(timer);
+    timer = setInterval(() => { if (tab === 'bag') render(); else clearInterval(timer); }, 5000);
+  }
+  return { show };
+})();

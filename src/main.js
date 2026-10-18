@@ -665,6 +665,42 @@ ipcMain.handle('searchPrices', (_e, opts) => {
   const limit = Math.min(2000, +o.limit || 200);
   return { total: rows.length, unknownCount, rows: rows.slice(0, limit) };
 });
+// « Analyser mon sac » (bêta) : chaque objet du sac avec son prix, la valeur du tas et un verdict.
+// Verdicts : sell (le tas vaut au moins le seuil), low (moins), noprice (prix inconnu ou non confirmé), bound (lié, invendable).
+// Compétences : leur prix dépend du niveau, que le log ne donne pas (le prix communautaire est souvent celui d'une version haut niveau).
+// Les légendaires et les organes ont un prix assez fixe : ils restent comptés.
+const VARIABLE_TYPES = new Set(['主动技能', '辅助技能', '崇高辅助技能', '华贵辅助技能', '被动技能', '塔罗斯技能', '始源塔罗斯技能']);
+const isVariablePrice = (it) => VARIABLE_TYPES.has(it.type);
+ipcMain.handle('bagScan', (_e, opts) => {
+  const min = Math.max(0, +((opts && opts.min) ?? 1) || 0);
+  const STALE = 24 * 3600 * 1000; // prix non revu depuis plus d'un jour : à vérifier en jeu
+  const qty = new Map();
+  for (const { id, num } of tracker.slots.values()) if (id !== FE_ID) qty.set(id, (qty.get(id) || 0) + num);
+  let hidden = 0;
+  const rows = [];
+  for (const [id, n] of qty) {
+    if (n <= 0) continue;
+    if (!tracker.visible(id)) { hidden++; continue; }
+    const it = items.get(id);
+    const p = prices.get(id);
+    const bound = /^Bound /i.test(it.name);
+    const unit = p.price || 0;
+    const value = unit * n;
+    const verdict = bound ? 'bound' : isVariablePrice(it) ? 'variable' : (!unit || p.source === 'inconnu' || p.source === 'nonconfirme') ? 'noprice' : value >= min ? 'sell' : 'low';
+    rows.push({ id, name: it.name, img: it.img, qty: n, unit, value: verdict === 'variable' ? 0 : value, source: p.source, ts: p.ts || null, players: p.players || null,
+      stale: !!(p.ts && Date.now() - p.ts > STALE), verdict });
+  }
+  rows.sort((a, b) => b.value - a.value || a.name.localeCompare(b.name));
+  const sum = (v) => rows.filter((r) => r.verdict === v);
+  const total = (l) => l.reduce((x, r) => x + r.value, 0);
+  return {
+    ready: tracker.snapshotReady, fe: tracker.bagQty(FE_ID), hidden, min, rows,
+    totals: { all: total(rows), sell: total(sum('sell')), low: total(sum('low')) },
+    staleSell: rows.filter((r) => r.verdict === 'sell' && (r.stale || !r.ts)).length,
+    counts: { all: rows.length, sell: sum('sell').length, low: sum('low').length, noprice: sum('noprice').length, variable: sum('variable').length, bound: sum('bound').length },
+  };
+});
+
 // « Prix à vérifier » : objets du sac et des drops de la session sans prix, ou avec un prix de plus de 3 jours.
 // Les chercher à l'HdV en jeu remplit notre base de prix pour tout le monde.
 ipcMain.handle('priceTodo', () => {
