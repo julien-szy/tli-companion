@@ -153,6 +153,7 @@ async function alertSound(a) {
       } catch { /* lecture impossible : son synthétique */ }
     }
   }
-  if (a.kind && a.kind.startsWith('tartarus')) tartarusSound(a.kind, vol);
+  if (a.kind === 'star-full') tartarusSound('tartarus-ready', vol); // son de secours si la voix ne se lit pas
+  else if (a.kind && a.kind.startsWith('tartarus')) tartarusSound(a.kind, vol);
   else stockBeep(a.level, vol);
 }

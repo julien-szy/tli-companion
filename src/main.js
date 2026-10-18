@@ -2,7 +2,7 @@ const { app, BrowserWindow, ipcMain, globalShortcut, Tray, Menu, nativeImage, di
 const fs = require('fs');
 const path = require('path');
 const { LogParser } = require('./parser');
-const { Tracker, zoneLabel, TARTARUS_ENTRY, TARTARUS_MAX } = require('./tracker');
+const { Tracker, zoneLabel, TARTARUS_ENTRY, TARTARUS_MAX, STAR_MAX } = require('./tracker');
 const { ItemDb, PriceBook } = require('./prices');
 const { LogWatcher, findLogPath, findGameDir, expectedLogDir } = require('./logwatcher');
 const { JsonStore } = require('./store');
@@ -49,8 +49,9 @@ const DEFAULTS = {
   stockAlerts: true,     // alerte (avec son) quand il reste 10, 5 puis 1 balise / compas / sonde
   tartarusAlerts: true,  // alerte (avec son) quand le compteur Tartarus atteint 36 (entrée possible) puis 48 (plein)
   // Son de chaque alerte : « builtin » (son intégré : bips pour le stock, sons créés pour Tartarus) ou « file:<chemin> » (fichier du joueur).
-  sounds: { tartarusReady: 'builtin', tartarusFull: 'builtin', stock: 'builtin', beacon: 'builtin', beaconEmpty: 'builtin' },
-  volumes: { tartarusReady: 100, tartarusFull: 100, stock: 100, beacon: 100, beaconEmpty: 100 }, // volume de chaque son d'alerte, en %
+  starAlerts: true, // alerte quand les Star Shards d'une région arrivent à 80, et rappel si on lance une carte déjà à 80
+  sounds: { tartarusReady: 'builtin', tartarusFull: 'builtin', stock: 'builtin', beacon: 'builtin', beaconEmpty: 'builtin', starFull: 'builtin' },
+  volumes: { tartarusReady: 100, tartarusFull: 100, stock: 100, beacon: 100, beaconEmpty: 100, starFull: 100 }, // volume de chaque son d'alerte, en %
   minLootValue: 0,       // loot qui vaut moins de X FE pièce : ignoré dans le profit (0 = tout compter)
   shareFarmStats: true,  // stats de farm ANONYMES envoyées à chaque session (désactivable)
   farmStatsNotice: false,
@@ -357,8 +358,8 @@ tracker.on('delta', (e) => {
 
 // ---------------- Sons des alertes ----------------
 // stock = compas, sondes et autres consommables ; beacon = balises (10, 5, dernière) ; beaconEmpty = plus aucune balise.
-const SOUND_KEYS = ['tartarusReady', 'tartarusFull', 'stock', 'beacon', 'beaconEmpty'];
-const BUILTIN_SOUNDS = { tartarusReady: 'tartarus-ready-voice.mp3', tartarusFull: 'tartarus-full.wav', beaconEmpty: 'beacon-empty-voice.mp3' }; // 36 : voix « It's time to Tartarus » (ElevenLabs)
+const SOUND_KEYS = ['tartarusReady', 'tartarusFull', 'stock', 'beacon', 'beaconEmpty', 'starFull'];
+const BUILTIN_SOUNDS = { tartarusReady: 'tartarus-ready-voice.mp3', tartarusFull: 'tartarus-full.wav', beaconEmpty: 'beacon-empty-voice.mp3', starFull: 'star-full-voice.mp3' }; // 36 : voix « It's time to Tartarus » (ElevenLabs)
 // Son à jouer : fichier du joueur, son intégré créé pour l'app (Tartarus) ou bips (stock).
 function soundSpecFor(key) {
   const v = settings.sounds[key] || 'builtin';
@@ -395,6 +396,27 @@ tracker.on('tartarus', ({ prev, value }) => {
   if (kind) sendAlert({ kind: 'tartarus-' + kind, text: tr()('tart.' + kind, { n: value, max: TARTARUS_MAX }), level: kind === 'full' ? 1 : 5, qty: kind === 'full' ? 1 : 5 });
 });
 
+// ---------------- Star Shards (x/80 par région) ----------------
+// Alerte quand une région arrive à 80, et rappel quand on utilise une balise d'une région déjà à 80
+// (au plus une fois toutes les 30 min par région, pour ne pas répéter à chaque carte).
+const starReminded = {};
+function starAlert(region, value, kind) {
+  const name = region || tr()('star.unknownRegion');
+  sendAlert({ kind: 'star-full', text: tr()(kind === 'reached' ? 'star.reached' : 'star.already', { region: name, n: value, max: STAR_MAX }), level: 1, qty: 1 });
+}
+tracker.on('starShard', ({ prev, value, region }) => {
+  if (!settings.starAlerts || prev == null) return;
+  if (prev < STAR_MAX && value >= STAR_MAX) { starAlert(region, value, 'reached'); if (region) starReminded[region] = Date.now(); }
+});
+tracker.on('beaconUsed', ({ region }) => {
+  if (!settings.starAlerts || !region) return;
+  const key = Object.keys(tracker.starShards).find((k) => tracker.starRegion(k) === region);
+  if (!key || tracker.starShards[key] < STAR_MAX) return;
+  if (Date.now() - (starReminded[region] || 0) < 30 * 60000) return;
+  starReminded[region] = Date.now();
+  starAlert(region, tracker.starShards[key], 'already');
+});
+
 // ---------------- Alertes de stock ----------------
 // Objets consommés à l'ouverture des cartes (balises, compas, sondes…) : alerte à 10, 5 puis au dernier.
 const STOCK_LEVELS = [10, 5, 1];
@@ -417,7 +439,7 @@ function checkStock(id) {
 // Son joué par une seule fenêtre : le widget s'il est affiché (en jeu), sinon la fenêtre principale.
 const soundVolume = (key) => Math.min(100, Math.max(0, +((settings.volumes || {})[key] ?? 100))) / 100;
 function sendAlert(alert) {
-  const key = alert.kind === 'tartarus-full' ? 'tartarusFull' : alert.kind === 'tartarus-ready' ? 'tartarusReady'
+  const key = alert.kind === 'star-full' ? 'starFull' : alert.kind === 'tartarus-full' ? 'tartarusFull' : alert.kind === 'tartarus-ready' ? 'tartarusReady'
     : alert.beacon ? (alert.level === 0 ? 'beaconEmpty' : 'beacon') : 'stock';
   alert = { ...alert, soundSpec: soundSpecFor(key), volume: soundVolume(key) };
   const ovShown = overlay && !overlay.isDestroyed() && overlay.isVisible();
@@ -1321,6 +1343,7 @@ ipcMain.handle('action', async (_e, name, arg) => {
     case 'timeMode': settings.timeMode = arg; saveSettings(); break;
     case 'shareMeta': settings.shareMeta = !!arg; saveSettings(); if (arg) uploadRankings(); break;
     case 'stockAlerts': settings.stockAlerts = !!arg; saveSettings(); break;
+    case 'starAlerts': settings.starAlerts = !!arg; saveSettings(); break;
     case 'tartarusAlerts': settings.tartarusAlerts = !!arg; saveSettings(); break;
     case 'soundVolume': if (arg && SOUND_KEYS.includes(arg.key)) { settings.volumes[arg.key] = Math.min(100, Math.max(0, Math.round(+arg.v || 0))); saveSettings(); } break;
     case 'resetSound': if (SOUND_KEYS.includes(arg)) { settings.sounds[arg] = 'builtin'; saveSettings(); } break;

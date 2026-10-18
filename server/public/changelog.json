@@ -1,6 +1,16 @@
 {
   "releases": [
     {
+      "version": "1.0.7",
+      "date": "2026-10-18",
+      "en": [
+        "Star Shards alert: a sound when a region's Star Shards reach 80/80, and a reminder when you open a beacon of a region that is already at 80. The app learns which counter belongs to which region as you play. Can be turned off in Settings."
+      ],
+      "fr": [
+        "Alerte Star Shards : un son quand les Star Shards d'une région arrivent à 80/80, et un rappel quand tu ouvres une balise d'une région déjà à 80. L'app apprend quel compteur correspond à quelle région en jouant. Désactivable dans les Réglages."
+      ]
+    },
+    {
       "version": "1.0.6",
       "date": "2026-10-18",
       "en": [

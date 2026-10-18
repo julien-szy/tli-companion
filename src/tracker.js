@@ -10,6 +10,10 @@ const COST_PROTOS = new Set(['Spv3Open']);
 const IGNORED_PROTOS = new Set(['ResetItemsLayout']); // tri du sac : déplacements seulement
 
 const BEACON_TYPE = '信标';
+// Star Shards : un compteur par région (max 80). Régions connues d'avance, les autres sont apprises en jouant.
+const STAR_PREFIX = 'SpAreaBossPoint_';
+const STAR_MAX = 80;
+const STAR_KNOWN = { SpAreaBossPoint_430127: 'Thunder Wastes' };
 const NO_PROFIT_TYPES = new Set(['英雄追忆']); // souvenirs de héros : affixes aléatoires
 const { FE_ID: FE } = require('./parser'); // Flame Elementium : toujours compté, même sous le seuil
 // Hors carte sans aucune activité dans le log pendant plus de 3 min = AFK.
@@ -46,7 +50,11 @@ class Tracker extends EventEmitter {
     this.lastInitTs = 0;
     this.initPages = new Set();
     this.proto = null;
+    this.starShards = {};         // Star Shards par région (clé du jeu -> valeur)
+    this.lastBeaconRegion = null; // région de la dernière balise utilisée (même hors session)
   }
+
+  starRegion(key) { return ((this.meta.data.starRegions || {})[key]) || STAR_KNOWN[key] || null; }
 
   newSession({ recording = false } = {}) {
     if (this.session && this.session.currentRun) this._endRun(Date.now());
@@ -154,6 +162,20 @@ class Tracker extends EventEmitter {
       case 'enterLevel': return this._onEnterLevel(ev);
       case 'hero': this.heroId = ev.heroId; return;
       case 'consum': {
+        // Star Shards d'une région (« SpAreaBossPoint_430127 » = Thunder Wastes, x/80).
+        if (ev.key.startsWith(STAR_PREFIX)) {
+          const prev = this.starShards[ev.key];
+          this.starShards[ev.key] = ev.value;
+          if (this.replay) return;
+          // Le compteur monte en jouant une carte de la région : on retient quelle région il suit.
+          if (prev != null && ev.value > prev && this.zone && !this.zone.hub && this.lastBeaconRegion) {
+            const known = this.meta.data.starRegions = this.meta.data.starRegions || {};
+            if (known[ev.key] !== this.lastBeaconRegion) { known[ev.key] = this.lastBeaconRegion; this.meta.save(); }
+          }
+          this.emit('starShard', { key: ev.key, prev, value: ev.value, region: this.starRegion(ev.key) });
+          this.emit('changed');
+          return;
+        }
         // Compteur Tartarus (x/48) : gardé même pendant la relecture (état de départ), alerte seulement en direct.
         if (ev.key !== TARTARUS_KEY) return;
         const prev = this.tartarus;
@@ -224,6 +246,14 @@ class Tracker extends EventEmitter {
   _delta(id, delta, ts) {
     if (this.replay || !delta) return;
     if (this.proto && IGNORED_PROTOS.has(this.proto)) return;
+    // Balise utilisée (même hors session) : sert à relier les Star Shards à une région et au rappel « déjà à 80 ».
+    if (delta < 0) {
+      const it = this.items.get(+id);
+      if (it && it.type === BEACON_TYPE) {
+        const m = /^(.*?)\s*Beacon\s*\(Timemark/i.exec(it.name || '');
+        if (m) { this.lastBeaconRegion = m[1].trim(); this.emit('beaconUsed', { region: this.lastBeaconRegion }); }
+      }
+    }
     // Hors session de farm : le sac est suivi, mais rien n'est compté (ni drops, ni coûts, ni profit).
     if (!this.session.recording) return;
     // Souvenirs de héros : pas comptés du tout (ni drop, ni profit), comme dans Analyser mon sac.
@@ -460,4 +490,4 @@ function shortName(path) {
   return zoneLabel(parts[parts.length - 1] || path);
 }
 
-module.exports = { Tracker, zoneLabel, TARTARUS_ENTRY, TARTARUS_MAX };
+module.exports = { Tracker, zoneLabel, TARTARUS_ENTRY, TARTARUS_MAX, STAR_MAX };
