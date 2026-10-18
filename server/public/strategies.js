@@ -8,8 +8,15 @@ $('rows').innerHTML = `<tr><td colspan="9" class="empty">${esc(t('loading'))}</t
 const tagName = (k) => (k ? t('tag_' + k) : '');
 const mapLabel = (region, tier) => `${region || '?'}${tier ? ` · T${tier}` : ''}`;
 
+// Classes : numéro du jeu -> « Héros — Trait » (même correspondance que la page Méta).
+let HERO_LIST = [], HERO_MAP = {};
+const heroName = (id, fallback) => {
+  const h = HERO_LIST.find((x) => x.gameId === +id) || (HERO_MAP[id] ? HERO_LIST.find((x) => x.key === HERO_MAP[id].key) : null);
+  return h ? heroLabel(h) : fallback || t('unknownClass', { id });
+};
 async function loadFilters() {
-  const [s, list] = await Promise.all([api('/api/stats'), heroes().catch(() => [])]);
+  const [s, list, hm] = await Promise.all([api('/api/stats'), heroes().catch(() => []), api('/api/heromap').catch(() => ({ map: {} }))]);
+  HERO_LIST = list || []; HERO_MAP = hm.map || {};
   const heroName = (h) => { const x = list.find((y) => y.gameId === h.hero_id); return x ? heroLabel(x) : h.name; };
   $('totals').textContent = t('totals', { reports: s.totals.reports, players: s.totals.players });
   const add = (id, html) => $(id).insertAdjacentHTML('beforeend', html);
@@ -52,7 +59,7 @@ async function load() {
         <div><span>${esc(t('dMapsH'))}</span><b>${nf1.format(b.mapsPerHour)}</b></div>
         <div><span>${esc(t('dMapTime'))}</span><b>${b.avgMapMin != null ? nf1.format(b.avgMapMin) + ' min' : '–'}</b></div>
         <div><span>${esc(t('dEff'))}</span><b>${b.efficiency != null ? pctf(b.efficiency) : '–'}</b></div>
-        <div><span>${esc(t('dClasses'))}</span><b>${esc(b.heroes.map((h) => h.name || '#' + h.id).join(', ') || '–')}</b></div>
+        <div><span>${esc(t('dClasses'))}</span><b>${esc(b.heroes.map((h) => heroName(h.id, h.name)).join(', ') || '–')}</b></div>
       </div>
       <div class="scols">
         <div><h4>${esc(t('dMech'))}</h4><ul class="mech">${mech}</ul>
@@ -87,7 +94,7 @@ async function load() {
 
   $('rows').innerHTML = reports.map((r) => `<tr class="click" data-id="${esc(r.id)}">
       <td><b>${esc(r.title || r.main_map || t('farmSession'))}</b><br><span class="muted">${esc(mapLabel(r.region, r.timemark))}${r.strategy_tag ? ' · ' + esc(tagName(r.strategy_tag)) : ''}</span></td>
-      <td>${esc(r.hero_display || '–')}</td><td class="hide-sm muted">${esc(r.author)}${r.server_region ? `<br><span style="font-size:12px">${esc(r.server_region)}</span>` : ''}</td>
+      <td>${esc(r.hero_id != null ? heroName(r.hero_id, r.hero_display) : '–')}</td><td class="hide-sm muted">${esc(r.author)}${r.server_region ? `<br><span style="font-size:12px">${esc(r.server_region)}</span>` : ''}</td>
       <td class="r">${r.runs}</td><td class="r hide-sm">${dur(r.real_ms)}</td>
       <td class="r ${cls(r.profit)}">${fe(r.profit, true)}</td><td class="r"><b>${fe(r.per_hour_real)}</b></td>
       <td class="r hide-sm muted">${r.likes || ''}</td></tr>`).join('')
