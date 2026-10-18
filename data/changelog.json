@@ -5,6 +5,18 @@
   },
   "releases": [
     {
+      "version": "1.0.1",
+      "date": "2026-10-18",
+      "en": [
+        "Leveling and story zones are no longer counted as maps: only maps opened with a Beacon (and Tartarus) count in your maps, history and the global strategy stats. Loot picked up elsewhere goes to \"outside maps\". No need to add zones to the hideout list anymore.",
+        "Updated to the latest Electron (44) for the newest security fixes."
+      ],
+      "fr": [
+        "Les zones de leveling et d'histoire ne comptent plus comme des cartes : seules les cartes ouvertes avec une Beacon (et Tartarus) comptent dans tes cartes, ton historique et les stats de stratégie. Le butin ramassé ailleurs va dans « hors cartes ». Plus besoin d'ajouter des zones à la liste du repaire.",
+        "Passage à la dernière version d'Electron (44) pour les derniers correctifs de sécurité."
+      ]
+    },
+    {
       "version": "1.0.0",
       "date": "2026-10-18",
       "en": [

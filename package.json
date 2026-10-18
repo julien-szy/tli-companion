@@ -1,6 +1,6 @@
 {
   "name": "tli-profit-tracker",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "TLI Companion - live profit tracker, farm sessions, strategies and class meta for Torchlight: Infinite",
   "main": "src/main.js",
   "scripts": {
@@ -51,8 +51,8 @@
     ]
   },
   "devDependencies": {
-    "electron": "^33.4.11",
-    "electron-builder": "^25.1.8"
+    "electron": "^44.9.0",
+    "electron-builder": "^26.15.3"
   },
   "dependencies": {
     "electron-updater": "^6.8.9"

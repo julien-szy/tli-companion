@@ -241,7 +241,14 @@ class Tracker extends EventEmitter {
     // Nom lisible : la balise consommée à l'ouverture (ex. « Thunder Wastes Beacon (Timemark 7) »).
     for (const id of Object.keys(run.cost)) {
       const it = this.items.get(+id);
-      if (it.type === BEACON_TYPE && run.cost[id] < 0) { run.name = it.name; break; }
+      if (it.type === BEACON_TYPE && run.cost[id] < 0) { run.name = it.name; run.beacon = true; break; }
+    }
+    // Pas de balise et zone inconnue (leveling, histoire, carte d'un ami) : ce n'est pas une carte de farm.
+    // Le butin tombe alors dans « hors cartes » et rien n'est compté dans les cartes ni les stats.
+    if (!run.beacon && !ZONE_NAMES[String(path).split("/").pop()]) {
+      s.pendingCost = run.cost;
+      this.pendingNode = run.node;
+      return;
     }
     s.currentRun = run;
   }

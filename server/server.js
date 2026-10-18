@@ -277,6 +277,8 @@ route('POST', /^\/api\/stats\/farm$/, async (req) => {
   const existing = db.prepare('SELECT contributor FROM farm_stats WHERE id = ?').get(s.id);
   if (existing && existing.contributor !== contributor) throw new HttpError(403, 'not yours');
   const { region, timemark } = parseMapName(s.mainMap);
+  // Seules les vraies cartes comptent (ouvertes avec une balise, ou Tartarus) : le leveling des anciennes versions est ignoré.
+  if (timemark == null && region !== 'Tartarus') return { ok: true, ignored: true };
   const cons = s.consumables.length ? '|' + s.consumables.map((c) => c.id).join('|') + '|' : null;
   db.prepare(`INSERT INTO farm_stats (id, contributor, created_at, hero_id, main_map, region, timemark, strategy_tag, server_region, season,
       runs, real_ms, map_ms, afk_ms, profit, per_hour, consumables, json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -288,7 +290,7 @@ route('POST', /^\/api\/stats\/farm$/, async (req) => {
 });
 
 function statsFilters(q) {
-  const where = ['1 = 1'];
+  const where = ['1 = 1', "(timemark IS NOT NULL OR region = 'Tartarus')"];
   const args = [];
   if (q.get('hero')) { where.push('hero_id = ?'); args.push(+q.get('hero')); }
   if (q.get('region')) { where.push('region = ?'); args.push(q.get('region')); }
