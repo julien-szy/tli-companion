@@ -5,6 +5,16 @@
   },
   "releases": [
     {
+      "version": "1.0.8",
+      "date": "2026-10-18",
+      "en": [
+        "During a farm session, every zone outside the hideout now counts as a map: bosses, oases and any area entered without a beacon are tracked with their loot, and they show up in the global strategy stats too."
+      ],
+      "fr": [
+        "Pendant une session de farm, toute zone hors repaire compte maintenant comme une carte : boss, oasis et toute zone ouverte sans balise sont suivis avec leur butin, et apparaissent aussi dans les stats de stratégie globales."
+      ]
+    },
+    {
       "version": "1.0.7",
       "date": "2026-10-18",
       "en": [

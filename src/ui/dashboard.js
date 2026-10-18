@@ -561,14 +561,12 @@ let histCache = [];
 function renderHistory(hist) {
   if (hist) {
     histCache = hist;
-    const maps = hist.filter((r) => /Beacon\s*\(Timemark/i.test(r.name || '') || r.name === 'Tartarus').map((r) => parseMap(r.name));
+    const maps = hist.map((r) => parseMap(r.name));
     fillFilter($('hfTier'), uniq(maps.map((m) => m.tier)).sort((a, b) => b - a), 'qf.allTiers', (v) => `Timemark ${v}`);
     fillFilter($('hfMap'), uniq(maps.map((m) => m.region)).sort(), 'qf.allMaps');
   }
   const tier = $('hfTier').value, map = $('hfMap').value;
-  // Anciennes zones de leveling (sans balise) : gardées dans le fichier mais plus affichées.
-  const isMap = (r) => /Beacon\s*\(Timemark/i.test(r.name || '') || r.name === 'Tartarus';
-  const list = histCache.filter((r) => { const m = parseMap(r.name); return isMap(r) && (!tier || m.tier === tier) && (!map || m.region === map); });
+  const list = histCache.filter((r) => { const m = parseMap(r.name); return (!tier || m.tier === tier) && (!map || m.region === map); });
   $('hfCount').textContent = list.length === histCache.length ? '' : t('qf.count', { n: list.length, total: histCache.length });
   // Groupé par jour : une ligne d'en-tête (jour, nombre de cartes, total) puis l'heure seule.
   const days = new Map();
