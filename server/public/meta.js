@@ -18,9 +18,11 @@ async function init() {
   SNAPS = snapshots;
   const q = new URLSearchParams(location.search);
   const legacy = (q.get('src') || '').split('|');
-  const want = { server: q.get('server') || legacy[0], season: q.get('season') || (legacy[1] && String(Math.floor(legacy[1] / 100))), board: q.get('board') || legacy[2], ssf: q.get('mode') || (legacy[1] && (legacy[1] % 100 === 21 ? 'ssf' : 'sc')) };
+  // La date de classement n'est jamais reprise de l'adresse : on arrive toujours sur la plus récente.
+  const want = { server: q.get('server') || legacy[0], season: q.get('season') || (legacy[1] && String(Math.floor(legacy[1] / 100))), ssf: q.get('mode') || (legacy[1] && (legacy[1] % 100 === 21 ? 'ssf' : 'sc')) };
   for (const k of FILTERS) {
-    $('f_' + k).onchange = () => { fillFilters({}); load(); };
+    // Changer un autre filtre revient à la date la plus récente ; choisir une date la garde.
+    $('f_' + k).onchange = () => { fillFilters(k === 'board' ? { board: $('f_board').value } : {}); load(); };
   }
   fillFilters(want);
   load();
@@ -52,7 +54,7 @@ function fillFilters(want) {
     else if (k === 'season') vals.sort((a, b) => b - a);
     else if (k === 'board') { const at = (v) => Math.max(...pool.filter((s) => String(s.mode) === v).map((s) => s.capturedAt)); vals.sort((a, b) => at(b) - at(a)); }
     else vals.sort();
-    const prev = want[k] ?? sel.value;
+    const prev = k === 'board' ? want.board : want[k] ?? sel.value;
     sel.innerHTML = vals.map((v) => `<option value="${esc(v)}">${esc(labelOf[k](v, pool))}</option>`).join('');
     sel.value = vals.includes(prev) ? prev : vals[0];
     sel.disabled = vals.length < 2;
@@ -64,7 +66,7 @@ let cur = null;
 const curParams = () => `server=${encodeURIComponent(cur.server)}&season=${cur.season}&mode=${cur.mode}`;
 
 async function load() {
-  history.replaceState(null, '', '?' + FILTERS.map((k) => `${k === 'ssf' ? 'mode' : k}=${encodeURIComponent($('f_' + k).value)}`).join('&'));
+  history.replaceState(null, '', '?' + FILTERS.filter((k) => k !== 'board').map((k) => `${k === 'ssf' ? 'mode' : k}=${encodeURIComponent($('f_' + k).value)}`).join('&'));
   $('content').innerHTML = `<div class="empty">${esc(t('loading'))}</div>`;
   snap = await api(`/api/meta?${curParams()}&names=1`);
   $('srcInfo').textContent = t('metaInfo2', { total: nf0.format(snap.total), servers: snap.servers.join(', '), date: new Date(cur.capturedAt).toLocaleString(LOCALE, { dateStyle: 'medium', timeStyle: 'short' }) });
