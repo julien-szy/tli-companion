@@ -5,9 +5,31 @@ let seenFeed = null;
 let refreshing = false;
 let openReportId = null; // fiche de session affichée, pour la retraduire si la langue change
 
+// Menu : un rail de familles à gauche, et les pages de la famille en sous-onglets en haut.
+// Ajouter une page = l'ajouter à une famille ici, sans toucher au rail.
+const GROUPS = {
+  home: ['home'],
+  farm: ['live', 'sessions', 'runs', 'items', 'history'],
+  char: ['build', 'meta', 'advisor'],
+  market: ['prices'],
+  settings: ['settings'],
+};
+const groupOf = (name) => Object.keys(GROUPS).find((g) => GROUPS[g].includes(name)) || 'home';
+const lastSub = {};
+function renderSubTabs(g, name) {
+  const bar = $('subTabs');
+  const tabs = GROUPS[g];
+  bar.hidden = tabs.length < 2;
+  bar.innerHTML = tabs.length < 2 ? '' : tabs.map((x) => `<button data-tab="${x}" class="${x === name ? 'on' : ''}">${esc(t('tab.' + x))}</button>`).join('');
+  bar.querySelectorAll('button').forEach((b) => (b.onclick = () => showTab(b.dataset.tab)));
+}
 function showTab(name) {
+  if (GROUPS[name]) name = lastSub[name] || GROUPS[name][0];
   tab = name;
-  document.querySelectorAll('nav button').forEach((x) => x.classList.toggle('on', x.dataset.tab === name));
+  const g = groupOf(name);
+  lastSub[g] = name;
+  document.querySelectorAll('aside.side button[data-grp]').forEach((x) => x.classList.toggle('on', x.dataset.grp === g));
+  renderSubTabs(g, name);
   document.querySelectorAll('section').forEach((s) => s.classList.toggle('on', s.id === name));
   // Les compteurs de session ne s'affichent que sur les pages de jeu.
   $('kpiBar').classList.toggle('hidden', !['live', 'runs', 'items', 'history'].includes(name));
@@ -19,7 +41,7 @@ function showTab(name) {
   if (name === 'advisor') showAdvisor();
   refresh(true);
 }
-document.querySelectorAll('nav button[data-tab]').forEach((b) => (b.onclick = () => showTab(b.dataset.tab)));
+document.querySelectorAll('aside.side button[data-grp]').forEach((b) => (b.onclick = () => showTab(b.dataset.grp)));
 $('supportBtn').onclick = () => tli.openSupport();
 // « Donner mon avis » : texte brut seulement (type, message, contact facultatif), envoyé à tlicompanion.com.
 $('feedbackBtn').onclick = () => {
@@ -421,6 +443,7 @@ tli.onState((s) => {
   }
   $('zoneNow').textContent = s.zone.name;
   recording = s.recording;
+  document.querySelector('aside.side button[data-grp="farm"]').classList.toggle('rec', !!recording);
   $('farmToggle').textContent = recording ? t('sess.stop', { time: dur(ss.realTimeMs) }) : t('sess.start');
   $('farmToggle').style.background = recording ? 'var(--neg)' : '';
   $('heroHelp').textContent = t('set.heroHelp', { id: s.hero ? s.hero.id : t('set.heroNotSeen') });
@@ -435,7 +458,7 @@ tli.onState((s) => {
   const hk = s.hero && s.hero.key;
   if ($('meAvatar').dataset.k !== String(hk)) {
     $('meAvatar').dataset.k = String(hk);
-    tli.getHeroes().then((hs) => { const h = hs.find((x) => x.key === hk); $('meAvatar').innerHTML = h ? `<img class="portrait" style="width:30px;height:30px" src="${esc(h.portrait)}">` : ''; });
+    tli.getHeroes().then((hs) => { const h = hs.find((x) => x.key === hk); $('meAvatar').innerHTML = h ? `<img class="portrait" src="${esc(h.portrait)}">` : esc((s.settings.server.name || '?').slice(0, 1).toUpperCase()); });
   }
   if (tab === 'home') Home.update(s);
   Home.onboarding(s);
@@ -477,7 +500,7 @@ function runRow(r, current) {
   const perH = r.durationMs > 30000 ? r.profit / (r.durationMs / 3600000) : 0;
   const itemsTxt = r.items.slice(0, 12).map((i) => `${esc(i.name)} <b>${qty(i.qty)}</b> <span class="${cls(i.value)}">${fe(i.value, true)}</span>`).join('<span>·</span>');
   return `<tr><td class="muted">${current ? `<span class="pos">${esc(t('runs.current'))}</span>` : clock(r.startedAt)}</td>
-    <td><details class="run"><summary>${esc(r.name)} <span class="muted">${r.zones.length > 1 ? esc(t('runs.zones', { n: r.zones.length - 1 })) : ''}</span></summary><div class="runitems">${itemsTxt || esc(t('runs.noItems'))}</div></details></td>
+    <td><details class="run"><summary>${mapLabel(r.name)} <span class="muted">${r.zones.length > 1 ? esc(t('runs.zones', { n: r.zones.length - 1 })) : ''}</span></summary><div class="runitems">${itemsTxt || esc(t('runs.noItems'))}</div></details></td>
     <td class="r">${dur(r.durationMs)}</td><td class="r pos">${fe(r.loot)}</td><td class="r neg">${fe(r.cost)}</td>
     <td class="r ${cls(r.profit)}"><b>${fe(r.profit, true)}</b></td><td class="r muted">${fe(perH)}</td></tr>`;
 }
@@ -507,9 +530,16 @@ function renderHistory(hist) {
   const tier = $('hfTier').value, map = $('hfMap').value;
   const list = histCache.filter((r) => { const m = parseMap(r.name); return (!tier || m.tier === tier) && (!map || m.region === map); });
   $('hfCount').textContent = list.length === histCache.length ? '' : t('qf.count', { n: list.length, total: histCache.length });
-  $('histList').innerHTML = list.slice().reverse().slice(0, 1000).map((r) => {
-    const perH = r.durationMs > 30000 ? r.profit / (r.durationMs / 3600000) : 0;
-    return `<tr><td class="muted">${dateTime(r.startedAt)}</td><td>${esc(r.name)}</td><td class="r">${dur(r.durationMs)}</td><td class="r ${cls(r.profit)}">${fe(r.profit, true)}</td><td class="r muted">${fe(perH)}</td></tr>`;
+  // Groupé par jour : une ligne d'en-tête (jour, nombre de cartes, total) puis l'heure seule.
+  const days = new Map();
+  for (const r of list.slice().reverse().slice(0, 1000)) { const k = new Date(r.startedAt).toDateString(); if (!days.has(k)) days.set(k, []); days.get(k).push(r); }
+  $('histList').innerHTML = [...days.values()].map((rs) => {
+    const total = rs.reduce((n, r) => n + r.profit, 0);
+    return `<tr class="day"><td colspan="5"><b>${esc(dayLabel(rs[0].startedAt))}</b> · ${esc(t(rs.length === 1 ? 'day.map1' : 'day.maps', { n: rs.length }))} · <span class="${cls(total)}">${fe(total, true)} FE</span></td></tr>`
+      + rs.map((r) => {
+        const perH = r.durationMs > 30000 ? r.profit / (r.durationMs / 3600000) : 0;
+        return `<tr><td class="muted">${timeOnly(r.startedAt)}</td><td>${mapLabel(r.name)}</td><td class="r muted">${dur(r.durationMs)}</td><td class="r ${cls(r.profit)}">${fe(r.profit, true)}</td><td class="r">${fe(perH)}</td></tr>`;
+      }).join('');
   }).join('') || `<tr><td colspan="5" class="muted">${esc(t('history.empty'))}</td></tr>`;
 }
 

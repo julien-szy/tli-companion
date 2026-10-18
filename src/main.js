@@ -1319,7 +1319,7 @@ async function debugScreenshots(dir) {
   setCollapsed(false);
   openDashboard(); await wait(2500);
   fs.writeFileSync(path.join(dir, 'dashboard-live.png'), (await dashboard.webContents.capturePage()).toPNG());
-  await dashboard.webContents.executeJavaScript("document.querySelector('[data-tab=runs]').click()"); await wait(1200);
+  await dashboard.webContents.executeJavaScript("showTab('runs')"); await wait(1200);
   fs.writeFileSync(path.join(dir, 'dashboard-runs.png'), (await dashboard.webContents.capturePage()).toPNG());
   if (tracker.session.recording) {
     stopFarm('Test simulation'); await wait(2000);
@@ -1350,7 +1350,7 @@ async function debugScreenshots(dir) {
     });
     settings.activeBuild = b.id;
     broadcast();
-    await dashboard.webContents.executeJavaScript("document.querySelector('[data-tab=build]').click()"); await wait(1200);
+    await dashboard.webContents.executeJavaScript("showTab('build')"); await wait(1200);
     await shot('build-list.png');
     await dashboard.webContents.executeJavaScript(`document.querySelector('#buildView tr.click').click()`); await wait(1500);
     await shot('build-detail.png');
@@ -1415,14 +1415,14 @@ async function debugScreenshots(dir) {
   }
   if (process.env.TLI_NOLOG) {
     settings.onboarded = true; broadcast();
-    await dashboard.webContents.executeJavaScript("document.querySelector('[data-tab=home]').click()"); await wait(1500);
+    await dashboard.webContents.executeJavaScript("showTab('home')"); await wait(1500);
     fs.writeFileSync(path.join(dir, 'home-nolog.png'), (await dashboard.webContents.capturePage()).toPNG());
   }
   // Captures de contrôle : un onglet précis (TLI_TAB) et une expression à évaluer (TLI_EVAL), avec ou sans log.
   if (process.env.TLI_TAB || process.env.TLI_EVAL) {
     settings.onboarded = true; broadcast();
     if (process.env.TLI_TAB) {
-      await dashboard.webContents.executeJavaScript(`document.querySelector('[data-tab=${process.env.TLI_TAB}]').click()`); await wait(1200);
+      await dashboard.webContents.executeJavaScript(`showTab('${process.env.TLI_TAB}')`); await wait(1200);
       fs.writeFileSync(path.join(dir, `tab-${process.env.TLI_TAB}.png`), (await dashboard.webContents.capturePage()).toPNG());
     }
     if (process.env.TLI_EVAL) console.log('EVAL', JSON.stringify(await dashboard.webContents.executeJavaScript(process.env.TLI_EVAL)));
@@ -1449,7 +1449,7 @@ async function debugScreenshots(dir) {
     const shot = async (name) => fs.writeFileSync(path.join(dir, name), (await dashboard.webContents.capturePage()).toPNG());
     settings.betaAi = true; aiKey.set('');
     settings.onboarded = true; broadcast();
-    await dashboard.webContents.executeJavaScript("document.querySelector('[data-tab=advisor]').click()"); await wait(1200);
+    await dashboard.webContents.executeJavaScript("showTab('advisor')"); await wait(1200);
     await shot('ai-key.png');
     aiKey.set('sk-ant-api03-fausse-cle-de-test-0000000000');
     await dashboard.webContents.executeJavaScript('showAdvisor()'); await wait(1000);
@@ -1462,7 +1462,7 @@ async function debugScreenshots(dir) {
   }
   if (process.env.TLI_META_TEST) {
     const shot = async (name) => fs.writeFileSync(path.join(dir, name), (await dashboard.webContents.capturePage()).toPNG());
-    await dashboard.webContents.executeJavaScript("document.querySelector('[data-tab=meta]').click()"); await wait(1500);
+    await dashboard.webContents.executeJavaScript("showTab('meta')"); await wait(1500);
     await shot('meta-overview.png');
     // Vote de test : le numéro de la première classe -> une classe de la liste.
     await dashboard.webContents.executeJavaScript(`(document.querySelector('#metaView tr[data-hero="1001"]') || document.querySelector('#metaView tr[data-hero]')).click()`); await wait(1500);
@@ -1471,13 +1471,13 @@ async function debugScreenshots(dir) {
     await shot('meta-players.png');
     await dashboard.webContents.executeJavaScript("document.querySelector('#mPlayers tr[data-pl]').click()"); await wait(800);
     await shot('meta-player-open.png');
-    await dashboard.webContents.executeJavaScript("document.querySelector('[data-tab=home]').click()"); await wait(2500);
+    await dashboard.webContents.executeJavaScript("showTab('home')"); await wait(2500);
     await shot('home-carousel.png');
     await dashboard.webContents.executeJavaScript("const b = document.getElementById('cDetails'); if (b) b.click()"); await wait(800);
     await shot('home-profile.png');
-    await dashboard.webContents.executeJavaScript("const c = document.getElementById('pmClose'); if (c) c.click(); document.querySelector('[data-tab=advisor]').click()"); await wait(600);
+    await dashboard.webContents.executeJavaScript("const c = document.getElementById('pmClose'); if (c) c.click(); showTab('advisor')"); await wait(600);
     await shot('advisor.png');
-    await dashboard.webContents.executeJavaScript("document.querySelector('[data-tab=build]').click()"); await wait(600);
+    await dashboard.webContents.executeJavaScript("showTab('build')"); await wait(600);
     await shot('build-soon.png');
   }
   app.quit();

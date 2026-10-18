@@ -56,20 +56,21 @@ const Home = (() => {
     if (!top.length) return `<p class="empty-cta">${esc(t('h.noTop'))}</p>`;
     const p = top[slide];
     const main = p.active[0];
-    return `<div class="carousel">
-        <button class="btn cnav" id="cPrev" ${slide === 0 ? 'disabled' : ''}>‹</button>
+    return `<div class="chead"><span class="muted">${slide + 1} / ${top.length}</span>
+        <button class="btn round" id="cPrev" ${slide === 0 ? 'disabled' : ''} aria-label="‹">‹</button>
+        <button class="btn round" id="cNext" ${slide >= top.length - 1 ? 'disabled' : ''} aria-label="›">›</button></div>
+      <div class="carousel">
         <div class="cslide card" style="margin:0;background:var(--panel2)">
           <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap">
             <div><span class="muted">#${slide + 1}</span> <span class="cname">${p.name ? esc(p.name) : esc(t('m.hiddenPlayer'))}</span>
               <div class="muted">${esc(t('m.level'))} ${p.level} · <b style="color:var(--text)">${p.dps >= 1e6 ? nf1.format(p.dps / 1e6) + "M" : p.dps >= 1e3 ? nf1.format(p.dps / 1e3) + "k" : nf0.format(p.dps)} DPS</b>${p.server ? ' · ' + esc(p.server) : ''}</div></div>
-            <button class="btn primary" id="cDetails">${esc(t('h.details'))}</button>
+            <button class="btn ghost" id="cDetails">${esc(t('h.details'))}</button>
           </div>
           ${main ? `<div class="cline"><span class="muted" style="min-width:90px">${esc(t('h.mainSkill'))}</span>${main.img ? `<img src="${esc(main.img)}" alt="">` : ''}<b>${esc(main.name)}</b>
             ${main.supports.map((x) => (x.img ? `<img src="${esc(x.img)}" title="${esc(x.name)}" alt="">` : '')).join('')}</div>` : ''}
           <div class="cline"><span class="muted" style="min-width:90px">${esc(t('m.legendaries'))}</span>${p.uniques.map((u) => (u.img ? `<img src="${esc(u.img)}" title="${esc(u.name)}" alt="">` : `<span class="chip">${esc(u.name)}</span>`)).join('')}</div>
           <div class="cline"><span class="muted" style="min-width:90px">${esc(t('m.talents'))}</span>${(p.talents || []).filter((x) => x.name).map((x) => (x.img ? `<img src="${esc(x.img)}" title="${esc(x.name)}" alt="">` : '')).join('')}</div>
         </div>
-        <button class="btn cnav" id="cNext" ${slide >= top.length - 1 ? 'disabled' : ''}>›</button>
       </div>
       <div class="cdots">${top.map((_, i) => `<i class="${i === slide ? 'on' : ''}"></i>`).join('')}</div>`;
   }
@@ -109,10 +110,18 @@ const Home = (() => {
           <button class="btn primary" id="hPickLog">${esc(t('h.pickLog'))}</button>
           ${st.gameDir ? `<button class="btn" id="hOpenLog">${esc(t('h.openLogDir'))}</button>` : ''}
           <span class="muted" style="align-self:center;font-size:12px">${esc(t('h.autoRetry'))}</span></div></div>` : '';
-    const adv = s.advice;
+    const timeMs = s.timeMode === 'map' ? ss.mapTimeMs : ss.realTimeMs;
+    const last = s.current || s.lastRun;
+    const tt = s.tartarus;
+    const I = {
+      play: '<svg viewBox="0 0 24 24"><path d="M7 4l13 8-13 8z"/></svg>',
+      stop: '<svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>',
+      widget: '<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M8 21h8"/></svg>',
+      list: '<svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>',
+    };
     root().innerHTML = `
       <div class="hello">
-        ${portrait(key, 52)}
+        ${portrait(key, 46)}
         <div><h1>${esc(name ? t('h.helloName', { name }) : t('h.hello'))}</h1>
           <div class="muted">${esc(s.hero ? s.hero.name : t('h.noClassYet'))}</div></div>
         <div class="chips" style="margin-left:auto">
@@ -122,30 +131,44 @@ const Home = (() => {
         </div>
       </div>
       ${setup}
-      <div class="actions">
-        <button class="btn primary big" id="hFarm">${esc(s.recording ? t('sess.stop', { time: dur(ss.realTimeMs) }) : t('sess.start'))}</button>
-        <button class="btn big" id="hWidget">${esc(s.overlayVisible ? t('h.hideOverlay') : t('h.showOverlay'))}</button>
-        <button class="btn big" data-go="meta">${esc(t('h.seeMeta'))}</button>
-        <button class="btn big" data-go="build">${esc(t('h.myBuilds'))}</button>
+      <section class="sess-hero ${s.recording ? 'rec' : ''}">
+        <div class="sess-main">
+          <div class="sess-label"><span class="dot"></span>${esc(s.recording ? t('h.recording', { time: dur(ss.realTimeMs) }) : t('h.session'))}</div>
+          <div class="sess-profit ${cls(ss.profit)}">${fe(ss.profit, true)}<small>FE</small></div>
+          <div class="sess-kpis">
+            <div><span>${esc(t('k.perHour'))}</span><b>${fe(ss.perHour)}</b></div>
+            <div><span>${esc(t('k.maps'))}</span><b>${ss.runs}</b></div>
+            <div><span>${esc(t('k.time'))}</span><b>${dur(timeMs)}</b></div>
+            <div><span>${esc(t('k.avg'))}</span><b class="${cls(ss.avgPerRun)}">${ss.runs ? fe(ss.avgPerRun, true) : '–'}</b></div>
+          </div>
+          <div class="sess-foot muted">
+            <span>${esc(t('ov.bagValue'))} <b>${s.netWorth != null ? fe(s.netWorth) + ' FE' : '–'}</b></span>
+            ${ss.efficiency != null ? `<span>${esc(t('k.eff'))} <b>${Math.round(ss.efficiency * 100)} %</b></span>` : ''}
+            ${tt ? `<span>Tartarus <b class="${tt.value >= tt.max ? 'neg' : tt.value >= tt.entry ? 'pos' : ''}">${tt.value}/${tt.max}</b></span>` : ''}
+          </div>
+        </div>
+        <div class="sess-side">
+          <button class="btn hero-cta ${s.recording ? 'stop' : 'primary'}" id="hFarm">${s.recording ? I.stop : I.play}<span>${esc(s.recording ? t('h.stopShort') : t('sess.start'))}</span></button>
+          <button class="btn ghost" id="hWidget">${I.widget}<span>${esc(s.overlayVisible ? t('h.hideOverlay') : t('h.showOverlay'))}</span></button>
+          <button class="btn ghost" data-go="live">${I.list}<span>${esc(t('h.liveDetails'))}</span></button>
+        </div>
+      </section>
+      <div class="home-row">
+        <div class="card hcard">
+          <h2>${esc(t(s.current ? 'ov.currentMap' : 'ov.lastMap'))} <a data-go="history">${esc(t('h.history'))} →</a></h2>
+          ${last ? `<div class="lastmap"><b>${esc(last.name)}</b><span class="${cls(last.profit)} lm-profit">${fe(last.profit, true)} FE</span></div>
+            <div class="lm-sub muted"><span>${dur(last.durationMs)}</span><span>${esc(t('ov.costOf', { fe: fe(last.cost, true) }))}</span></div>`
+            : `<p class="muted">${esc(t('ov.waiting'))}</p>`}
+        </div>
+        <div class="card hcard">
+          <h2>${esc(t('ov.recentDrops'))} <a data-go="live">${esc(t('h.details'))} →</a></h2>
+          <div class="drops">${s.recent.slice(0, 5).map((e) => `<div class="drop">${icon(e.img)}<span class="dn">${esc(e.name)}</span><span class="muted">${qty(e.delta)}</span><b class="${cls(e.value)}">${fe(e.value, true)}</b></div>`).join('')
+            || `<p class="muted">${esc(t('h.noDrops'))}</p>`}</div>
+        </div>
       </div>
-      <div class="homegrid">
-        <div class="card hcard"><h2>${esc(t('h.session'))} <a data-go="live">${esc(t('h.details'))} →</a></h2>
-          <div class="bignum ${cls(ss.profit)}">${fe(ss.profit, true)} <span class="muted" style="font-size:14px">FE</span></div>
-          <div class="kv">
-            <div><div class="k">${esc(t('k.perHour'))}</div><div class="v">${fe(ss.perHour)}</div></div>
-            <div><div class="k">${esc(t('k.maps'))}</div><div class="v">${ss.runs}</div></div>
-            <div><div class="k">${esc(t('k.time'))}</div><div class="v">${dur(s.timeMode === 'map' ? ss.mapTimeMs : ss.realTimeMs)}</div></div>
-            <div><div class="k">${esc(t('ov.bagValue'))}</div><div class="v">${s.netWorth != null ? fe(s.netWorth) + ' FE' : '–'}</div></div>
-          </div></div>
-        <div class="card hcard"><h2>${esc(t('h.nextBuy'))}</h2>${comingSoon(t('soon.purchaseTitle'), t('soon.purchaseText'), true)}</div>
-        <div class="card hcard" style="grid-column:1/-1"><h2>${esc(t('h.myClassMeta'))} <a data-go="meta">${esc(t('h.seeMeta'))} →</a></h2>
-          ${s.hero ? (metaCard.html ? metaCard.html + carouselHtml() : `<p class="muted">${esc(t('b.loading'))}</p>`) : `<p class="empty-cta">${esc(t('h.noClassYet'))}</p>`}</div>
-        <div class="card hcard supportcard"><h2>${esc(t('sup.title'))}</h2>
-          <p class="muted" style="line-height:1.7">${esc(t('sup.text'))}</p>
-          <button class="btn coffee" id="hSupport" style="margin-top:12px">☕ ${esc(t('sup.cta'))}</button></div>
-        <div class="card hcard"><h2>${esc(t('h.tips'))}</h2>
-          <p class="muted" style="line-height:1.8">${esc(t('h.tip1'))}<br>${esc(t('h.tip2'))}<br>${esc(t('h.tip3'))}</p></div>
-      </div>`;
+      <div class="card hcard"><h2>${esc(t('h.myClassMeta'))} <a data-go="meta">${esc(t('h.seeMeta'))} →</a></h2>
+        ${s.hero ? (metaCard.html ? metaCard.html + carouselHtml() : `<p class="muted">${esc(t('b.loading'))}</p>`) : `<p class="empty-cta">${esc(t('h.noClassYet'))}</p>`}</div>
+      <div class="support-strip"><span>☕ ${esc(t('sup.text'))}</span><button class="btn coffee" id="hSupport">${esc(t('sup.cta'))}</button></div>`;
     root().querySelectorAll('[data-go]').forEach((b) => (b.onclick = () => showTab(b.dataset.go)));
     if ($('hPickLog')) $('hPickLog').onclick = () => tli.action('pickLog');
     if ($('hOpenLog')) $('hOpenLog').onclick = () => tli.action('openLogDir');

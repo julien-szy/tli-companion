@@ -33,6 +33,21 @@ function dur(ms) {
   return h ? `${h}h${String(m).padStart(2, '0')}` : `${m}:${String(sec).padStart(2, '0')}`;
 }
 function clock(ts) { return new Date(ts).toLocaleTimeString(LOCALE, { hour: '2-digit', minute: '2-digit', second: '2-digit' }); }
+// Nom de carte compact : « Thunder Wastes Beacon (Timemark 8) » devient « Thunder Wastes » + pastille T8.
+function mapLabel(name) {
+  const m = /^(.*?)\s*Beacon\s*\(Timemark\s*(\d+)\)(.*)$/i.exec(name || '');
+  if (m) return `${esc(m[1])}<span class="tm">T${m[2]}</span>${esc(m[3])}`;
+  if (/tartarus/i.test(name || '')) return `${esc(name)}<span class="tm boss">Boss</span>`;
+  return esc(name || '');
+}
+function dayLabel(ts) {
+  const d = new Date(ts), today = new Date(); today.setHours(0, 0, 0, 0);
+  const diff = Math.round((today - new Date(d.getFullYear(), d.getMonth(), d.getDate())) / 86400000);
+  if (diff === 0) return t('day.today');
+  if (diff === 1) return t('day.yesterday');
+  return d.toLocaleDateString(LOCALE, { weekday: 'long', day: 'numeric', month: 'long' });
+}
+function timeOnly(ts) { return new Date(ts).toLocaleTimeString(LOCALE, { hour: '2-digit', minute: '2-digit' }); }
 function dateTime(ts) { return new Date(ts).toLocaleString(LOCALE); }
 function cls(v) { return v > 0.05 ? 'pos' : v < -0.05 ? 'neg' : 'zero'; }
 function esc(s) { return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }

@@ -1,6 +1,22 @@
 {
   "releases": [
     {
+      "version": "1.0.0",
+      "date": "2026-10-18",
+      "en": [
+        "Redesigned Home screen: the current session takes center stage (big profit, FE/h, maps, time, average per map, Tartarus counter) with a large Start/Stop button, plus your last map and latest drops. Cleaner buttons with icons across the app.",
+        "Thin dark scrollbars matching the app, instead of the grey Windows ones.",
+        "New compact side menu: 4 icons (Home, Farm, Character, Market) with the pages of each family as tabs at the top, so the menu stays short as features are added. A green dot shows when a farm session is running.",
+        "Cleaner pages: tables as cards, rounded filters, map names shortened with a Timemark badge (T7, T8), history grouped by day, smaller carousel arrows."
+      ],
+      "fr": [
+        "Accueil repensé : la session en cours passe au premier plan (gros profit, FE/h, cartes, temps, moyenne par carte, compteur Tartarus) avec un grand bouton Démarrer/Arrêter, plus ta dernière carte et tes derniers drops. Boutons plus propres, avec icônes, dans toute l'app.",
+        "Barres de défilement fines et sombres aux couleurs de l'app, à la place des barres grises de Windows.",
+        "Nouveau menu latéral compact : 4 icônes (Accueil, Farm, Personnage, Marché), les pages de chaque famille en onglets en haut, pour que le menu reste court quand on ajoute des fonctions. Un point vert indique qu'une session de farm tourne.",
+        "Pages plus propres : tableaux en cartes, filtres arrondis, noms de cartes raccourcis avec une pastille Timemark (T7, T8), historique groupé par jour, flèches du carrousel plus discrètes."
+      ]
+    },
+    {
       "version": "0.9.18",
       "date": "2026-10-18",
       "en": [
