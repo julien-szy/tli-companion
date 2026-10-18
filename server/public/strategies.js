@@ -36,18 +36,52 @@ async function load() {
   const [{ reports }, bestRes] = await Promise.all([api('/api/reports?' + q), api('/api/strategies/best?' + q)]);
   const best = bestRes.best;
 
-  // Les plus rentables en ce moment (regroupées par carte + Timemark + type).
-  $('best').innerHTML = best.length ? best.slice(0, 12).map((b, i) => `<tr class="click" data-region="${esc(b.region || '')}" data-tier="${b.timemark ?? ''}" data-tag="${esc(b.tag || '')}">
+  // Les plus rentables en ce moment (regroupées par carte + Timemark + type). Clic = détail qui se déplie.
+  const pctf = (x) => `${Math.round(x * 100)} %`;
+  const detail = (b) => {
+    const loot = b.topLoot.length ? b.topLoot.map((l) => `<li>${icon(l.img)}<b>${esc(l.name || '#' + l.id)}</b>
+        <span class="muted">${esc(t('dLootLine', { perMap: nf1.format(l.perMap), share: pctf(l.share), feh: fe(l.fePerHour) }))}</span></li>`).join('')
+      : `<li class="muted">${esc(t('dNone'))}</li>`;
+    const items = b.items.length ? b.items.map((c) => `<li>${icon(c.img)}<b>${esc(c.name)}</b>
+        <span class="muted">${esc(t('dItemLine', { perMap: nf1.format(c.perMap), cost: fe(c.costPerMap) }))}</span></li>`).join('')
+      : `<li class="muted">${esc(t('dNone'))}</li>`;
+    const mech = b.mechanics.length ? b.mechanics.map((m) => `<li><span class="mshare">${pctf(m.share)}</span>${esc(m.desc)}</li>`).join('')
+      : `<li class="muted">${esc(t('dNoMech'))}</li>`;
+    return `<div class="sdetail">
+      <div class="sstats">
+        <div><span>${esc(t('dMapsH'))}</span><b>${nf1.format(b.mapsPerHour)}</b></div>
+        <div><span>${esc(t('dMapTime'))}</span><b>${b.avgMapMin != null ? nf1.format(b.avgMapMin) + ' min' : '–'}</b></div>
+        <div><span>${esc(t('dEff'))}</span><b>${b.efficiency != null ? pctf(b.efficiency) : '–'}</b></div>
+        <div><span>${esc(t('dClasses'))}</span><b>${esc(b.heroes.map((h) => h.name || '#' + h.id).join(', ') || '–')}</b></div>
+      </div>
+      <div class="scols">
+        <div><h4>${esc(t('dMech'))}</h4><ul class="mech">${mech}</ul>
+          ${b.mechanicsKnown < b.sessions ? `<p class="muted small">${esc(t('dMechPartial', { n: b.mechanicsKnown, total: b.sessions }))}</p>` : ''}</div>
+        <div><h4>${esc(t('dLoot'))}</h4><ul class="lootl">${loot}</ul>
+          <h4 style="margin-top:12px">${esc(t('dItems'))}</h4><ul class="lootl">${items}</ul></div>
+      </div>
+      <button class="btn" data-routes="${esc(b.region || '')}|${b.timemark ?? ''}|${esc(b.tag || '')}">${esc(t('dRoutes'))}</button>
+    </div>`;
+  };
+  $('best').innerHTML = best.length ? best.slice(0, 12).map((b, i) => `<tr class="click" data-i="${i}">
       <td class="r muted">${i + 1}</td>
-      <td><b>${esc(mapLabel(b.region, b.timemark))}</b>${b.tag ? ` <span class="tag">${esc(tagName(b.tag))}</span>` : ''}</td>
+      <td><b>${esc(mapLabel(b.region, b.timemark))}</b>${b.tag ? ` <span class="tag">${esc(tagName(b.tag))}</span>` : ''} <span class="muted chev">▾</span></td>
       <td class="hide-sm">${b.items.map((it) => `<span title="${esc(it.name)}">${icon(it.img)}</span>`).join('') || '<span class="muted">–</span>'}</td>
       <td class="r hide-sm">${b.sessions} <span class="muted">/ ${b.players}</span></td>
       <td class="r hide-sm muted">${nf1.format(b.hours)} h</td>
       <td class="r"><b class="pos">${fe(b.perHourNow)}</b></td>
-      <td class="r hide-sm muted">${fe(b.perHourThen)}</td></tr>`).join('')
+      <td class="r hide-sm muted">${fe(b.perHourThen)}</td></tr>
+    <tr class="drow" data-d="${i}" hidden><td colspan="7">${detail(b)}</td></tr>`).join('')
     : `<tr><td colspan="7" class="empty">${esc(bestRes.pending ? t('bestPending', { n: bestRes.pending }) : t('bestEmpty'))}</td></tr>`;
   document.querySelectorAll('#best tr.click').forEach((tr) => (tr.onclick = () => {
-    $('region').value = tr.dataset.region; $('tier').value = tr.dataset.tier; $('tag').value = tr.dataset.tag;
+    const d = document.querySelector(`#best tr[data-d="${tr.dataset.i}"]`);
+    d.hidden = !d.hidden;
+    tr.classList.toggle('open', !d.hidden);
+  }));
+  document.querySelectorAll('#best [data-routes]').forEach((btn) => (btn.onclick = (e) => {
+    e.stopPropagation();
+    const [region, tier, tag] = btn.dataset.routes.split('|');
+    $('region').value = region; $('tier').value = tier; $('tag').value = tag;
     load().then(() => $('allTitle').scrollIntoView({ behavior: 'smooth' }));
   }));
 

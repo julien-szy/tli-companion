@@ -269,7 +269,7 @@ route('POST', /^\/api\/stats\/farm$/, async (req) => {
       runs, real_ms, map_ms, afk_ms, profit, per_hour, consumables, json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET strategy_tag = excluded.strategy_tag, json = excluded.json`)
     .run(s.id, contributor, Date.now(), s.heroId, s.mainMap, region, timemark, s.strategyTag, s.server, s.season,
-      s.runs, s.realMs, s.mapMs, s.afkMs, s.profit, s.perHour, cons, JSON.stringify({ loot: s.loot, consumables: s.consumables }));
+      s.runs, s.realMs, s.mapMs, s.afkMs, s.profit, s.perHour, cons, JSON.stringify({ loot: s.loot, consumables: s.consumables, modifiers: s.modifiers }));
   bestCache.clear();
   return { ok: true };
 });
@@ -312,43 +312,89 @@ route('GET', /^\/api\/stats\/compare$/, (req, url) => {
 
 // Stratégies les plus rentables : sessions regroupées par région + Timemark + type,
 // profit recalculé avec les prix actuels de la communauté (sinon le prix au moment de la session).
+// Prix « actuel » d'un objet pour la stratégie globale : nos joueurs si au moins 2 le confirment,
+// sinon la copie TITrack (2 joueurs ou plus), sinon notre prix à 1 joueur, sinon le prix au moment de la session.
+// Noms et icônes des objets (copie de la base de l'app), pour nommer le loot des stats anonymes.
+let ITEM_NAMES = {};
+try { ITEM_NAMES = JSON.parse(fs.readFileSync(path.join(__dirname, 'item_names_seed.json'), 'utf8')); } catch { /* facultatif */ }
+function reliablePrices() {
+  const ours = currentPrices().prices;
+  const tc = TITrack.get().prices || {};
+  return (id, old) => {
+    const o = ours[id], c = tc[id];
+    if (o && o.n >= 2) return o.price;
+    if (c && (c.devices || 0) >= 5) return c.price;
+    // Prix peu confirmés (ex. souvenirs de héros, dont la qualité change tout) : on garde le plus bas, par prudence.
+    const low = [o && o.price, c && c.price].filter((v) => typeof v === 'number');
+    if (low.length) return Math.min(...low);
+    return old ?? 0;
+  };
+}
+
 route('GET', /^\/api\/strategies\/best$/, (req, url) => {
   const q = url.searchParams;
   const key = q.toString();
   const hit = bestCache.get(key);
   if (hit && Date.now() - hit.at < 5 * 60000) return hit.body;
   const { where, args } = statsFilters(q);
-  const rows = db.prepare(`SELECT contributor, region, timemark, strategy_tag, hero_id, real_ms, map_ms, afk_ms, per_hour, json
+  const rows = db.prepare(`SELECT contributor, region, timemark, strategy_tag, hero_id, runs, real_ms, map_ms, afk_ms, per_hour, json
     FROM farm_stats WHERE ${where.join(' AND ')} ORDER BY created_at DESC LIMIT 5000`).all(...args);
-  const now = currentPrices().prices;
+  const priceNow = reliablePrices();
+  const nameStmt = db.prepare('SELECT name, img FROM item_names WHERE id = ?');
+  const nameOf = { get: (id) => { const n = ITEM_NAMES[id]; return n ? { name: n[0], img: n[1] } : nameStmt.get(id); } };
   const groups = {};
   for (const row of rows) {
     const d = JSON.parse(row.json);
-    const priceNow = (id, old) => (now[id] ? now[id].price : (old ?? 0));
     let value = 0;
-    for (const i of d.loot) value += i.qty * priceNow(i.id, i.unit);
-    for (const c of d.consumables) value += (c.qty || 0) * priceNow(c.id, c.unit); // qty < 0 : coût
-    const hours = Math.max(row.real_ms, 60000) / 3600000;
     const k = `${row.region || '?'}|${row.timemark ?? ''}|${row.strategy_tag || ''}`;
     const g = (groups[k] = groups[k] || { region: row.region, timemark: row.timemark, tag: row.strategy_tag, sessions: 0, players: new Set(),
-      hours: 0, mapHours: 0, valueNow: 0, valueThen: 0, heroes: {}, items: {} });
-    g.sessions++; g.players.add(row.contributor); g.hours += hours; g.mapHours += row.map_ms / 3600000;
+      hours: 0, mapHours: 0, runs: 0, valueNow: 0, valueThen: 0, heroes: {}, items: {}, loot: {}, mods: {}, modSessions: 0 });
+    for (const i of d.loot) {
+      const v = i.qty * priceNow(i.id, i.unit);
+      value += v;
+      const l = (g.loot[i.id] = g.loot[i.id] || { id: i.id, name: i.name || null, img: i.img || null, qty: 0, value: 0 });
+      l.qty += i.qty; l.value += v;
+      if (!l.name && i.name) { l.name = i.name; l.img = i.img || null; }
+    }
+    for (const c of d.consumables) {
+      const v = (c.qty || 0) * priceNow(c.id, c.unit); // qty < 0 : coût
+      value += v;
+      const it = (g.items[c.id] = g.items[c.id] || { id: c.id, name: c.name, img: c.img, n: 0, qty: 0, cost: 0 });
+      it.n++; it.qty += -(c.qty || 0); it.cost += -v;
+    }
+    if ((d.modifiers || []).length) {
+      g.modSessions++;
+      for (const m of d.modifiers) {
+        const mm = (g.mods[m.desc] = g.mods[m.desc] || { desc: m.desc, sessions: 0, perMap: 0 });
+        mm.sessions++; mm.perMap += m.perMap;
+      }
+    }
+    const hours = Math.max(row.real_ms, 60000) / 3600000;
+    g.sessions++; g.players.add(row.contributor); g.hours += hours; g.mapHours += row.map_ms / 3600000; g.runs += row.runs;
     g.valueNow += value; g.valueThen += row.per_hour * hours;
     if (row.hero_id != null) g.heroes[row.hero_id] = (g.heroes[row.hero_id] || 0) + 1;
-    for (const c of d.consumables) {
-      const it = (g.items[c.id] = g.items[c.id] || { id: c.id, name: c.name, img: c.img, n: 0 });
-      it.n++;
-    }
   }
   const names = heroNameMap();
   const all = Object.values(groups);
-  const best = all.filter((g) => g.players.size >= MIN_PLAYERS).map((g) => ({
-    region: g.region, timemark: g.timemark, tag: g.tag, sessions: g.sessions, players: g.players.size,
-    hours: Math.round(g.hours * 10) / 10, efficiency: g.hours ? g.mapHours / g.hours : null,
-    perHourNow: g.valueNow / g.hours, perHourThen: g.valueThen / g.hours,
-    heroes: Object.entries(g.heroes).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([id, n]) => ({ id: +id, name: names[id] || null, n })),
-    items: Object.values(g.items).sort((a, b) => b.n - a.n).slice(0, 4),
-  })).sort((a, b) => b.perHourNow - a.perHourNow).slice(0, 30);
+  const best = all.filter((g) => g.players.size >= MIN_PLAYERS).map((g) => {
+    const lootTotal = Object.values(g.loot).reduce((a, l) => a + Math.max(0, l.value), 0) || 1;
+    const topLoot = Object.values(g.loot).filter((l) => l.value > 0).sort((a, b) => b.value - a.value).slice(0, 4).map((l) => {
+      if (!l.name) { const n = nameOf.get(l.id); if (n) { l.name = n.name; l.img = n.img; } }
+      return { id: l.id, name: l.name || null, img: l.img || null, perMap: l.qty / g.runs, share: l.value / lootTotal, fePerHour: l.value / g.hours };
+    });
+    return {
+      region: g.region, timemark: g.timemark, tag: g.tag, sessions: g.sessions, players: g.players.size,
+      hours: Math.round(g.hours * 10) / 10, efficiency: g.hours ? g.mapHours / g.hours : null,
+      mapsPerHour: g.runs / g.hours, avgMapMin: g.runs ? (g.mapHours * 60) / g.runs : null,
+      perHourNow: g.valueNow / g.hours, perHourThen: g.valueThen / g.hours,
+      heroes: Object.entries(g.heroes).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([id, n]) => ({ id: +id, name: names[id] || null, n })),
+      items: Object.values(g.items).sort((a, b) => b.n - a.n).slice(0, 6).map((i) => ({ ...i, perMap: i.qty / g.runs, costPerMap: i.cost / g.runs })),
+      topLoot,
+      mechanics: Object.values(g.mods).sort((a, b) => b.sessions - a.sessions || b.perMap - a.perMap).slice(0, 12)
+        .map((m) => ({ desc: m.desc, share: m.sessions / g.modSessions, perMap: m.perMap / m.sessions })),
+      mechanicsKnown: g.modSessions,
+    };
+  }).sort((a, b) => b.perHourNow - a.perHourNow).slice(0, 30);
   // Groupes pas encore assez fournis : on dit juste combien de sessions attendent d'autres joueurs.
   const pending = all.filter((g) => g.players.size < MIN_PLAYERS).reduce((n, g) => n + g.sessions, 0);
   const body = { best, sessions: rows.length, players: new Set(rows.map((r) => r.contributor)).size, pending, minPlayers: MIN_PLAYERS };

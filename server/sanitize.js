@@ -193,7 +193,9 @@ function sanitizeFarmStats(b) {
     season: b.season ? int(b.season) : null,
     runs: int(b.runs), realMs: int(b.realMs), mapMs: int(b.mapMs), afkMs: Math.max(0, int(b.afkMs)),
     profit: num(b.profit), perHour: num(b.perHour),
-    loot: arr(b.loot, 150).map((i) => ({ id: int(i && i.id), qty: num(i && i.qty), unit: num(i && i.unit) })).filter((i) => i.id > 0),
+    loot: arr(b.loot, 150).map((i) => ({ id: int(i && i.id), qty: num(i && i.qty), unit: num(i && i.unit),
+      ...(i && i.name ? { name: str(i.name, 120), img: img(i.img) } : {}) })).filter((i) => i.id > 0),
+    modifiers: arr(b.modifiers, 25).map((m) => ({ id: int(m && m.id), desc: str(m && m.desc, 200), perMap: num(m && m.perMap) })).filter((m) => m.desc),
     consumables: arr(b.consumables, 40).map((i) => ({ id: int(i && i.id), name: str(i && i.name, 120), img: img(i && i.img), qty: num(i && i.qty), unit: num(i && i.unit) })).filter((i) => i.id > 0),
   };
   // Bornes de bon sens : au moins 3 cartes et 5 minutes, FE/h plausible.

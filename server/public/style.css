@@ -156,3 +156,15 @@ header.site nav .ver { font-size: 11px; padding: 1px 6px; border-radius: 999px; 
 .pn { display: grid; gap: 12px; }
 .pn h3 { font-size: 16px; margin-bottom: 6px; }
 .pn ul { margin-left: 20px; line-height: 1.7; color: var(--muted); }
+
+#best tr.open td { border-bottom-color: transparent; } #best tr.open .chev { display: inline-block; transform: rotate(180deg); }
+.drow > td { background: rgba(255,255,255,0.02); padding: 14px 16px 18px; }
+.sdetail .sstats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin-bottom: 14px; }
+.sdetail .sstats div { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+.sdetail .sstats span { display: block; color: var(--muted); font-size: 12px; } .sdetail .sstats b { font-size: 16px; }
+.sdetail .scols { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 12px; }
+@media (max-width: 760px) { .sdetail .scols { grid-template-columns: 1fr; } }
+.sdetail h4 { font-size: 13px; margin: 0 0 6px; color: var(--accent); }
+.sdetail ul { list-style: none; margin: 0; padding: 0; } .sdetail li { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 13px; flex-wrap: wrap; }
+.sdetail .mshare { min-width: 44px; color: var(--accent); font-weight: 600; font-variant-numeric: tabular-nums; }
+.sdetail .small { font-size: 12px; margin-top: 6px; }

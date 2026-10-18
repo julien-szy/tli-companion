@@ -1,7 +1,11 @@
 {
   "unreleased": {
-    "en": [],
-    "fr": []
+    "en": [
+      "Anonymous farm stats now also include the farm mechanics (map modifiers: Netherrealm talents, compasses, probes) and the names of your best drops, so the global strategy on the website can show how each strategy is played and what earns the most."
+    ],
+    "fr": [
+      "Les stats de farm anonymes incluent maintenant la mécanique de farm (modificateurs de carte : talents Netherrealm, compas, sondes) et le nom de tes meilleurs drops, pour que la stratégie globale du site montre comment chaque stratégie se joue et ce qui rapporte le plus."
+    ]
   },
   "releases": [
     {

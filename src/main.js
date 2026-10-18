@@ -181,7 +181,9 @@ async function sendFarmStats(report) {
     strategyTag: report.strategyTag || null,
     server: report.context ? report.context.server : null, season: report.context ? report.context.season : null,
     runs: t.runs, realMs: t.realMs, mapMs: t.mapMs, afkMs: t.afkMs || 0, profit: t.profit, perHour: t.perHourReal,
-    loot: report.loot.map((i) => ({ id: i.id, qty: i.qty, unit: i.unit })),
+    loot: report.loot.map((i, k) => ({ id: i.id, qty: i.qty, unit: i.unit, ...(k < 40 ? { name: i.name, img: i.img } : {}) })),
+    // Mécanique de farm : modificateurs de carte (talents Netherrealm, compas, sondes…) et leur fréquence par carte.
+    modifiers: (report.strategy.modifiers || []).filter((m) => m.desc).slice(0, 25).map((m) => ({ id: m.id, desc: m.desc, perMap: m.perMap })),
     consumables: report.strategy.consumables.map((c) => ({ id: c.id, name: c.name, img: c.img, qty: c.qty, unit: c.unit })),
   };
   try {
@@ -427,6 +429,19 @@ function autoStatsAdd(run) {
   clearTimeout(autoIdleTimer);
   autoIdleTimer = setTimeout(autoStatsFlush, AUTO_IDLE_MS);
 }
+// Modificateurs des cartes du lot (même calcul que la fiche de session) : fréquence moyenne par carte.
+function autoModifiers(runs) {
+  const totals = {};
+  let n = 0;
+  for (const r of runs) {
+    if (!r.modifiers || !Object.keys(r.modifiers).length) continue;
+    n++;
+    for (const id in r.modifiers) totals[id] = (totals[id] || 0) + r.modifiers[id];
+  }
+  const descs = tracker.meta.data.affixDesc || {};
+  return Object.keys(totals).filter((id) => descs[id]).map((id) => ({ id: +id, desc: descs[id], perMap: n ? totals[id] / n : 0 }))
+    .sort((a, b) => b.perMap - a.perMap).slice(0, 25);
+}
 function autoStatsFlush() {
   clearTimeout(autoIdleTimer);
   const runs = autoRuns;
@@ -452,7 +467,8 @@ function autoStatsFlush() {
     heroId: heroId != null ? +heroId : null, mainMap: first.name, strategyTag: null,
     server: ctx.server, season: ctx.season,
     runs: runs.length, realMs, mapMs, afkMs: 0, profit, perHour: profit / (realMs / 3600000),
-    loot: tracker.itemList(loot).filter((i) => i.qty > 0).slice(0, 150).map((i) => ({ id: i.id, qty: i.qty, unit: i.unit })),
+    loot: tracker.itemList(loot).filter((i) => i.qty > 0).slice(0, 150).map((i, k) => ({ id: i.id, qty: i.qty, unit: i.unit, ...(k < 40 ? { name: i.name, img: i.img } : {}) })),
+    modifiers: autoModifiers(runs),
     consumables: tracker.itemList(cost).filter((i) => i.qty < 0).slice(0, 40).map((i) => ({ id: i.id, name: i.name, img: i.img, qty: i.qty, unit: i.unit })),
   };
   return community.sendFarmStats(body).catch((e) => console.error('Stats anonymes (auto) :', e.message));
