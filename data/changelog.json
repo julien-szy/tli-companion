@@ -1,7 +1,11 @@
 {
   "unreleased": {
-    "en": [],
-    "fr": []
+    "en": [
+      "Clearer setup hints: the app now reminds you that the game forgets \"Enable Log\" when it closes, so it has to be turned on each time you launch TLI."
+    ],
+    "fr": [
+      "Aide au démarrage plus claire : l'app rappelle que le jeu oublie « Enable Log » à la fermeture, et qu'il faut donc le réactiver à chaque lancement de TLI."
+    ]
   },
   "releases": [
     {

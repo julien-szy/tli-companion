@@ -192,3 +192,8 @@ header.site nav .ver { font-size: 11px; padding: 1px 6px; border-radius: 999px; 
 .mg-trial .mg-ico { background: rgba(228,85,85,.16); color: #ff8f8f; } .mg-trial .mg-bar i { background: #e45555; }
 .mg-map .mg-ico { background: rgba(74,143,216,.16); color: #8fbcef; } .mg-map .mg-bar i { background: #4a8fd8; }
 .sdetail .mg-nodes { grid-template-columns: 1fr; }
+
+.faq { display: flex; flex-direction: column; gap: 10px; }
+.faq details { margin: 0; }
+.faq summary { cursor: pointer; font-weight: 600; font-size: 15px; }
+.faq details p { margin: 8px 0 0; line-height: 1.6; }
