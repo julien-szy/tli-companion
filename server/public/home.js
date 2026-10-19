@@ -1,5 +1,5 @@
 document.title = t('homeTitle');
-for (const [id, key] of [['sc1', 'showcase1l'], ['sc2', 'showcase2l']]) {
+for (const [id, key] of [['sc1', 'showcase1l'], ['sc2', 'showcase2l'], ['sc3', 'showcase3l']]) {
   $(id).innerHTML = t(key).map((x) => `<li>${esc(x)}</li>`).join('');
 }
 const mb = (b) => `${Math.round(b / 1048576)} MB`;
@@ -13,8 +13,11 @@ api('/api/version').then((v) => {
 }).catch(() => { $('verInfo').textContent = t('versionSoon'); });
 
 // Chiffres de la communauté
-api('/api/stats').then((s) => { $('nSessions').textContent = nf0.format(s.totals.reports); }).catch(() => {});
-api('/api/builds?limit=100').then((b) => { $('nBuilds').textContent = nf0.format(b.builds.length) + (b.builds.length >= 100 ? '+' : ''); }).catch(() => {});
+// Cartes analysées (stats anonymes de farm) et objets dont le prix vient de nos joueurs.
+api('/api/stats').then((s) => {
+  if (s.totals.farmMaps != null) $('nMaps').textContent = nf0.format(s.totals.farmMaps);
+  if (s.totals.pricedItems != null) $('nPrices').textContent = nf0.format(s.totals.pricedItems);
+}).catch(() => {});
 api('/api/meta/index').then(({ snapshots }) => {
   const total = snapshots.filter((x) => x.server !== 'global').reduce((a, x) => a + x.total, 0);
   $('nPlayers').textContent = total ? nf0.format(total) : '–';

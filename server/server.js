@@ -238,6 +238,9 @@ route('GET', /^\/api\/stats$/, () => {
     .map((h) => ({ ...h, name: names[h.hero_id] || `Hero ${h.hero_id}` }));
   const maps = db.prepare('SELECT main_map, COUNT(*) n, AVG(per_hour_real) avg FROM reports WHERE main_map IS NOT NULL GROUP BY main_map ORDER BY n DESC LIMIT 50').all();
   const totals = db.prepare('SELECT COUNT(*) reports, COUNT(DISTINCT user_id) players FROM reports').get();
+  // Chiffres de la page d'accueil : cartes des stats anonymes et objets dont le prix vient de nos joueurs.
+  Object.assign(totals, db.prepare('SELECT COUNT(*) farmSessions, COALESCE(SUM(runs), 0) farmMaps FROM farm_stats').get());
+  totals.pricedItems = db.prepare('SELECT COUNT(DISTINCT item_id) n FROM price_obs').get().n;
   const regions = db.prepare('SELECT region, COUNT(*) n FROM reports WHERE region IS NOT NULL GROUP BY region ORDER BY n DESC LIMIT 60').all();
   const tiers = db.prepare('SELECT timemark, COUNT(*) n FROM reports WHERE timemark IS NOT NULL GROUP BY timemark ORDER BY timemark DESC').all();
   const tags = db.prepare('SELECT strategy_tag tag, COUNT(*) n FROM reports WHERE strategy_tag IS NOT NULL GROUP BY strategy_tag ORDER BY n DESC').all();
