@@ -62,7 +62,7 @@ The code is published for **transparency**, not as open source: you can read it,
 ## Credits
 
 - Item data and icons: [tlidb.com](https://tlidb.com) (icons are not included in this repository).
-- Community price base: [TITrack](https://github.com/astockman99/TITrack).
+- Community price base and zone names: [TITrack](https://github.com/astockman99/TITrack).
 - Class and talent names cross-checked with [tliherorank.com](https://tliherorank.com).
 
 TLI Companion is a fan-made tool, not affiliated with XD Inc. Torchlight: Infinite and its assets belong to XD Inc.

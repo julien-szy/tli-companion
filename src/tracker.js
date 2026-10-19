@@ -138,7 +138,8 @@ class Tracker extends EventEmitter {
   isHub(path) {
     if (!path) return true;
     const pats = this.settings.hubPatterns || [];
-    return pats.some((p) => p && path.includes(p));
+    // Repaires connus (Ember's Rest, Sacred Court Manor…) + morceaux de chemin choisis par le joueur.
+    return /^Hideout/.test(shortName(path)) || pats.some((p) => p && path.includes(p));
   }
 
   handle(ev) {
@@ -168,9 +169,11 @@ class Tracker extends EventEmitter {
           this.starShards[ev.key] = ev.value;
           if (this.replay) return;
           // Le compteur monte en jouant une carte de la région : on retient quelle région il suit.
-          if (prev != null && ev.value > prev && this.zone && !this.zone.hub && this.lastBeaconRegion) {
+          // Région : celle de la zone où l'on est (« Thunder Wastes - … »), sinon celle de la dernière balise.
+          const region = this.zone && !this.zone.hub ? (zoneRegion(shortName(this.zone.path, this.zone.levelId)) || this.lastBeaconRegion) : null;
+          if (prev != null && ev.value > prev && region) {
             const known = this.meta.data.starRegions = this.meta.data.starRegions || {};
-            if (known[ev.key] !== this.lastBeaconRegion) { known[ev.key] = this.lastBeaconRegion; this.meta.save(); }
+            if (known[ev.key] !== region) { known[ev.key] = region; this.meta.save(); }
           }
           this.emit('starShard', { key: ev.key, prev, value: ev.value, region: this.starRegion(ev.key) });
           this.emit('changed');
@@ -291,19 +294,19 @@ class Tracker extends EventEmitter {
       if (this.session.currentRun) this._endRun(ev.ts);
     } else if (!this.session.currentRun) {
       // Une carte n'est comptée que pendant une session de farm (bouton Démarrer).
-      if (!this.replay && this.session.recording) this._startRun(path, ev.ts);
+      if (!this.replay && this.session.recording) this._startRun(path, ev.ts, ev.levelId);
     } else {
-      this.session.currentRun.zones.push(shortName(path));
+      this.session.currentRun.zones.push(shortName(path, ev.levelId));
     }
-    this.zone = { path, hub, since: ev.ts };
+    this.zone = { path, hub, since: ev.ts, levelId: ev.levelId };
     if (!this.replay) this.emit('changed');
   }
 
-  _startRun(path, ts) {
+  _startRun(path, ts, levelId = this.zone && this.zone.levelId) {
     const s = this.session;
     const run = {
-      name: shortName(path), path, startedAt: ts, endedAt: null,
-      zones: [shortName(path)], loot: {}, cost: s.pendingCost,
+      name: shortName(path, levelId), path, startedAt: ts, endedAt: null,
+      zones: [shortName(path, levelId)], loot: {}, cost: s.pendingCost,
       heroId: this.heroId, node: this.pendingNode, modifiers: {},
     };
     s.pendingCost = {};
@@ -423,7 +426,7 @@ class Tracker extends EventEmitter {
 
     return {
       mode, timeMode: this.settings.timeMode,
-      zone: { hub: this.zone.hub, name: this.zone.path ? shortName(this.zone.path) : '?' },
+      zone: { hub: this.zone.hub, name: this.zone.path ? shortName(this.zone.path, this.zone.levelId) : '?' },
       snapshotReady: this.snapshotReady,
       hero: this.heroId != null ? {
         id: this.heroId, name: this.heroName(), named: !!this.meta.data.heroNames[this.heroId],
@@ -477,12 +480,28 @@ class Tracker extends EventEmitter {
 }
 
 // Noms lisibles pour les zones sans balise (ex. « ZhongZuiDiYu » -> « Tartarus »).
-let ZONE_NAMES = {};
-try { ZONE_NAMES = require('../data/zone_names.json'); } catch { /* facultatif */ }
-function zoneLabel(name) { return (name && ZONE_NAMES[name]) || name; }
-function shortName(path) {
+// Noms lisibles des zones (data/zone_names.json) : nom exact, puis LevelId (boss, Secret Realm…),
+// zones ambiguës départagées par le LevelId, et enfin premier morceau de chemin reconnu.
+let ZONES = { exact: {}, patterns: [], levelIds: {}, ambiguous: {} };
+try { ZONES = { ...ZONES, ...require('../data/zone_names.json') }; } catch { /* facultatif */ }
+function zoneLabel(name, levelId) {
+  if (!name) return name;
+  const last = String(name).split('/').pop();
+  if (ZONES.exact[last]) return ZONES.exact[last];
+  if (levelId != null && ZONES.levelIds[levelId]) return ZONES.levelIds[levelId];
+  if (levelId != null) {
+    for (const [pat, bySuffix] of Object.entries(ZONES.ambiguous)) {
+      if (String(name).includes(pat) && bySuffix[levelId % 100]) return bySuffix[levelId % 100];
+    }
+  }
+  for (const [pat, label] of ZONES.patterns) if (String(name).includes(pat)) return label;
+  return name;
+}
+// Région d'une zone nommée « Région - Zone » (ex. « Thunder Wastes - Rainmist Jungle » -> « Thunder Wastes »).
+function zoneRegion(label) { const m = /^(.+?) - /.exec(label || ''); return m && !/^Hideout$/i.test(m[1]) ? m[1] : null; }
+function shortName(path, levelId) {
   const parts = String(path).split('/');
-  return zoneLabel(parts[parts.length - 1] || path);
+  return zoneLabel(parts[parts.length - 1] || path, levelId);
 }
 
 module.exports = { Tracker, zoneLabel, TARTARUS_ENTRY, TARTARUS_MAX, STAR_MAX };

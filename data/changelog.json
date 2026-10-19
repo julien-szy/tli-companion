@@ -5,6 +5,16 @@
   },
   "releases": [
     {
+      "version": "1.0.9",
+      "date": "2026-10-19",
+      "en": [
+        "Readable zone names everywhere: bosses, oases and map areas now show names like \"Thunder Wastes - Defiled Oasis\" instead of internal codes, including in your past history. The Sacred Court Manor hideout is recognized too. Zone names come from the TITrack project."
+      ],
+      "fr": [
+        "Noms de zones lisibles partout : boss, oasis et zones de carte affichent maintenant des noms comme « Thunder Wastes - Defiled Oasis » au lieu des codes internes, y compris dans ton historique. Le repaire Sacred Court Manor est aussi reconnu. Les noms de zones viennent du projet TITrack."
+      ]
+    },
+    {
       "version": "1.0.8",
       "date": "2026-10-18",
       "en": [
