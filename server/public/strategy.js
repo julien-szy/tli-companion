@@ -9,7 +9,6 @@ api('/api/reports/' + encodeURIComponent(id)).then(({ report: r, author, likes }
   const title = r.title || (r.strategy.maps[0] && r.strategy.maps[0].name) || t('farmSession');
   document.title = `${title} — TLI Companion`;
   const mods = r.strategy.modifiers.filter((m) => m.desc);
-  const maxMod = Math.max(1, ...mods.map((m) => m.perMap));
   $('content').innerHTML = `
     <div class="card">
       <div class="title">${esc(title)}</div>
@@ -35,8 +34,8 @@ api('/api/reports/' + encodeURIComponent(id)).then(({ report: r, author, likes }
       </tbody></table></div>
     </div>
     <div class="cards">
-      <div class="card"><h2>${esc(t('modifiers'))}</h2><table><tbody>
-        ${mods.slice(0, 40).map((m) => `<tr><td class="r" style="width:60px">${nf1.format(m.perMap)}×</td><td class="bar-cell"><div class="bar" style="width:${(m.perMap / maxMod) * 100}%"></div><span>${esc(m.desc)}</span></td></tr>`).join('') || `<tr><td class="muted">${esc(t('none'))}</td></tr>`}
+      <div class="card"><h2>${esc(t('modifiers'))}</h2>
+        ${modGroupsHtml(mods.slice(0, 40), t('none'))}
       </tbody></table></div>
       <div class="card"><h2>${esc(t('bestDrops'))}</h2><table><thead><tr><th>${esc(t('item'))}</th><th class="r">${esc(t('qty'))}</th><th class="r">${esc(t('value'))}</th></tr></thead><tbody>
         ${r.loot.slice(0, 30).map((i) => `<tr><td>${icon(i.img)}${esc(i.name)}</td><td class="r">${qty(i.qty)}</td><td class="r ${cls(i.value)}">${fe(i.value, true)}</td></tr>`).join('')}

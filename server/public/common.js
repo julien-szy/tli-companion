@@ -33,6 +33,8 @@ const STR = {
     avgProfit: 'Avg profit', avgDuration: 'Avg time', zone: 'zone {id}',
     toBuy: 'What to buy (per map)', item: 'Item', perMap: '/ map', unit: 'Unit price', cost: 'Cost',
     nothingToBuy: 'Nothing to buy', modifiers: 'Active modifiers (Netherrealm talents, compasses, probes…)',
+    mgNether: 'Netherrealm talents (Void Chart)', mgTrial: 'Trials', mgMap: 'Map, compass and probe affixes', mgNodes: '{n} modifiers', mgNode1: '1 modifier',
+    mgPerMap: '{n}× per map', mgShare: 'in {p} of sessions',
     none: 'None', bestDrops: 'Best drops', qty: 'Qty', value: 'Value', pageTitle: 'Farming strategies',
     navStrategies: 'Strategies', navBuilds: 'Builds', buildsTitle: 'Builds',
     buildsTagline: 'Builds shared by players. Import one in the app to follow it with a purchase advisor.',
@@ -85,6 +87,8 @@ const STR = {
     avgProfit: 'Moy. profit', avgDuration: 'Moy. durée', zone: 'zone {id}',
     toBuy: "Ce qu'il faut acheter (par carte)", item: 'Objet', perMap: '/ carte', unit: 'Prix u.', cost: 'Coût',
     nothingToBuy: 'Rien à acheter', modifiers: 'Modificateurs actifs (talents Netherrealm, compas, sondes…)',
+    mgNether: 'Talents Netherrealm (Void Chart)', mgTrial: 'Épreuves (Trials)', mgMap: 'Affixes de carte, compas et sondes', mgNodes: '{n} modificateurs', mgNode1: '1 modificateur',
+    mgPerMap: '{n}× par carte', mgShare: 'dans {p} des sessions',
     none: 'Aucun', bestDrops: 'Meilleurs drops', qty: 'Qté', value: 'Valeur', pageTitle: 'Stratégies de farm',
     navStrategies: 'Stratégies', navBuilds: 'Builds', buildsTitle: 'Builds',
     buildsTagline: "Builds partagés par les joueurs. Importe-en un dans l'app pour le suivre avec un conseiller d'achat.",
@@ -174,4 +178,39 @@ async function heroes() {
 function heroLabel(h) { return h ? `${h.hero} — ${h.trait}` : t('noClass'); }
 function portrait(h, size = 28) {
   return h ? `<img class="portrait" style="width:${size}px;height:${size}px" src="${esc(h.portrait)}" alt="">` : '';
+}
+
+// ---------- Modificateurs actifs, regroupés par source (talents Netherrealm, épreuves, affixes de carte) ----------
+// Chaque modificateur : { desc, perMap, share? }. Le groupe et l'icône sont devinés à partir du texte.
+const MOD_ICONS = {
+  copy: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/>',
+  chest: '<path d="M4 10h16v9a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"/><path d="M4 10a8 5 0 0 1 16 0M12 13v3"/>',
+  spark: '<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/>',
+  beacon: '<path d="M12 21s-6-5.5-6-11a6 6 0 0 1 12 0c0 5.5-6 11-6 11z"/><circle cx="12" cy="10" r="2"/>',
+  wave: '<path d="M3 12c2-4 4-4 6 0s4 4 6 0 4-4 6 0"/>',
+  up: '<path d="M4 17l6-6 4 4 6-7"/><path d="M14 8h6v6"/>',
+  skull: '<path d="M12 3a7 7 0 0 0-7 7c0 2.5 1.3 4.2 3 5.2V19h8v-3.8c1.7-1 3-2.7 3-5.2a7 7 0 0 0-7-7z"/><circle cx="9.5" cy="11" r="1"/><circle cx="14.5" cy="11" r="1"/>',
+  swords: '<path d="M4 4l9 9M20 4l-9 9M7 17l-3 3M17 17l3 3M6 14l4 4M18 14l-4 4"/>',
+  dot: '<circle cx="12" cy="12" r="4"/>',
+};
+function modIcon(desc) {
+  const d = desc.toLowerCase();
+  const k = /replicat/.test(d) ? 'copy' : /chest/.test(d) ? 'chest' : /ember/.test(d) ? 'spark' : /beacon/.test(d) ? 'beacon'
+    : /resonance/.test(d) ? 'wave' : /drop quantity|drop rarity|additional drop/.test(d) ? 'up' : /monster|boss/.test(d) ? 'skull' : /trial/.test(d) ? 'swords' : 'dot';
+  return `<svg viewBox="0 0 24 24">${MOD_ICONS[k]}</svg>`;
+}
+function modGroup(desc) { return /netherrealm/i.test(desc) ? 'nether' : /trial/i.test(desc) ? 'trial' : 'map'; }
+function modGroupsHtml(mods, empty) {
+  if (!mods.length) return `<p class="muted">${esc(empty)}</p>`;
+  const max = Math.max(1e-9, ...mods.map((m) => m.perMap || 0));
+  const groups = { nether: [], trial: [], map: [] };
+  for (const m of mods) groups[modGroup(m.desc)].push(m);
+  const title = { nether: 'mgNether', trial: 'mgTrial', map: 'mgMap' };
+  return `<div class="mgroups">${Object.entries(groups).filter(([, l]) => l.length).map(([g, l]) => `
+    <div class="mgroup mg-${g}">
+      <div class="mg-head"><span class="mg-ico">${modIcon(g === 'nether' ? 'ember' : g === 'trial' ? 'trial' : 'drop quantity')}</span>${esc(t(title[g]))}<span class="muted">${esc(l.length === 1 ? t('mgNode1') : t('mgNodes', { n: l.length }))}</span></div>
+      <div class="mg-nodes">${l.map((m) => `<div class="mg-node"><span class="mg-ico">${modIcon(m.desc)}</span><div>
+        <p>${esc(m.desc)}</p><div class="mg-bar"><i style="width:${Math.max(4, Math.round(((m.perMap || 0) / max) * 100))}%"></i></div>
+        <span class="muted">${esc(t('mgPerMap', { n: nf1.format(m.perMap || 0) }))}${m.share != null ? ' · ' + esc(t('mgShare', { p: Math.round(m.share * 100) + ' %' })) : ''}</span></div></div>`).join('')}</div>
+    </div>`).join('')}</div>`;
 }

@@ -174,3 +174,21 @@ header.site nav .ver { font-size: 11px; padding: 1px 6px; border-radius: 999px; 
 .fb-modal h2 { margin: 0; } .fb-modal label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); }
 .fb-modal textarea, .fb-modal input, .fb-modal select { font: inherit; color: var(--text); background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
 .fb-modal textarea { resize: vertical; } .fb-foot { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+
+/* Modificateurs actifs regroupés par source */
+.mgroups { display: flex; flex-direction: column; gap: 10px; }
+.mgroup { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; background: rgba(255,255,255,.02); }
+.mg-head { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 13.5px; margin-bottom: 8px; }
+.mg-head .muted { margin-left: auto; font-weight: 400; font-size: 12px; }
+.mg-nodes { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px; }
+.mg-node { display: flex; gap: 10px; align-items: flex-start; padding: 8px 10px; border-radius: 10px; background: var(--panel2, #161a22); border: 1px solid var(--line); }
+.mg-node p { margin: 0 0 6px; font-size: 12.5px; line-height: 1.4; }
+.mg-node .muted { font-size: 11.5px; }
+.mg-ico { flex: none; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+.mg-ico svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.mg-bar { height: 4px; border-radius: 2px; background: rgba(255,255,255,.07); margin-bottom: 4px; }
+.mg-bar i { display: block; height: 100%; border-radius: 2px; }
+.mg-nether .mg-ico { background: rgba(255,138,61,.16); color: #ffad73; } .mg-nether .mg-bar i { background: #ff8a3d; }
+.mg-trial .mg-ico { background: rgba(228,85,85,.16); color: #ff8f8f; } .mg-trial .mg-bar i { background: #e45555; }
+.mg-map .mg-ico { background: rgba(74,143,216,.16); color: #8fbcef; } .mg-map .mg-bar i { background: #4a8fd8; }
+.sdetail .mg-nodes { grid-template-columns: 1fr; }

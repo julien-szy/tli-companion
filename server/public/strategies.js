@@ -52,8 +52,7 @@ async function load() {
     const items = b.items.length ? b.items.map((c) => `<li>${icon(c.img)}<b>${esc(c.name)}</b>
         <span class="muted">${esc(t('dItemLine', { perMap: nf1.format(c.perMap), cost: fe(c.costPerMap) }))}</span></li>`).join('')
       : `<li class="muted">${esc(t('dNone'))}</li>`;
-    const mech = b.mechanics.length ? b.mechanics.map((m) => `<li><span class="mshare">${pctf(m.share)}</span>${esc(m.desc)}</li>`).join('')
-      : `<li class="muted">${esc(t('dNoMech'))}</li>`;
+    const mech = modGroupsHtml(b.mechanics, t('dNoMech'));
     return `<div class="sdetail">
       <div class="sstats">
         <div><span>${esc(t('dMapsH'))}</span><b>${nf1.format(b.mapsPerHour)}</b></div>
@@ -62,7 +61,7 @@ async function load() {
         <div><span>${esc(t('dClasses'))}</span><b>${esc(b.heroes.map((h) => heroName(h.id, h.name)).join(', ') || '–')}</b></div>
       </div>
       <div class="scols">
-        <div><h4>${esc(t('dMech'))}</h4><ul class="mech">${mech}</ul>
+        <div><h4>${esc(t('dMech'))}</h4>${mech}
           ${b.mechanicsKnown < b.sessions ? `<p class="muted small">${esc(t('dMechPartial', { n: b.mechanicsKnown, total: b.sessions }))}</p>` : ''}</div>
         <div><h4>${esc(t('dLoot'))}</h4><ul class="lootl">${loot}</ul>
           <h4 style="margin-top:12px">${esc(t('dItems'))}</h4><ul class="lootl">${items}</ul></div>

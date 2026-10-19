@@ -1,4 +1,9 @@
 {
   "_comment": "Noms internes des zones du jeu (dernier morceau du chemin de la carte) -> nom affiché.",
-  "ZhongZuiDiYu": "Tartarus"
+  "ZhongZuiDiYu": "Tartarus",
+  "YongShuangBingPo": "Glacial Abyss Watcher",
+  "YanYuZhiGu": "Blistering Lava Watcher",
+  "ChiGuiWuShi": "Steel Forge Watcher",
+  "LeiYingJiDian": "Thunder Wastes Watcher",
+  "DiaoLingWangYu_200": "Voidlands Watcher"
 }
