@@ -720,6 +720,16 @@ ipcMain.handle('searchPrices', (_e, opts) => {
 // Les légendaires et les organes ont un prix assez fixe : ils restent comptés.
 const VARIABLE_TYPES = new Set(['主动技能', '辅助技能', '崇高辅助技能', '华贵辅助技能', '被动技能', '塔罗斯技能', '始源塔罗斯技能', '英雄追忆']);
 const isVariablePrice = (it) => VARIABLE_TYPES.has(it.type);
+// Courbe de prix d'un objet : prix vus par les joueurs TLI Companion (serveur) + tes propres vérifications.
+ipcMain.handle('priceHistory', async (_e, id, days) => {
+  id = +id; days = Math.min(120, Math.max(1, +days || 30));
+  const since = Date.now() - days * 86400000;
+  const own = (prices.exHistory[id] || []).filter(([ts]) => ts > since).map(([ts, price]) => ({ ts, price }));
+  let server = [];
+  try { server = (await community.priceHistory(id, days)).points || []; } catch { /* hors ligne */ }
+  const it = items.get(id);
+  return { id, name: it.name, img: it.img, days, now: prices.get(id), own, server };
+});
 ipcMain.handle('bagScan', (_e, opts) => {
   const min = Math.max(0, +((opts && opts.min) ?? 1) || 0);
   const STALE = 24 * 3600 * 1000; // prix non revu depuis plus d'un jour : à vérifier en jeu

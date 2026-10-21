@@ -49,6 +49,7 @@ class CommunityClient {
   }
   aiStatus() { return this._req('GET', '/api/ai/status', null, false); }
   aiChat(body) { return this._req('POST', '/api/ai/chat', body, 'optional', true); }
+  priceHistory(id, days) { return this._req('GET', `/api/prices/history/${+id}?days=${+days || 30}`, null, false); }
   sendFeedback(body) { return this._req('POST', '/api/feedback', body, false); }
   sendFarmStats(body) { return this._req('POST', '/api/stats/farm', body, false); }
   compareStats({ region, tier }) { return this._req('GET', `/api/stats/compare?region=${encodeURIComponent(region || '')}&tier=${encodeURIComponent(tier || '')}`, null, false); }

@@ -633,15 +633,40 @@ route('POST', /^\/api\/prices$/, async (req) => {
   const now = Date.now();
   const stmt = db.prepare(`INSERT INTO price_obs (user_id, item_id, price, ts) VALUES (?, ?, ?, ?)
     ON CONFLICT(user_id, item_id) DO UPDATE SET price = excluded.price, ts = excluded.ts WHERE excluded.ts > price_obs.ts`);
+  const hist = db.prepare('INSERT OR IGNORE INTO price_hist (item_id, user_id, price, ts) VALUES (?, ?, ?, ?)');
   let n = 0;
   for (const o of obs) {
     const id = Math.trunc(+o.id), price = +o.price, ts = Math.min(now, Math.trunc(+o.ts));
     if (!(id > 0) || !(price > 0 && price < 1e7) || !(ts > now - 7 * 86400000)) continue;
     stmt.run(u.id, id, price, ts);
+    hist.run(id, u.id, price, ts);
     n++;
   }
   return { accepted: n };
 });
+
+// Courbe de prix d'un objet : par jour, prix médian, plus bas, nombre de relevés et de joueurs.
+route('GET', /^\/api\/prices\/history\/(\d+)$/, (req, url, m) => {
+  const q = url.searchParams;
+  const id = +m[1];
+  const days = Math.min(120, Math.max(1, +q.get('days') || 30));
+  const rows = db.prepare('SELECT price, ts, user_id FROM price_hist WHERE item_id = ? AND ts > ? ORDER BY ts')
+    .all(id, Date.now() - days * 86400000);
+  const byDay = new Map();
+  for (const r of rows) {
+    const day = new Date(r.ts).toISOString().slice(0, 10);
+    if (!byDay.has(day)) byDay.set(day, { prices: [], users: new Set() });
+    const d = byDay.get(day); d.prices.push(r.price); d.users.add(r.user_id);
+  }
+  const points = [...byDay.entries()].map(([day, d]) => {
+    const p = d.prices.sort((a, b) => a - b);
+    const mid = p.length >> 1;
+    return { day, median: p.length % 2 ? p[mid] : (p[mid - 1] + p[mid]) / 2, low: p[0], n: p.length, players: d.users.size };
+  });
+  return { id, days, points };
+});
+// Ménage quotidien de l'historique (plus de 120 jours).
+setInterval(() => { try { db.prepare('DELETE FROM price_hist WHERE ts < ?').run(Date.now() - 120 * 86400000); } catch { /* rien */ } }, 24 * 3600000).unref();
 
 // Médiane des derniers prix de chaque joueur sur 7 jours.
 let pricesCache = { at: 0, body: null };

@@ -49,6 +49,7 @@ class PriceBook {
   constructor(file) {
     this.file = file;
     this.exchange = {};  // id -> { price, ts }
+    this.exHistory = {}; // id -> [[ts, prix], …] tes vérifications à l'HdV (courbe de prix)
     this.manual = {};    // id -> price
     this.community = {}; // id -> { price, ts, devices }  (base TITrack)
     this.server = {};    // id -> { price, ts, n }        (notre serveur, n = nb de joueurs)
@@ -56,6 +57,7 @@ class PriceBook {
     try {
       const d = JSON.parse(fs.readFileSync(file, 'utf8'));
       Object.assign(this.exchange, d.exchange || {});
+      Object.assign(this.exHistory, d.exHistory || {});
       Object.assign(this.manual, d.manual || {});
       Object.assign(this.community, d.community || {});
       this.communityFetchedAt = d.communityFetchedAt || 0;
@@ -92,6 +94,8 @@ class PriceBook {
     const prev = this.exchange[id];
     if (prev && prev.ts > ts) return false;
     this.exchange[id] = { price: p, ts };
+    const h = (this.exHistory[id] = this.exHistory[id] || []);
+    if (!h.length || h[h.length - 1][0] !== ts) { h.push([ts, p]); if (h.length > 200) h.splice(0, h.length - 200); }
     this._scheduleSave();
     return true;
   }
@@ -157,7 +161,7 @@ class PriceBook {
     try {
       fs.mkdirSync(path.dirname(this.file), { recursive: true });
       fs.writeFileSync(this.file, JSON.stringify({
-        exchange: this.exchange, manual: this.manual,
+        exchange: this.exchange, exHistory: this.exHistory, manual: this.manual,
         community: this.community, communityFetchedAt: this.communityFetchedAt,
       }));
     } catch (e) { console.error('Sauvegarde des prix impossible :', e.message); }

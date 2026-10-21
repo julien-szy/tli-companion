@@ -445,3 +445,32 @@ aside.side .brand .ver { display: block; font-size: 10px; font-weight: 500; colo
 .sounds .sndvol input { width: 110px; accent-color: var(--accent); }
 .sounds .sndvol b { font-size: 12px; color: var(--muted); font-weight: 500; min-width: 38px; }
 .sounds .sndvol { min-width: 0 !important; }
+
+/* Tri des tableaux par clic sur l'en-tête */
+main table thead th { cursor: pointer; user-select: none; }
+main table thead th:hover { color: var(--text); }
+main table thead th.sort-asc, main table thead th.sort-desc { color: var(--accent); }
+main table thead th.sort-desc::after { content: ' ▼'; font-size: 9px; }
+main table thead th.sort-asc::after { content: ' ▲'; font-size: 9px; }
+
+/* Courbe de prix */
+main tr[data-item] { cursor: pointer; }
+.pc-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.pc-head .ico { width: 32px; height: 32px; }
+.pc-head h1 { margin: 0; font-size: 18px; }
+.pc-kpis { display: flex; gap: 18px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 10px; }
+.pc-kpis > div { display: flex; flex-direction: column; gap: 2px; }
+.pc-kpis span { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
+.pc-kpis b { font-size: 18px; font-variant-numeric: tabular-nums; }
+.pc-kpis small { font-size: 11px; }
+.pc-kpis .pc-days { flex-direction: row; gap: 6px; margin-left: auto; }
+.pc-svg { width: 100%; height: auto; background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; }
+.pc-grid { stroke: rgba(255,255,255,.06); stroke-width: 1; }
+.pc-axis { fill: var(--muted); font-size: 10px; }
+.pc-line { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; }
+.pc-sv { fill: var(--accent); }
+.pc-own { fill: #4a8fd8; stroke: #0f1115; stroke-width: 1.5; }
+.pc-legend { display: flex; gap: 16px; font-size: 12px; color: var(--muted); margin-top: 6px; }
+.pc-k { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
+.pc-k.sv { background: var(--accent); } .pc-k.own { background: #4a8fd8; }
+.pc-empty { padding: 30px 0; text-align: center; }

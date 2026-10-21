@@ -141,6 +141,16 @@ function openDb(dataDir) {
       PRIMARY KEY (user_id, report_id)
     );
 
+    -- Historique des prix vus à l'hôtel des ventes (courbe de prix), gardé 120 jours.
+    CREATE TABLE IF NOT EXISTS price_hist (
+      item_id INTEGER NOT NULL,
+      user_id TEXT NOT NULL,
+      price   REAL NOT NULL,
+      ts      INTEGER NOT NULL,
+      PRIMARY KEY (item_id, user_id, ts)
+    );
+    CREATE INDEX IF NOT EXISTS price_hist_item ON price_hist(item_id, ts);
+
     -- Dernier prix observé à l'hôtel des ventes, par joueur et par objet.
     CREATE TABLE IF NOT EXISTS price_obs (
       user_id  TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,

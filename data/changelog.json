@@ -5,6 +5,18 @@
   },
   "releases": [
     {
+      "version": "1.0.11",
+      "date": "2026-10-21",
+      "en": [
+        "Sort any table: click a column header to sort (highest first, or A → Z for names), click again to reverse, a third time to go back to the original order. The sort stays when the table updates live.",
+        "Price curve: click any item in Scan my bag, Items or Prices to see how its price moved over 7, 30 or 90 days (daily median seen by TLI Companion players, plus your own Auction House checks)."
+      ],
+      "fr": [
+        "Trie n'importe quel tableau : clique sur l'en-tête d'une colonne pour trier (du plus grand au plus petit, ou de A à Z pour les noms), reclique pour inverser, une 3e fois pour revenir à l'ordre d'origine. Le tri reste quand le tableau se met à jour en direct.",
+        "Courbe de prix : clique sur n'importe quel objet dans Analyser mon sac, Objets ou Prix pour voir l'évolution de son prix sur 7, 30 ou 90 jours (médiane du jour vue par les joueurs de TLI Companion, et tes propres vérifications à l'hôtel des ventes)."
+      ]
+    },
+    {
       "version": "1.0.10",
       "date": "2026-10-21",
       "en": [

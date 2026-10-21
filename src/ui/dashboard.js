@@ -553,7 +553,7 @@ function renderRuns(current, runs) {
 }
 
 function renderItems(list) {
-  $('itemList').innerHTML = list.map((i) => `<tr class="${i.ignored ? 'ignored' : ''}" title="${i.ignored ? esc(t('items.ignored')) : ''}"><td>${icon(i.img)}${esc(i.name)}</td><td class="r">${qty(i.qty)}</td><td class="r muted">${unit(i.unit)}</td><td><span class="tag">${esc(srcLabel(i.source))}</span></td><td class="r ${cls(i.value)}">${fe(i.value, true)}</td></tr>`).join('')
+  $('itemList').innerHTML = list.map((i) => `<tr data-item="${i.id}" class="${i.ignored ? 'ignored' : ''}" title="${i.ignored ? esc(t('items.ignored')) : ''}"><td>${icon(i.img)}${esc(i.name)}</td><td class="r">${qty(i.qty)}</td><td class="r muted">${unit(i.unit)}</td><td><span class="tag">${esc(srcLabel(i.source))}</span></td><td class="r ${cls(i.value)}">${fe(i.value, true)}</td></tr>`).join('')
     || `<tr><td colspan="5" class="muted">${esc(t('items.empty'))}</td></tr>`;
 }
 
@@ -607,7 +607,7 @@ async function loadPrices(more = false) {
   const nameCell = (p) => (p.unknown || p.custom
     ? `${icon(null)}<input class="iname" data-id="${p.id}" value="${esc(p.custom ? p.name : '')}" placeholder="${esc(t('prices.unknownItem', { id: p.id }))}">`
     : `${icon(p.img)}${esc(p.name)}`);
-  $('priceList').innerHTML = list.map((p) => `<tr><td>${nameCell(p)}</td><td class="muted">${p.id}</td><td class="r">${unit(p.price)}</td><td>${srcTag(p)}</td><td class="muted">${p.ts ? dateTime(p.ts) : ''}</td>
+  $('priceList').innerHTML = list.map((p) => `<tr data-item="${p.id}"><td>${nameCell(p)}</td><td class="muted">${p.id}</td><td class="r">${unit(p.price)}</td><td>${srcTag(p)}</td><td class="muted">${p.ts ? dateTime(p.ts) : ''}</td>
     <td class="r"><input class="price" data-id="${p.id}" value="${p.manual ?? ''}" placeholder="${esc(t('prices.auto'))}"></td></tr>`).join('');
   $('priceList').querySelectorAll('input.price').forEach((inp) => (inp.onchange = () => tli.setManualPrice(+inp.dataset.id, inp.value === '' ? null : +inp.value.replace(',', '.'))));
   $('priceList').querySelectorAll('input.iname').forEach((inp) => (inp.onchange = () => tli.setItemName(+inp.dataset.id, inp.value)));
@@ -823,7 +823,7 @@ const Bag = (() => {
         <label class="muted bag-min">${esc(t('bag.minLabel'))} <input id="bagMin" type="number" min="0" step="0.5" value="${min}" style="width:76px"> FE</label>
       </div>
       <table><thead><tr><th>${esc(t('col.item'))}</th><th class="r">${esc(t('col.quantity'))}</th><th class="r">${esc(t('col.unit'))}</th><th class="r">${esc(t('bag.col.stack'))}</th><th>${esc(t('bag.col.price'))}</th><th>${esc(t('bag.col.verdict'))}</th></tr></thead><tbody>
-      ${rows.map((r) => `<tr class="${r.verdict === 'low' || r.verdict === 'bound' ? 'dim' : ''}">
+      ${rows.map((r) => `<tr data-item="${r.id}" class="${r.verdict === 'low' || r.verdict === 'bound' ? 'dim' : ''}">
           <td>${icon(r.img)}${esc(r.name)}</td><td class="r">${nf0.format(r.qty)}</td><td class="r muted" title="${r.verdict === 'variable' ? esc(t('bag.varTip')) : ''}">${r.verdict === 'variable' ? (r.unit ? esc(t('bag.upTo', { p: unit(r.unit) })) : '–') : unit(r.unit)}</td>
           <td class="r"><b class="${r.verdict === 'sell' ? 'pos' : ''}">${r.unit && r.verdict !== 'variable' ? fe(r.value) : '–'}</b></td>
           <td class="muted" style="font-size:12px">${r.unit ? `${esc(srcLabel(r.source))}${r.players ? ' · ' + esc(t('prices.players', { n: r.players })) : ''}${r.ts ? ` · <span class="${r.stale ? 'neg' : ''}">${esc(ago(r.ts))}</span>` : ''}` : ''}</td>
@@ -844,3 +844,43 @@ const Bag = (() => {
   }
   return { show };
 })();
+
+// ---------- Courbe de prix d'un objet (clic sur une ligne d'objet) ----------
+// Prix médian du jour vu par les joueurs TLI Companion (ligne) et tes propres vérifications à l'HdV (points).
+let chartDays = 30;
+async function openPriceChart(id) {
+  const h = await tli.priceHistory(id, chartDays);
+  const W = 640, H = 240, P = { l: 48, r: 14, t: 14, b: 26 };
+  const now = Date.now(), from = now - h.days * 86400000;
+  const sv = h.server.map((p) => ({ ts: Date.parse(p.day + 'T12:00:00Z'), v: p.median, n: p.n, players: p.players }));
+  const own = h.own.map((p) => ({ ts: p.ts, v: p.price }));
+  const all = sv.map((p) => p.v).concat(own.map((p) => p.v)).concat(h.now && h.now.price ? [h.now.price] : []);
+  const max = Math.max(...all, 0) * 1.12 || 1;
+  const X = (ts) => P.l + ((ts - from) / (now - from)) * (W - P.l - P.r);
+  const Y = (v) => H - P.b - (v / max) * (H - P.t - P.b);
+  const grid = [0, 0.25, 0.5, 0.75, 1].map((f) => `<line x1="${P.l}" x2="${W - P.r}" y1="${Y(max * f)}" y2="${Y(max * f)}" class="pc-grid"/><text x="${P.l - 6}" y="${Y(max * f) + 4}" class="pc-axis" text-anchor="end">${f ? esc(unit(max * f)) : '0'}</text>`).join('');
+  const ticks = [0, 0.5, 1].map((f) => { const ts = from + f * (now - from); return `<text x="${X(ts)}" y="${H - 6}" class="pc-axis" text-anchor="${f === 0 ? 'start' : f === 1 ? 'end' : 'middle'}">${esc(new Date(ts).toLocaleDateString(LOCALE, { day: 'numeric', month: 'short' }))}</text>`; }).join('');
+  const line = sv.length > 1 ? `<polyline class="pc-line" points="${sv.map((p) => `${X(p.ts)},${Y(p.v)}`).join(' ')}"/>` : '';
+  const svDots = sv.map((p) => `<circle class="pc-sv" cx="${X(p.ts)}" cy="${Y(p.v)}" r="3.5"><title>${esc(new Date(p.ts).toLocaleDateString(LOCALE))} · ${esc(unit(p.v))} FE · ${esc(t('pc.obs', { n: p.n, players: p.players }))}</title></circle>`).join('');
+  const ownDots = own.map((p) => `<circle class="pc-own" cx="${X(p.ts)}" cy="${Y(p.v)}" r="4"><title>${esc(dateTime(p.ts))} · ${esc(unit(p.v))} FE · ${esc(t('pc.mine'))}</title></circle>`).join('');
+  const empty = !sv.length && !own.length;
+  const vals = sv.map((p) => p.v).concat(own.map((p) => p.v));
+  modal(`<div class="pc-head">${icon(h.img)}<h1>${esc(h.name)}</h1></div>
+    <div class="pc-kpis">
+      <div><span class="muted">${esc(t('pc.now'))}</span><b>${h.now && h.now.price ? esc(unit(h.now.price)) + ' FE' : '–'}</b><small class="muted">${h.now && h.now.source ? esc(srcLabel(h.now.source)) : ''}</small></div>
+      <div><span class="muted">${esc(t('pc.low'))}</span><b>${vals.length ? esc(unit(Math.min(...vals))) + ' FE' : '–'}</b></div>
+      <div><span class="muted">${esc(t('pc.high'))}</span><b>${vals.length ? esc(unit(Math.max(...vals))) + ' FE' : '–'}</b></div>
+      <div class="pc-days">${[7, 30, 90].map((dd) => `<button class="fchip ${dd === chartDays ? 'on' : ''}" data-days="${dd}">${esc(t('pc.days', { n: dd }))}</button>`).join('')}</div>
+    </div>
+    ${empty ? `<p class="muted pc-empty">${esc(t('pc.empty'))}</p>` : `<svg class="pc-svg" viewBox="0 0 ${W} ${H}">${grid}${ticks}${line}${svDots}${ownDots}</svg>
+    <div class="pc-legend"><span><i class="pc-k sv"></i>${esc(t('pc.legendServer'))}</span><span><i class="pc-k own"></i>${esc(t('pc.legendMine'))}</span></div>`}
+    <p class="muted" style="font-size:12px;margin-top:8px">${esc(t('pc.help'))}</p>
+    <div class="foot"><button class="btn" id="pcClose">${esc(t('pc.close'))}</button></div>`);
+  document.querySelectorAll('[data-days]').forEach((b) => (b.onclick = () => { chartDays = +b.dataset.days; openPriceChart(id); }));
+  $('pcClose').onclick = () => modal('');
+}
+document.addEventListener('click', (e) => {
+  const tr = e.target.closest('main tr[data-item]');
+  if (!tr || e.target.closest('input, button, select, a, summary')) return;
+  openPriceChart(+tr.dataset.item);
+});
