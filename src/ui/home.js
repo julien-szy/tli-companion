@@ -158,7 +158,7 @@ const Home = (() => {
       <div class="home-row">
         <div class="card hcard">
           <h2>${esc(t(s.current ? 'ov.currentMap' : 'ov.lastMap'))} <a data-go="history">${esc(t('h.history'))} →</a></h2>
-          ${last ? `<div class="lastmap"><b>${esc(last.name)}</b><span class="${cls(last.profit)} lm-profit">${fe(last.profit, true)} FE</span></div>
+          ${last ? `<div class="lastmap"><b>${esc(mapPlace(last.name, last.zones) || last.name)}${mapPlace(last.name, last.zones) ? `<small class="muted lm-beacon">${esc(last.name)}</small>` : ''}</b><span class="${cls(last.profit)} lm-profit">${fe(last.profit, true)} FE</span></div>
             <div class="lm-sub muted"><span>${dur(last.durationMs)}</span><span>${esc(t('ov.costOf', { fe: fe(last.cost, true) }))}</span></div>`
             : `<p class="muted">${esc(t(s.recording ? 'ov.waiting' : 'ov.pressStart'))}</p>`}
         </div>

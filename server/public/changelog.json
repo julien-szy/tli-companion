@@ -1,6 +1,16 @@
 {
   "releases": [
     {
+      "version": "1.0.12",
+      "date": "2026-10-21",
+      "en": [
+        "The exact map is now shown next to the beacon (for example \"Glacial Abyss T8 · Singing Sand\") in the widget, Home, Maps and History, and session sheets list the maps you played instead of meaningless zone numbers."
+      ],
+      "fr": [
+        "La carte exacte s'affiche maintenant à côté de la balise (par exemple « Glacial Abyss T8 · Singing Sand ») dans le widget, l'Accueil, Cartes et l'Historique, et les fiches de session listent les cartes jouées au lieu de numéros de zone sans intérêt."
+      ]
+    },
+    {
       "version": "1.0.11",
       "date": "2026-10-21",
       "en": [

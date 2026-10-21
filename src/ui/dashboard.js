@@ -238,7 +238,7 @@ async function openSession(id) {
       <textarea id="dNotes" placeholder="${esc(t('d.notesPh'))}">${esc(r.notes || '')}</textarea></div>
     <div class="cards">
       <div class="card"><h2>${esc(t('d.mapsPlayed'))}</h2><table><thead><tr><th>${esc(t('col.map'))}</th><th class="r">${esc(t('col.count'))}</th><th class="r">${esc(t('col.avgProfit'))}</th><th class="r">${esc(t('col.avgDuration'))}</th></tr></thead><tbody>
-        ${r.strategy.maps.map((m) => `<tr><td>${esc(m.name)}<br><span class="muted">${Object.keys(m.areaIds).map((a) => esc(t('d.zone', { id: a }))).join(', ')}</span></td><td class="r">${m.runs}</td><td class="r ${cls(m.profit)}">${fe(m.profit / m.runs, true)}</td><td class="r">${dur(m.durationMs / m.runs)}</td></tr>`).join('')}
+        ${r.strategy.maps.map((m) => `<tr><td>${esc(m.name)}${m.zones ? `<br><span class="muted">${Object.entries(m.zones).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([z, n]) => esc(z) + (n > 1 ? ' ×' + n : '')).join(' · ')}</span>` : ''}</td><td class="r">${m.runs}</td><td class="r ${cls(m.profit)}">${fe(m.profit / m.runs, true)}</td><td class="r">${dur(m.durationMs / m.runs)}</td></tr>`).join('')}
       </tbody></table></div>
       <div class="card"><h2>${esc(t('d.consumables'))}</h2><table><thead><tr><th>${esc(t('col.item'))}</th><th class="r">${esc(t('col.perMap'))}</th><th class="r">${esc(t('col.unit'))}</th><th class="r">${esc(t('col.costPerMap'))}</th></tr></thead><tbody>
         ${r.strategy.consumables.map((c) => `<tr><td>${icon(c.img)}${esc(c.name)}</td><td class="r">${nf3.format(c.perMap)}</td><td class="r muted">${unit(c.unit)}</td><td class="r neg">${fe(-c.perMap * c.unit)}</td></tr>`).join('') || `<tr><td colspan="4" class="muted">${esc(t('d.none'))}</td></tr>`}
@@ -538,7 +538,7 @@ function runRow(r, current) {
   const perH = r.durationMs > 30000 ? r.profit / (r.durationMs / 3600000) : 0;
   const itemsTxt = r.items.slice(0, 12).map((i) => `${esc(i.name)} <b>${qty(i.qty)}</b> <span class="${cls(i.value)}">${fe(i.value, true)}</span>`).join('<span>·</span>');
   return `<tr><td class="muted">${current ? `<span class="pos">${esc(t('runs.current'))}</span>` : clock(r.startedAt)}</td>
-    <td><details class="run"><summary>${mapLabel(r.name)} <span class="muted">${r.zones.length > 1 ? esc(t('runs.zones', { n: r.zones.length - 1 })) : ''}</span></summary><div class="runitems">${itemsTxt || esc(t('runs.noItems'))}</div></details></td>
+    <td><details class="run"><summary>${mapLabel(r.name)}${mapPlace(r.name, r.zones) ? ` <span class="place">${esc(mapPlace(r.name, r.zones))}</span>` : ''} <span class="muted">${r.zones.length > 1 ? esc(t('runs.zones', { n: r.zones.length - 1 })) : ''}</span></summary><div class="runitems">${itemsTxt || esc(t('runs.noItems'))}</div></details></td>
     <td class="r">${dur(r.durationMs)}</td><td class="r pos">${fe(r.loot)}</td><td class="r neg">${fe(r.cost)}</td>
     <td class="r ${cls(r.profit)}"><b>${fe(r.profit, true)}</b></td><td class="r muted">${fe(perH)}</td></tr>`;
 }
@@ -576,7 +576,7 @@ function renderHistory(hist) {
     return `<tr class="day"><td colspan="5"><b>${esc(dayLabel(rs[0].startedAt))}</b> · ${esc(t(rs.length === 1 ? 'day.map1' : 'day.maps', { n: rs.length }))} · <span class="${cls(total)}">${fe(total, true)} FE</span></td></tr>`
       + rs.map((r) => {
         const perH = r.durationMs > 30000 ? r.profit / (r.durationMs / 3600000) : 0;
-        return `<tr><td class="muted">${timeOnly(r.startedAt)}</td><td>${mapLabel(r.name)}</td><td class="r muted">${dur(r.durationMs)}</td><td class="r ${cls(r.profit)}">${fe(r.profit, true)}</td><td class="r">${fe(perH)}</td></tr>`;
+        return `<tr><td class="muted">${timeOnly(r.startedAt)}</td><td>${mapLabel(r.name)}${mapPlace(r.name, r.zones) ? ` <span class="place">${esc(mapPlace(r.name, r.zones))}</span>` : ''}</td><td class="r muted">${dur(r.durationMs)}</td><td class="r ${cls(r.profit)}">${fe(r.profit, true)}</td><td class="r">${fe(perH)}</td></tr>`;
       }).join('');
   }).join('') || `<tr><td colspan="5" class="muted">${esc(t('history.empty'))}</td></tr>`;
 }

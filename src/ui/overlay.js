@@ -102,7 +102,8 @@ tli.onState((s) => {
   $('curLabel').textContent = t(s.current ? 'ov.currentMap' : s.lastRun ? 'ov.lastMap' : 'ov.inHideout');
   if (c) {
     setVal($('curProfit'), c.profit);
-    $('curName').textContent = c.name;
+    const place = mapPlace(c.name, c.zones);
+    $('curName').textContent = place ? `${place} · ${c.name}` : c.name;
     $('curTime').textContent = dur(c.durationMs);
     $('curCost').textContent = c.cost ? t('ov.costOf', { fe: fe(c.cost, true) }) : '';
     setVal($('miniMap'), c.profit);

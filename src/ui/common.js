@@ -157,3 +157,11 @@ async function alertSound(a) {
   else if (a.kind && a.kind.startsWith('tartarus')) tartarusSound(a.kind, vol);
   else stockBeep(a.level, vol);
 }
+
+// Carte précise d'une run : sa 1re zone (« Glacial Abyss - Singing Sand » -> « Singing Sand »),
+// seulement si la zone est connue et différente du nom affiché (balise).
+function mapPlace(name, zones) {
+  const z = zones && zones[0];
+  if (!z || z === name || !z.includes(' - ')) return '';
+  return z.split(' - ').slice(1).join(' - ');
+}

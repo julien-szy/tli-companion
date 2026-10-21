@@ -25,8 +25,11 @@ function buildReport(sess, tracker, { appVersion, title = '' } = {}) {
   const maps = {};
   for (const r of runs) {
     const sum = tracker.runSummary(r);
-    const m = (maps[r.name] = maps[r.name] || { name: r.name, runs: 0, profit: 0, durationMs: 0, areaIds: {} });
+    const m = (maps[r.name] = maps[r.name] || { name: r.name, runs: 0, profit: 0, durationMs: 0, areaIds: {}, zones: {} });
     m.runs++; m.profit += sum.profit; m.durationMs += sum.durationMs;
+    // Carte précise : 1re zone de la run (« Glacial Abyss - Singing Sand » -> « Singing Sand »).
+    const z = r.zones && r.zones[0];
+    if (z && z !== r.name && z.includes(' - ')) { const place = z.split(' - ').slice(1).join(' - '); m.zones[place] = (m.zones[place] || 0) + 1; }
     if (r.node) m.areaIds[r.node.areaId] = (m.areaIds[r.node.areaId] || 0) + 1;
   }
 

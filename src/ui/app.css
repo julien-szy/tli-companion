@@ -474,3 +474,8 @@ main tr[data-item] { cursor: pointer; }
 .pc-k { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
 .pc-k.sv { background: var(--accent); } .pc-k.own { background: #4a8fd8; }
 .pc-empty { padding: 30px 0; text-align: center; }
+
+/* Carte précise (zone) à côté de la balise */
+.place { color: var(--text); font-weight: 600; margin-left: 4px; }
+.place::before { content: '· '; color: var(--muted); font-weight: 400; }
+.lm-beacon { display: block; font-size: 12px; font-weight: 400; margin-top: 2px; }
