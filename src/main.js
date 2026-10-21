@@ -42,7 +42,7 @@ const DEFAULTS = {
   timeMode: 'real',      // 'real' = temps réel de session ; 'map' = temps passé en carte
   communityPrices: true,
   hubPatterns: ['/XZ_'], // chemins de map considérés comme repaire / ville
-  overlay: { x: null, y: null, collapsed: false, opacity: 0.92, scale: 1, solid: false, locked: false },
+  overlay: { x: null, y: null, collapsed: false, opacity: 0.92, scale: 1, solid: false, locked: false, dropsSort: 'recent' },
   server: { url: 'https://tlicompanion.com', token: null, userId: null, name: null },
   activeBuild: null,     // id du build suivi par le conseiller d'achat
   shareMeta: true,       // partage auto du Hero Ranking consulté (pseudos sauf profils masqués)
@@ -1392,6 +1392,8 @@ ipcMain.handle('action', async (_e, name, arg) => {
       break;
     }
     case 'widgetShowAll': settings.overlay.hide = []; saveSettings(); broadcast(); break;
+    // Liste de drops du widget : 'recent' (derniers) ou 'value' (plus rentables de la session).
+    case 'dropsSort': settings.overlay.dropsSort = arg === 'value' ? 'value' : 'recent'; saveSettings(); broadcast(); break;
     case 'lock': setLocked(arg === undefined ? !settings.overlay.locked : arg); break;
     case 'community':
       settings.communityPrices = !!arg; saveSettings();

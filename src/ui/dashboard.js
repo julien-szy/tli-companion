@@ -402,6 +402,7 @@ function renderWidgetCfg(s) {
   $('wcAll').onclick = () => tli.action('widgetShowAll');
 }
 $('sLock').onchange = (e) => tli.action('lock', e.target.checked);
+$('sDropsSort').onchange = (e) => tli.action('dropsSort', e.target.value);
 
 let searchTimer;
 $('pSearch').oninput = () => { clearTimeout(searchTimer); searchTimer = setTimeout(loadPrices, 200); };
@@ -476,6 +477,7 @@ tli.onState((s) => {
     $('sStar').checked = s.settings.starAlerts !== false;
     $('sAutoPause').checked = s.settings.autoPause !== false;
     $('sLock').checked = !!s.settings.overlay.locked;
+    $('sDropsSort').value = s.settings.overlay.dropsSort === 'value' ? 'value' : 'recent';
     $('sOpacity').disabled = !!s.settings.overlay.solid;
   }
   $('zoneNow').textContent = s.zone.name;

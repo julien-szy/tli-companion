@@ -434,6 +434,12 @@ class Tracker extends EventEmitter {
     for (let i = s.feed.length - 1; i >= 0 && recent.length < 15; i--) {
       if (feedFilter(s.feed[i]) && this.visible(s.feed[i].id)) recent.push(this._feedEntry(s.feed[i]));
     }
+    // Drops les plus rentables de la session : quantités cumulées par objet, triées par valeur totale.
+    const gains = {};
+    for (const m of [s.loot].concat(mode === 'all' ? [s.other] : [])) {
+      for (const id in m) if (m[id] > 0) addQty(gains, id, m[id]);
+    }
+    const topDrops = this.itemList(gains).filter((i) => i.value > 0).slice(0, 15);
 
     return {
       mode, timeMode: this.settings.timeMode,
@@ -460,6 +466,7 @@ class Tracker extends EventEmitter {
       current: s.currentRun ? this.runSummary(s.currentRun, now) : null,
       lastRun: s.runs[0] ? this.runSummary(s.runs[0]) : null,
       recent,
+      topDrops,
     };
   }
 
