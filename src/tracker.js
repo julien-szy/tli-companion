@@ -187,6 +187,17 @@ class Tracker extends EventEmitter {
         return;
       }
       case 'voidNode': this.pendingNode = { areaId: ev.areaId, mapOrder: ev.mapOrder }; return;
+      // Nouveau personnage : on oublie le sac (et les Star Shards) de l'ancien. Le jeu renvoie ensuite le sac
+      // complet du nouveau perso ; ses pages vides n'envoient rien, d'où la remise à zéro.
+      case 'roleLogin': {
+        this.slots = new Map();
+        this.initPages = new Set();
+        this.lastInitTs = 0;
+        this.snapshotReady = true; // sac connu dès la connexion, même vide
+        this.starShards = {};
+        if (!this.replay) this.emit('changed');
+        return;
+      }
       case 'mapModifier': {
         const run = this.session.currentRun;
         // On ne garde que les modificateurs de la première zone (la carte elle-même).

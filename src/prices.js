@@ -72,18 +72,15 @@ class PriceBook {
       const any = this.exchange[id] || this.server[id] || this.community[id];
       return { price: 0, source: 'nonconfirme', ts: any && any.ts, ignoredPrice: any ? any.price : null };
     }
-    const ex = this.exchange[id];
-    // Prix vus par nos joueurs à l'HdV : utilisés dès 2 joueurs, ou dès 1 joueur s'ils ont moins de 24 h,
-    // et préférés à TITrack quand ils sont plus récents.
-    const svRaw = this.server[id];
-    const tc = this.community[id];
-    const svOk = svRaw && (svRaw.n >= 2 || Date.now() - svRaw.ts < 24 * 3600 * 1000);
-    const sv = svOk && (!tc || svRaw.ts >= tc.ts || svRaw.n >= 2) ? svRaw : null;
-    const co = sv || tc;
-    if (ex && (!co || ex.ts >= co.ts - 3 * 24 * 3600 * 1000)) return { price: ex.price, source: 'hdv', ts: ex.ts };
-    if (sv) return { price: sv.price, source: 'serveur', ts: sv.ts, players: sv.n || null };
-    if (co) return { price: co.price, source: 'communauté', ts: co.ts, players: co.devices || null };
-    if (ex) return { price: ex.price, source: 'hdv', ts: ex.ts };
+    // Le prix le plus récent gagne, quelle que soit sa source : ton propre prix vu à l'HdV,
+    // celui des joueurs TLI Companion (serveur) ou la base communautaire.
+    const ex = this.exchange[id], sv = this.server[id], tc = this.community[id];
+    const cands = [
+      ex && { price: ex.price, source: 'hdv', ts: ex.ts },
+      sv && { price: sv.price, source: 'serveur', ts: sv.ts, players: sv.n || null },
+      tc && { price: tc.price, source: 'communauté', ts: tc.ts, players: tc.devices || null },
+    ].filter((c) => c && c.price > 0);
+    if (cands.length) return cands.reduce((a, c) => ((c.ts || 0) > (a.ts || 0) ? c : a));
     return { price: 0, source: 'inconnu' };
   }
   value(id) { return this.get(id).price; }

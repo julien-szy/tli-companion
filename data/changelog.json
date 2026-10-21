@@ -1,13 +1,23 @@
 {
   "unreleased": {
-    "en": [
-      "Clearer setup hints: the app now reminds you that the game forgets \"Enable Log\" when it closes, so it has to be turned on each time you launch TLI."
-    ],
-    "fr": [
-      "Aide au démarrage plus claire : l'app rappelle que le jeu oublie « Enable Log » à la fermeture, et qu'il faut donc le réactiver à chaque lancement de TLI."
-    ]
+    "en": [],
+    "fr": []
   },
   "releases": [
+    {
+      "version": "1.0.10",
+      "date": "2026-10-21",
+      "en": [
+        "Clearer setup hints: the app now reminds you that the game forgets \"Enable Log\" when it closes, so it has to be turned on each time you launch TLI.",
+        "Switching characters now resets the bag: Scan my bag and the bag value no longer show your previous character's items.",
+        "Fresher prices: the app now always uses the most recent price for each item, whether it comes from your own auction house check, from TLI Companion players or from the community base."
+      ],
+      "fr": [
+        "Aide au démarrage plus claire : l'app rappelle que le jeu oublie « Enable Log » à la fermeture, et qu'il faut donc le réactiver à chaque lancement de TLI.",
+        "Changer de personnage remet le sac à zéro : Analyser mon sac et la valeur du sac n'affichent plus les objets de ton perso précédent.",
+        "Prix plus frais : l'app utilise maintenant toujours le prix le plus récent de chaque objet, qu'il vienne de ta propre vérification à l'hôtel des ventes, des joueurs de TLI Companion ou de la base communautaire."
+      ]
+    },
     {
       "version": "1.0.9",
       "date": "2026-10-19",

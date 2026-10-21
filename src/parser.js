@@ -56,7 +56,8 @@ class LogParser {
     const hasXchg = !hasBag && !hasItem && !hasLevel && line.includes('XchgSearchPrice');
     const hasMisc = !hasBag && !hasItem && !hasLevel && !hasXchg &&
       (line.includes('AddMapModifier(') || line.includes('PreLoadHeroId') ||
-       line.includes('GetCardDataByMapOrder') || line.endsWith('[Game] AffixInfos') || line.includes('ResreshConsumData'));
+       line.includes('GetCardDataByMapOrder') || line.endsWith('[Game] AffixInfos') || line.includes('ResreshConsumData') ||
+       line.includes('SelectRoleNetMgr@_EnterLevelStep5'));
     if (!hasBag && !hasItem && !hasLevel && !hasXchg && !hasMisc) return;
 
     const ts = parseTs(line);
@@ -64,6 +65,8 @@ class LogParser {
     const t = this.lastTs;
 
     if (hasMisc) {
+      // Connexion d'un personnage (premier lancement ou changement de perso) : son sac complet suit.
+      if (line.includes('SelectRoleNetMgr@_EnterLevelStep5')) { this.onEvent({ type: 'roleLogin', ts: t }); return; }
       let m = MODIFIER_RE.exec(line);
       if (m) { this.onEvent({ type: 'mapModifier', ts: t, id: +m[1] }); return; }
       m = HERO_RE.exec(line);
