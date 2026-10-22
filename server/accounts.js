@@ -70,14 +70,14 @@ module.exports = function setupAccounts({ db, route, HttpError, sha256, clientIp
   // Déplace tout le contenu d'un ancien pseudo (app) vers le compte Google, puis supprime l'ancien pseudo.
   // Compteurs de likes recalculés après une fusion ou une suppression (rare).
   function recountLikes() {
-    db.prepare('UPDATE reports SET likes = (SELECT COUNT(*) FROM likes WHERE likes.report_id = reports.id)').run();
-    db.prepare('UPDATE builds SET likes = (SELECT COUNT(*) FROM build_likes WHERE build_likes.build_id = builds.id)').run();
+    db.prepare('UPDATE reports SET likes = (SELECT COUNT(*) FROM likes WHERE likes.report_id = reports.id AND value = 1), dislikes = (SELECT COUNT(*) FROM likes WHERE likes.report_id = reports.id AND value = -1)').run();
+    db.prepare('UPDATE builds SET likes = (SELECT COUNT(*) FROM build_likes WHERE build_likes.build_id = builds.id AND value = 1), dislikes = (SELECT COUNT(*) FROM build_likes WHERE build_likes.build_id = builds.id AND value = -1)').run();
   }
   function mergeUsers(fromId, toId) {
     if (fromId === toId) return;
     db.exec('BEGIN');
     try {
-      for (const t of ['reports', 'builds', 'sessions']) db.prepare(`UPDATE ${t} SET user_id = ? WHERE user_id = ?`).run(toId, fromId);
+      for (const t of ['reports', 'builds', 'sessions', 'comments']) db.prepare(`UPDATE ${t} SET user_id = ? WHERE user_id = ?`).run(toId, fromId);
       db.prepare('UPDATE OR IGNORE likes SET user_id = ? WHERE user_id = ?').run(toId, fromId);
       db.prepare('UPDATE OR IGNORE build_likes SET user_id = ? WHERE user_id = ?').run(toId, fromId);
       db.prepare('UPDATE OR IGNORE hero_names SET user_id = ? WHERE user_id = ?').run(toId, fromId);
@@ -218,9 +218,9 @@ module.exports = function setupAccounts({ db, route, HttpError, sha256, clientIp
       builds: db.prepare('SELECT id, title, hero_key, likes, updated_at FROM builds WHERE user_id = ? ORDER BY updated_at DESC LIMIT 200').all(u.id),
       reports: db.prepare('SELECT id, title, main_map, region, timemark, likes, created_at FROM reports WHERE user_id = ? ORDER BY created_at DESC LIMIT 200').all(u.id),
       likedBuilds: db.prepare(`SELECT b.id, b.title, b.hero_key, b.likes, b.updated_at, w.name AS author FROM build_likes l JOIN builds b ON b.id = l.build_id
-        JOIN users w ON w.id = b.user_id WHERE l.user_id = ? ORDER BY b.updated_at DESC LIMIT 200`).all(u.id),
+        JOIN users w ON w.id = b.user_id WHERE l.user_id = ? AND l.value = 1 ORDER BY b.updated_at DESC LIMIT 200`).all(u.id),
       likedReports: db.prepare(`SELECT r.id, r.title, r.main_map, r.likes, r.created_at, w.name AS author FROM likes l JOIN reports r ON r.id = l.report_id
-        JOIN users w ON w.id = r.user_id WHERE l.user_id = ? ORDER BY r.created_at DESC LIMIT 200`).all(u.id),
+        JOIN users w ON w.id = r.user_id WHERE l.user_id = ? AND l.value = 1 ORDER BY r.created_at DESC LIMIT 200`).all(u.id),
     };
   });
   // Supprimer son compte et tout ce qu'il a partagé.
@@ -230,6 +230,9 @@ module.exports = function setupAccounts({ db, route, HttpError, sha256, clientIp
     if (b.confirm !== 'DELETE') throw new HttpError(400, 'confirmation missing');
     db.exec('BEGIN');
     try {
+      // Ses commentaires : ceux qui ont des réponses restent en « supprimé », les autres partent.
+      db.prepare("UPDATE comments SET deleted = 1, body = '' WHERE user_id = ? AND id IN (SELECT parent_id FROM comments WHERE parent_id IS NOT NULL)").run(u.id);
+      db.prepare('DELETE FROM comments WHERE user_id = ? AND deleted = 0').run(u.id);
       for (const t of ['likes', 'build_likes', 'hero_names', 'reports', 'builds', 'sessions']) db.prepare(`DELETE FROM ${t} WHERE user_id = ?`).run(u.id);
       db.prepare('DELETE FROM users WHERE id = ?').run(u.id);
       recountLikes();

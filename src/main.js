@@ -956,6 +956,14 @@ ipcMain.handle('accountLogout', async () => {
   Object.assign(settings.server, { token: null, userId: null, name: null, google: false, named: true });
   saveSettings(); broadcast();
 });
+// Votes et commentaires (bêta).
+const isKind = (k) => k === 'build' || k === 'report';
+const isId = (v) => typeof v === 'string' && /^[0-9a-f-]{36}$/.test(v);
+ipcMain.handle('vote', (_e, kind, id, value) => { if (!isKind(kind) || !isId(id)) throw new Error('invalid'); return community.vote(kind, id, value === 1 || value === -1 ? value : 0); });
+ipcMain.handle('comments', (_e, kind, id) => { if (!isKind(kind) || !isId(id)) throw new Error('invalid'); return community.comments(kind, id); });
+ipcMain.handle('commentPost', (_e, kind, id, body, parentId) => { if (!isKind(kind) || !isId(id)) throw new Error('invalid'); return community.commentPost(kind, id, String(body || '').slice(0, 1000), isId(parentId) ? parentId : null); });
+ipcMain.handle('commentEdit', (_e, cid, body) => { if (!isId(cid)) throw new Error('invalid'); return community.commentEdit(cid, String(body || '').slice(0, 1000)); });
+ipcMain.handle('commentDelete', (_e, cid) => { if (!isId(cid)) throw new Error('invalid'); return community.commentDelete(cid); });
 ipcMain.handle('myOnlineBuilds', async () => (FEATURES.accounts && community.registered ? (await community.myContent()).builds : []));
 ipcMain.handle('register', async (_e, name) => { const r = await community.register(name); broadcast(); return r; });
 ipcMain.handle('shareReport', async (_e, id) => {

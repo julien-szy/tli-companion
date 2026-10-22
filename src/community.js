@@ -47,6 +47,11 @@ class CommunityClient {
   appLoginPoll(code) { return this._req('GET', `/api/auth/app/poll?code=${encodeURIComponent(code)}`, null, false); }
   logout() { return this._req('POST', '/api/auth/logout', null, 'optional'); }
   myContent() { return this._req('GET', '/api/me/content'); }
+  vote(kind, id, value) { return this._req('POST', '/api/votes', { kind, id, value }); }
+  comments(kind, id) { return this._req('GET', `/api/comments?kind=${encodeURIComponent(kind)}&id=${encodeURIComponent(id)}`, null, 'optional'); }
+  commentPost(kind, id, body, parentId) { return this._req('POST', '/api/comments', { kind, id, body, parentId }); }
+  commentEdit(cid, body) { return this._req('PATCH', `/api/comments/${encodeURIComponent(cid)}`, { body }); }
+  commentDelete(cid) { return this._req('DELETE', `/api/comments/${encodeURIComponent(cid)}`); }
   uploadMeta(payload) { return this._req('POST', '/api/meta', payload, this.registered, true); }
   metaPlayers(server, season, mode, hero, { sort = 'rank', limit = 50, offset = 0 } = {}) {
     const q = new URLSearchParams({ server, season: String(season), mode: String(mode), hero: String(hero), sort, limit: String(limit), offset: String(offset) });

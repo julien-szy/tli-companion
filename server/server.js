@@ -95,6 +95,7 @@ function cleanName(n) {
 const routes = [];
 const route = (method, pattern, handler) => routes.push({ method, pattern, handler });
 const Accounts = require('./accounts')({ db, route, HttpError, sha256, clientIp, rateLimit, readJson, DATA_DIR });
+const Social = require('./social')({ db, route, HttpError, rateLimit, readJson, Accounts });
 
 route('GET', /^\/api\/health$/, () => ({ ok: true, time: Date.now() }));
 
@@ -145,7 +146,7 @@ const SORTS = {
   perhourmap: 'per_hour_map DESC',
   profit: 'profit DESC',
   recent: 'created_at DESC',
-  likes: 'likes DESC, created_at DESC',
+  likes: '(likes - dislikes) DESC, likes DESC, created_at DESC',
 };
 
 // Nom le plus proposé pour chaque héros.
@@ -188,13 +189,13 @@ route('GET', /^\/api\/reports$/, (req, url) => {
 });
 
 route('GET', /^\/api\/reports\/([0-9a-f-]{36})$/, (req, url, m) => {
-  const row = db.prepare(`SELECT r.json, r.user_id, r.likes, r.created_at, u.name AS author FROM reports r
+  const row = db.prepare(`SELECT r.json, r.user_id, r.likes, r.dislikes, r.created_at, u.name AS author FROM reports r
     JOIN users u ON u.id = r.user_id WHERE r.id = ? AND u.banned = 0`).get(m[1]);
   if (!row) throw new HttpError(404, 'session not found');
   const names = heroNameMap();
   const report = JSON.parse(row.json);
   if (report.hero && names[report.hero.id]) report.hero.display = names[report.hero.id];
-  return { report, author: row.author, userId: row.user_id, likes: row.likes, createdAt: row.created_at };
+  return { report, author: row.author, userId: row.user_id, likes: row.likes, dislikes: row.dislikes, myVote: Social.myVote(req, 'report', m[1]), createdAt: row.created_at };
 });
 
 route('DELETE', /^\/api\/reports\/([0-9a-f-]{36})$/, (req, url, m) => {
@@ -419,7 +420,7 @@ route('POST', /^\/api\/builds$/, async (req) => {
 
 // Liste des builds publiés : filtres (classe, arbre de talents, texte) et tri (récents, aimés, nom, points).
 // Le résumé (arbres, points, compétence principale) est tiré du JSON du build.
-const BUILD_SORT = { recent: 'b.updated_at DESC', likes: 'b.likes DESC, b.updated_at DESC', name: 'b.title COLLATE NOCASE ASC' };
+const BUILD_SORT = { recent: 'b.updated_at DESC', likes: '(b.likes - b.dislikes) DESC, b.likes DESC, b.updated_at DESC', name: 'b.title COLLATE NOCASE ASC' };
 route('GET', /^\/api\/builds$/, (req, url) => {
   const q = url.searchParams;
   const where = ['u.banned = 0'];
@@ -432,7 +433,8 @@ route('GET', /^\/api\/builds$/, (req, url) => {
   const sort = BUILD_SORT[q.get('sort')] || BUILD_SORT.recent;
   const limit = Math.min(100, Math.max(1, +q.get('limit') || 60));
   const offset = Math.max(0, +q.get('offset') || 0);
-  const rows = db.prepare(`SELECT b.id, b.hero_key, b.title, b.steps, b.likes, b.created_at, b.updated_at, u.name AS author, b.json
+  const rows = db.prepare(`SELECT b.id, b.hero_key, b.title, b.steps, b.likes, b.dislikes, b.created_at, b.updated_at, u.name AS author, b.json,
+    (SELECT COUNT(*) FROM comments c WHERE c.kind = 'build' AND c.target_id = b.id AND c.deleted = 0) AS comments
     FROM builds b JOIN users u ON u.id = b.user_id WHERE ${where.join(' AND ')} ORDER BY ${sort} LIMIT ? OFFSET ?`)
     .all(...args, limit, offset);
   const builds = rows.map(({ json, ...r }) => {
@@ -456,10 +458,10 @@ route('POST', /^\/api\/builds\/([0-9a-f-]{36})\/like$/, (req, url, m) => {
 });
 
 route('GET', /^\/api\/builds\/([0-9a-f-]{36})$/, (req, url, m) => {
-  const row = db.prepare(`SELECT b.json, b.likes, b.updated_at, b.user_id, u.name AS author FROM builds b
+  const row = db.prepare(`SELECT b.json, b.likes, b.dislikes, b.updated_at, b.user_id, u.name AS author FROM builds b
     JOIN users u ON u.id = b.user_id WHERE b.id = ? AND u.banned = 0`).get(m[1]);
   if (!row) throw new HttpError(404, 'build not found');
-  return { build: JSON.parse(row.json), author: row.author, userId: row.user_id, likes: row.likes, updatedAt: row.updated_at };
+  return { build: JSON.parse(row.json), author: row.author, userId: row.user_id, likes: row.likes, dislikes: row.dislikes, myVote: Social.myVote(req, 'build', m[1]), updatedAt: row.updated_at };
 });
 
 route('DELETE', /^\/api\/builds\/([0-9a-f-]{36})$/, (req, url, m) => {

@@ -197,6 +197,31 @@ function openDb(dataDir) {
     );
     CREATE INDEX IF NOT EXISTS sessions_user ON sessions(user_id);
   `);
+  // Votes (bêta) : les likes deviennent des votes +1 / -1, avec un compteur de « je n'aime pas ».
+  for (const t of ['likes', 'build_likes']) {
+    const c = new Set(db.prepare(`PRAGMA table_info(${t})`).all().map((x) => x.name));
+    if (!c.has('value')) db.exec(`ALTER TABLE ${t} ADD COLUMN value INTEGER NOT NULL DEFAULT 1`);
+  }
+  for (const t of ['reports', 'builds']) {
+    const c = new Set(db.prepare(`PRAGMA table_info(${t})`).all().map((x) => x.name));
+    if (!c.has('dislikes')) db.exec(`ALTER TABLE ${t} ADD COLUMN dislikes INTEGER NOT NULL DEFAULT 0`);
+  }
+  // Commentaires (bêta) sur les builds et les routes : texte seul, un niveau de réponses.
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS comments (
+      id         TEXT PRIMARY KEY,
+      kind       TEXT NOT NULL,
+      target_id  TEXT NOT NULL,
+      user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      parent_id  TEXT,
+      body       TEXT NOT NULL,
+      created_at INTEGER NOT NULL,
+      edited_at  INTEGER,
+      deleted    INTEGER NOT NULL DEFAULT 0
+    );
+    CREATE INDEX IF NOT EXISTS comments_target ON comments(kind, target_id, created_at);
+    CREATE INDEX IF NOT EXISTS comments_user ON comments(user_id);
+  `);
   return db;
 }
 

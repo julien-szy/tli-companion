@@ -3,7 +3,7 @@ $('content').innerHTML = `<div class="empty">${esc(t('loading'))}</div>`;
 
 function stat(k, v, c = '') { return `<div><div class="k">${esc(t(k))}</div><div class="v ${c}">${v}</div></div>`; }
 
-api('/api/reports/' + encodeURIComponent(id)).then(({ report: r, author, likes }) => {
+api('/api/reports/' + encodeURIComponent(id)).then(({ report: r, author, likes, dislikes, myVote }) => {
   const tot = r.totals;
   const heroName = r.hero ? (r.hero.display || r.hero.name) : '–';
   const title = r.title || (r.strategy.maps[0] && r.strategy.maps[0].name) || t('farmSession');
@@ -12,7 +12,7 @@ api('/api/reports/' + encodeURIComponent(id)).then(({ report: r, author, likes }
   $('content').innerHTML = `
     <div class="card">
       <div class="title">${esc(title)}</div>
-      <div class="muted" style="margin-bottom:14px">${esc(t('by'))} <b>${esc(author)}</b> · ${esc(heroName)} · ${new Date(r.startedAt).toLocaleDateString(LOCALE)} · ♥ ${likes}</div>
+      <div class="muted" style="margin-bottom:14px">${esc(t('by'))} <b>${esc(author)}</b> · ${esc(heroName)} · ${new Date(r.startedAt).toLocaleDateString(LOCALE)}</div>
       <div class="stats">
         ${stat('perHourReal', fe(tot.perHourReal))}
         ${stat('perHourMap', fe(tot.perHourMap))}
@@ -42,4 +42,10 @@ api('/api/reports/' + encodeURIComponent(id)).then(({ report: r, author, likes }
       </tbody></table></div>
     </div>`;
   hydrateVoidCharts($('content'));
+  // Votes et commentaires (bêta).
+  const signIn = () => { location.href = `/auth/google?next=${encodeURIComponent(location.pathname)}`; };
+  $('content').insertAdjacentHTML('afterbegin', '<div id="sVotes" style="float:right"></div>');
+  Social.mountVotes($('sVotes'), 'report', id, { likes, dislikes, myVote }, { signIn });
+  $('content').insertAdjacentHTML('beforeend', '<div class="card soc-card" id="sComments"></div>');
+  Social.mountComments($('sComments'), 'report', id, { signIn });
 }).catch((e) => { $('content').innerHTML = `<div class="empty">${esc(t('error', { msg: e.message }))}</div>`; });

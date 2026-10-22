@@ -8,7 +8,7 @@ const out = path.join(root, 'server', 'public', 'p');
 fs.mkdirSync(out, { recursive: true });
 
 const head = (src) => `/* Copié depuis ${src} par scripts/sync-site.js : ne pas modifier ici. */\n`;
-for (const [src, dst] of [['src/i18n.js', 'i18n.js'], ['src/ui/tip.js', 'tip.js'], ['src/ui/talents.js', 'talents.js'], ['src/ui/planner.js', 'planner.js']]) {
+for (const [src, dst] of [['src/i18n.js', 'i18n.js'], ['src/ui/tip.js', 'tip.js'], ['src/ui/talents.js', 'talents.js'], ['src/ui/planner.js', 'planner.js'], ['src/ui/social.js', 'social.js']]) {
   fs.writeFileSync(path.join(out, dst), head(src) + fs.readFileSync(path.join(root, src), 'utf8'));
 }
 // Styles du planificateur : la partie de app.css qui va du planificateur jusqu'au menu de l'app.

@@ -114,27 +114,25 @@ async function editor() {
 // ---------- Fiche d'un build publié ----------
 async function viewer(id) {
   $('content').innerHTML = `<div class="empty">${esc(t('loading'))}</div>`;
-  const [{ build: b, author, likes, updatedAt }] = await Promise.all([api('/api/builds/' + encodeURIComponent(id)), heroes()]);
+  const [{ build: b, author, likes, dislikes, myVote, updatedAt }] = await Promise.all([api('/api/builds/' + encodeURIComponent(id)), heroes()]);
   const hero = heroOf(b.heroKey);
   document.title = `${b.title} — TLI Companion`;
   const steps = (b.steps || []).filter((s) => s.items && s.items.length);
   $('content').innerHTML = `
     <div class="pl-head">${portrait(hero, 56)}<div class="grow"><div class="title">${esc(b.title)} <span class="tag beta">BETA</span></div>
-      <div class="muted">${esc(heroLabel(hero))} · ${esc(t('by'))} <b>${esc(author)}</b> · ${new Date(updatedAt).toLocaleDateString(LOCALE)} · ♥ ${likes || 0}</div></div>
-      <button class="btn" id="pLike">♥ <span id="pLikes">${likes || 0}</span></button><button class="btn primary" id="pCode">${esc(t('code.get'))}</button><button class="btn" id="pCopyEdit">${esc(t('code.editCopy'))}</button></div>
-    <p class="muted small" id="pLikeMsg"></p>
+      <div class="muted">${esc(heroLabel(hero))} · ${esc(t('by'))} <b>${esc(author)}</b> · ${new Date(updatedAt).toLocaleDateString(LOCALE)}</div></div>
+      <span id="pVotes"></span><button class="btn primary" id="pCode">${esc(t('code.get'))}</button><button class="btn" id="pCopyEdit">${esc(t('code.editCopy'))}</button></div>
     ${b.description ? `<div class="card notes">${esc(b.description)}</div>` : ''}
     ${plannerHtml(b, true)}
     ${steps.length ? Planner.section('items', t('pl.items'), `<div class="pl-steps">${steps.map((s, i) => `<div class="pl-step"><h3>${i + 1}. ${esc(s.title || '')}</h3>
       <div class="fchips">${s.items.map((it) => `<span class="chip">${icon(it.img)}${esc(it.name || '#' + it.id)}${it.qty > 1 ? ' ×' + it.qty : ''}</span>`).join('')}</div></div>`).join('')}</div>`) : ''}
     <p class="muted small" style="margin-top:12px">${esc(t('code.viewHelp'))}</p>`;
   $('pCode').onclick = () => showCode(b);
-  $('pLike').onclick = async () => {
-    if (!window.ME) { $('pLikeMsg').innerHTML = `${esc(t('acc.likeSignIn'))} <a href="/auth/google?next=${encodeURIComponent(location.pathname)}">${esc(t('acc.signIn'))}</a>`; return; }
-    const r = await fetch(`/api/builds/${id}/like`, { method: 'POST', credentials: 'same-origin' });
-    const j = await r.json().catch(() => ({}));
-    if (r.ok) { $('pLikes').textContent = j.likes; $('pLike').classList.add('on'); } else $('pLikeMsg').textContent = j.error || r.status;
-  };
+  const signIn = () => { location.href = `/auth/google?next=${encodeURIComponent(location.pathname)}`; };
+  Social.mountVotes($('pVotes'), 'build', id, { likes, dislikes, myVote }, { signIn });
+  $('content').insertAdjacentHTML('beforeend', '<div class="card soc-card" id="pComments"></div>');
+  Social.mountComments($('pComments'), 'build', id, { signIn, avatar: (k) => (k ? portrait(heroOf(k), 22) : '') });
+
   $('pCopyEdit').onclick = () => {
     if (localStorage.getItem(DRAFT_KEY) && !confirm(t('code.confirmReplace'))) return;
     writeDraft({ ...emptyBuild(), ...b, id: undefined, title: b.title });

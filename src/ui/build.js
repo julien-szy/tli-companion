@@ -154,6 +154,8 @@ const Build = (() => {
     }
   }
 
+  const socialOn = () => !!(last && last.features && last.features.accounts);
+
   // ---------- Aperçu d'un build publié ----------
   async function openRemote(id) {
     view = 'remote'; currentId = id;
@@ -164,7 +166,7 @@ const Build = (() => {
       $('bBack').onclick = () => openCommunity();
       return;
     }
-    const { build: b, author, likes } = res;
+    const { build: b, author, likes, dislikes, myVote } = res;
     const items = (b.steps || []).flatMap((s) => s.items || []);
     root().innerHTML = `
       <div class="detail-head">
@@ -172,7 +174,7 @@ const Build = (() => {
         ${portrait(b.heroKey, 40)}
         <div style="flex:1;min-width:200px"><div style="font-size:16px;font-weight:600">${esc(b.title)}</div>
           <div class="muted">${esc(heroLabel(b.heroKey))} · ${esc(t('b.by', { author: author || '?' }))}</div></div>
-        <button class="btn" id="bLike">♥ <span id="bLikes">${likes || 0}</span></button>
+        ${socialOn() ? '<span id="bVotes"></span>' : `<button class="btn" id="bLike">♥ <span id="bLikes">${likes || 0}</span></button>`}
         <button class="btn primary" id="bImport">${esc(t('b.import'))}</button>
       </div>
       <div class="muted" id="bMsg" style="margin:-6px 0 12px"></div>
@@ -186,6 +188,13 @@ const Build = (() => {
       $('bImport').disabled = true;
       try { const copy = await tli.importBuild(id); openDetail(copy.id); } catch (e) { $('bMsg').textContent = t('share.error', { msg: errMsg(e) }); $('bImport').disabled = false; }
     };
+    if (socialOn()) {
+      const signIn = () => showTab('settings');
+      Social.mountVotes($('bVotes'), 'build', id, { likes, dislikes, myVote }, { signIn });
+      root().insertAdjacentHTML('beforeend', '<div class="card" id="bComments"></div>');
+      Social.mountComments($('bComments'), 'build', id, { signIn, avatar: (k) => (k ? portrait(k, 22) : '') });
+      return;
+    }
     $('bLike').onclick = async () => {
       const srv = last ? last.settings.server : { registered: false };
       if (!srv.registered) { $('bMsg').textContent = t('b.likeNeedsName'); return; }

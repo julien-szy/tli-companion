@@ -27,3 +27,5 @@ textarea { background: var(--bg); border: 1px solid var(--line); color: var(--te
 .bfil { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 14px; }
 .bfil input { min-width: 220px; }
 .tchip { font-size: 11.5px; padding: 2px 8px; }
+.nowrap { white-space: nowrap; }
+.soc-card h2 { display: flex; gap: 8px; align-items: center; }

@@ -9,6 +9,12 @@
   let prices = null;
   const allPrices = () => prices || (prices = fetch('/api/prices').then((r) => r.json()).then((j) => j.prices || {}).catch(() => ({})));
   const json = (url) => fetch(url).then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); });
+  const call = async (method, url, body) => {
+    const r = await fetch(url, { method, credentials: 'same-origin', headers: body ? { 'Content-Type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.error || r.status);
+    return j;
+  };
   let bd = null;
   let gd = null;
   window.tli = {
@@ -16,6 +22,12 @@
     gearData: () => gd || (gd = json('/geardata.json')),
     itemPrice: async (id) => { const p = (await allPrices())[id]; return p ? p.price : null; },
     searchItems: async () => [],
+    // Votes et commentaires (bêta) : le cookie de session du site identifie le visiteur.
+    vote: (kind, id, value) => call('POST', '/api/votes', { kind, id, value }),
+    comments: (kind, id) => call('GET', `/api/comments?kind=${kind}&id=${encodeURIComponent(id)}`),
+    commentPost: (kind, id, body, parentId) => call('POST', '/api/comments', { kind, id, body, parentId }),
+    commentEdit: (cid, body) => call('PATCH', `/api/comments/${encodeURIComponent(cid)}`, { body }),
+    commentDelete: (cid) => call('DELETE', `/api/comments/${encodeURIComponent(cid)}`),
     openExternal: (url) => { if (/^https:\/\/tlidb\.com\//.test(url)) window.open(url, '_blank', 'noopener'); },
   };
 
