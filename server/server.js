@@ -780,7 +780,7 @@ function serveDownload(req, res, name) {
 
 const PAGES = {
   '/': '/home.html', '/strategies': '/strategies.html', '/builds': '/builds.html', '/meta': '/meta.html',
-  '/download': '/download.html', '/account': '/account.html', '/planner': '/planner.html',
+  '/download': '/download.html', '/account': '/account.html', '/planner': '/planner.html', '/privacy': '/privacy.html', '/terms': '/terms.html',
 };
 function serveStatic(req, res, pathname) {
   const dl = /^\/download\/([^/]+)$/.exec(pathname);
