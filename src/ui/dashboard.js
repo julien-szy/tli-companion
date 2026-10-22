@@ -24,8 +24,12 @@ function renderSubTabs(g, name) {
   bar.innerHTML = tabs.length < 2 ? '' : tabs.map((x) => `<button data-tab="${x}" class="${x === name ? 'on' : ''}">${esc(t('tab.' + x))}${x === 'bag' ? ' <span class="tag beta">NEW</span>' : ''}${GROUPS.builds.includes(x) ? ' <span class="tag beta">BETA</span>' : ''}</button>`).join('');
   bar.querySelectorAll('button').forEach((b) => (b.onclick = () => showTab(b.dataset.tab)));
 }
+// Un nom de page passe avant un nom de famille : « settings » est les deux, et le sous-onglet Réglages
+// doit ouvrir Réglages même après un passage sur Widget. Le rail, lui, passe par showGroup.
+const ALL_TABS = new Set(Object.values(GROUPS).flat());
+function showGroup(g) { showTab(lastSub[g] || GROUPS[g][0]); }
 function showTab(name) {
-  if (GROUPS[name]) name = lastSub[name] || GROUPS[name][0];
+  if (!ALL_TABS.has(name) && GROUPS[name]) name = lastSub[name] || GROUPS[name][0];
   tab = name;
   const g = groupOf(name);
   lastSub[g] = name;
@@ -45,7 +49,7 @@ function showTab(name) {
   if (name === 'bag') Bag.show();
   refresh(true);
 }
-document.querySelectorAll('aside.side button[data-grp]').forEach((b) => (b.onclick = () => showTab(b.dataset.grp)));
+document.querySelectorAll('aside.side button[data-grp]').forEach((b) => (b.onclick = () => showGroup(b.dataset.grp)));
 $('supportBtn').onclick = () => tli.openSupport();
 // « Donner mon avis » : texte brut seulement (type, message, contact facultatif), envoyé à tlicompanion.com.
 $('feedbackBtn').onclick = () => {

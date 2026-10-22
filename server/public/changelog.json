@@ -1,6 +1,20 @@
 {
   "releases": [
     {
+      "version": "1.0.18",
+      "date": "2026-10-22",
+      "en": [
+        "Farm routes: add an optional game code (for example your Void Chart code) to a session. It is shown on the website with a button to copy it.",
+        "Website: published farm routes show their publication date and can be sorted from the oldest; the \"Most recent\" and \"Most liked\" sorts work again.",
+        "Fix: the Settings tab could not be opened again after visiting the Widget tab."
+      ],
+      "fr": [
+        "Routes de farm : ajoute un code du jeu facultatif (par exemple le code de ton Void Chart) à une session. Il est affiché sur le site avec un bouton pour le copier.",
+        "Site : les routes de farm publiées affichent leur date de publication et se trient aussi de la plus ancienne ; les tris « Plus récentes » et « Plus aimées » refonctionnent.",
+        "Correctif : l'onglet Réglages ne se rouvrait plus après un passage sur l'onglet Widget."
+      ]
+    },
+    {
       "version": "1.0.17",
       "date": "2026-10-22",
       "en": [
