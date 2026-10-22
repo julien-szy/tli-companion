@@ -32,12 +32,59 @@ const str = (v, max) => (typeof v === 'string' ? v.slice(0, max) : '');
 const posId = (v) => (Number.isInteger(+v) && +v > 0 ? +v : null);
 
 // Emplacements de compétences comme en jeu : 5 actives et 4 passives, chacune avec jusqu'à 5 soutiens.
+// Une compétence : l'objet de notre base (id, pour les prix) et/ou la compétence tlidb (skill, pour l'affichage).
+const skillSlug = (v) => (typeof v === 'string' && /^[\w'-]{2,60}$/.test(v) ? v : null);
+const skillRef = (y) => (y && typeof y === 'object' ? { id: posId(y.id), skill: skillSlug(y.skill) } : { id: posId(y), skill: null });
 function cleanLoadout(l) {
   const slots = (arr, max) => (Array.isArray(arr) ? arr : []).slice(0, max)
-    .map((x) => ({ id: posId(x && x.id), supports: (Array.isArray(x && x.supports) ? x.supports : []).map((y) => posId(y && typeof y === 'object' ? y.id : y)).filter(Boolean).slice(0, 5) }))
-    .filter((x) => x.id);
+    .map((x) => ({ ...skillRef(x), supports: (Array.isArray(x && x.supports) ? x.supports : []).slice(0, 5).map(skillRef).filter((y) => y.id || y.skill) }))
+    .filter((x) => x.id || x.skill);
   return { active: slots(l && l.active, 5), passive: slots(l && l.passive, 4) };
 }
+// Équipement : un objet par emplacement, légendaire (avec ses stats) ou rare fabriqué par le joueur
+// (base + préfixes / suffixes choisis). Tout est du texte borné : rien n'est calculé à partir de ces lignes.
+const GEAR_SLOTS = ['helmet', 'chest', 'necklace', 'gloves', 'belt', 'boots', 'ring1', 'ring2', 'weapon1', 'weapon2'];
+const GEAR_IMG = /^https:\/\/cdn\.tlidb\.com\/[\w./%'()-]+$/;
+function cleanGearItem(g) {
+  if (typeof g === 'number' || typeof g === 'string') g = { id: g };
+  if (!g || typeof g !== 'object') return null;
+  const s = (v, n) => (typeof v === 'string' ? v.slice(0, n).trim() : '');
+  const lines = (v, n) => (Array.isArray(v) ? v : []).map((x) => s(x, 160)).filter(Boolean).slice(0, n);
+  const id = Number.isInteger(+g.id) && +g.id > 0 ? +g.id : null;
+  const out = {
+    rarity: g.rarity === 'rare' ? 'rare' : 'legendary',
+    id, name: s(g.name, 80), img: typeof g.img === 'string' && GEAR_IMG.test(g.img) ? g.img : null,
+    type: /^[\w-]{2,40}$/.test(g.type || '') ? g.type : null, base: s(g.base, 80),
+    implicit: lines(g.implicit, 4), prefixes: lines(g.prefixes, 3), suffixes: lines(g.suffixes, 3), stats: lines(g.stats, 12),
+  };
+  return out.id || out.name ? out : null;
+}
+function cleanGear(g) {
+  const out = {};
+  if (g && typeof g === 'object') for (const k of GEAR_SLOTS) { const it = cleanGearItem(g[k]); if (it) out[k] = it; }
+  return out;
+}
+
+// Talents : 4 arbres (le 1er est un dieu), points par nœud (« colonne-ligne ») et talents principaux choisis.
+// Traits de héros : un id par niveau requis.
+function cleanTalents(t) {
+  const out = { trees: [], nodes: {}, core: {} };
+  if (!t || typeof t !== 'object') return out;
+  const slug = (s) => (typeof s === 'string' && /^[A-Za-z_]{3,40}$/.test(s) ? s : null);
+  out.trees = (Array.isArray(t.trees) ? t.trees : []).slice(0, 4).map(slug);
+  while (out.trees.length && !out.trees[out.trees.length - 1]) out.trees.pop();
+  for (const s of out.trees.filter(Boolean)) {
+    const n = t.nodes && t.nodes[s];
+    const pts = {};
+    if (n && typeof n === 'object') for (const [k, v] of Object.entries(n).slice(0, 60)) if (/^\d-\d$/.test(k) && Number.isInteger(+v) && +v > 0) pts[k] = Math.min(5, +v);
+    if (Object.keys(pts).length) out.nodes[s] = pts;
+    const c = t.core && t.core[s];
+    const core = (Array.isArray(c) ? c : []).filter((x) => typeof x === 'string' && /^c\d$/.test(x)).slice(0, 3);
+    if (core.length) out.core[s] = [...new Set(core)];
+  }
+  return out;
+}
+const cleanTraits = (v) => [...new Set((Array.isArray(v) ? v : []).map((x) => Math.trunc(+x)).filter((x) => x > 0 && x < 1e8))].slice(0, 10);
 
 // Nettoie un build (venant de l'interface ou du site) : champs connus, tailles bornées.
 function cleanBuild(b, { keepLocal = true } = {}) {
@@ -63,13 +110,17 @@ function cleanBuild(b, { keepLocal = true } = {}) {
         })),
     })),
     loadout: cleanLoadout(b.loadout),
+    talents: cleanTalents(b.talents),
+    gear: cleanGear(b.gear),
+    traits: cleanTraits(b.traits),
   };
   if (keepLocal) {
     out.source = b.source && typeof b.source === 'object' ? { url: str(b.source.url, 200), author: str(b.source.author, 40) } : null;
     out.shared = b.shared && typeof b.shared === 'object' ? { url: str(b.shared.url, 200), at: +b.shared.at || 0 } : null;
     const owned = {};
     if (b.progress && b.progress.owned) for (const k of Object.keys(b.progress.owned).slice(0, 2000)) if (/^\d+$/.test(k) && b.progress.owned[k]) owned[k] = true;
-    out.progress = { owned };
+    const stage = b.progress && Number.isInteger(b.progress.stage) && b.progress.stage >= 0 && b.progress.stage < out.steps.length ? b.progress.stage : null;
+    out.progress = { owned, stage };
   }
   return out;
 }
@@ -113,8 +164,9 @@ function advise(build, ctx) {
       const info = ctx.items.get(it.id);
       const p = ctx.prices.get(it.id);
       const inBag = ctx.bagQty(it.id);
+      const equipped = ctx.equipped ? ctx.equipped.has(it.id) : false;
       const manual = !!owned[it.id];
-      const have = manual ? it.qty : Math.min(it.qty, inBag);
+      const have = manual ? it.qty : Math.min(it.qty, inBag + (equipped ? 1 : 0));
       const missing = it.qty - have;
       const cost = missing * p.price;
       total += it.qty * p.price;
@@ -122,7 +174,7 @@ function advise(build, ctx) {
       if (missing > 0 && !p.price) unknownPrices++;
       return {
         ...it, name: info.name, img: info.img, category: categoryOf(info.type),
-        unit: p.price, source: p.source, inBag, manual, have, missing, cost,
+        unit: p.price, source: p.source, inBag, equipped, manual, have, missing, cost,
         done: missing <= 0,
       };
     });
@@ -131,7 +183,10 @@ function advise(build, ctx) {
       pct: total > 0 ? Math.round(((total - missingCost) / total) * 100) : (done ? 100 : 0) };
   });
 
-  const current = steps.find((s) => !s.done) || null;
+  // Étape du joueur : celle qu'il a choisie (il a déjà son équipement), les conseils viennent alors de
+  // l'étape suivante ; sans choix, la première étape pas encore complète.
+  const chosen = build.progress && Number.isInteger(build.progress.stage) ? steps[build.progress.stage] || null : null;
+  const current = chosen ? (steps[chosen.index + 1] || chosen) : (steps.find((s) => !s.done) || null);
   // Achats conseillés : ceux de l'étape en cours, essentiels d'abord, puis du moins cher au plus cher.
   // Les objets sans prix connu passent en dernier (on ne peut pas les chiffrer).
   const next = current
@@ -145,6 +200,8 @@ function advise(build, ctx) {
   return {
     steps,
     currentIndex: current ? current.index : null,
+    chosenIndex: chosen ? chosen.index : null,
+    chosenMissing: chosen ? chosen.items.filter((i) => !i.done).length : 0,
     next: next.slice(0, 8).map((i) => ({ ...i, affordable: i.cost > 0 && i.cost <= ctx.feInBag, hours: hours(i.cost) })),
     currentMissing: current ? current.missingCost : 0,
     currentHours: current ? hours(current.missingCost) : null,
@@ -155,4 +212,4 @@ function advise(build, ctx) {
   };
 }
 
-module.exports = { BuildStore, cleanBuild, cleanLoadout, publicBuild, advise, categoryOf };
+module.exports = { GEAR_SLOTS, BuildStore, cleanBuild, cleanLoadout, publicBuild, advise, categoryOf };

@@ -116,6 +116,51 @@ function sanitizeReport(r) {
 }
 
 // Build partagé : classe + étapes d'objets (avec nom et icône pour l'affichage sur le site).
+// Talents : 4 arbres (le 1er est un dieu), points par nœud (« colonne-ligne ») et talents principaux choisis.
+// Traits de héros : un id par niveau requis.
+function cleanTalents(t) {
+  const out = { trees: [], nodes: {}, core: {} };
+  if (!t || typeof t !== 'object') return out;
+  const slug = (s) => (typeof s === 'string' && /^[A-Za-z_]{3,40}$/.test(s) ? s : null);
+  out.trees = (Array.isArray(t.trees) ? t.trees : []).slice(0, 4).map(slug);
+  while (out.trees.length && !out.trees[out.trees.length - 1]) out.trees.pop();
+  for (const s of out.trees.filter(Boolean)) {
+    const n = t.nodes && t.nodes[s];
+    const pts = {};
+    if (n && typeof n === 'object') for (const [k, v] of Object.entries(n).slice(0, 60)) if (/^\d-\d$/.test(k) && Number.isInteger(+v) && +v > 0) pts[k] = Math.min(5, +v);
+    if (Object.keys(pts).length) out.nodes[s] = pts;
+    const c = t.core && t.core[s];
+    const core = (Array.isArray(c) ? c : []).filter((x) => typeof x === 'string' && /^c\d$/.test(x)).slice(0, 3);
+    if (core.length) out.core[s] = [...new Set(core)];
+  }
+  return out;
+}
+const cleanTraits = (v) => [...new Set((Array.isArray(v) ? v : []).map((x) => Math.trunc(+x)).filter((x) => x > 0 && x < 1e8))].slice(0, 10);
+
+// Équipement : un objet par emplacement, légendaire (avec ses stats) ou rare fabriqué par le joueur
+// (base + préfixes / suffixes choisis). Tout est du texte borné : rien n'est calculé à partir de ces lignes.
+const GEAR_SLOTS = ['helmet', 'chest', 'necklace', 'gloves', 'belt', 'boots', 'ring1', 'ring2', 'weapon1', 'weapon2'];
+const GEAR_IMG = /^https:\/\/cdn\.tlidb\.com\/[\w./%'()-]+$/;
+function cleanGearItem(g) {
+  if (typeof g === 'number' || typeof g === 'string') g = { id: g };
+  if (!g || typeof g !== 'object') return null;
+  const s = (v, n) => (typeof v === 'string' ? v.slice(0, n).trim() : '');
+  const lines = (v, n) => (Array.isArray(v) ? v : []).map((x) => s(x, 160)).filter(Boolean).slice(0, n);
+  const id = Number.isInteger(+g.id) && +g.id > 0 ? +g.id : null;
+  const out = {
+    rarity: g.rarity === 'rare' ? 'rare' : 'legendary',
+    id, name: s(g.name, 80), img: typeof g.img === 'string' && GEAR_IMG.test(g.img) ? g.img : null,
+    type: /^[\w-]{2,40}$/.test(g.type || '') ? g.type : null, base: s(g.base, 80),
+    implicit: lines(g.implicit, 4), prefixes: lines(g.prefixes, 3), suffixes: lines(g.suffixes, 3), stats: lines(g.stats, 12),
+  };
+  return out.id || out.name ? out : null;
+}
+function cleanGear(g) {
+  const out = {};
+  if (g && typeof g === 'object') for (const k of GEAR_SLOTS) { const it = cleanGearItem(g[k]); if (it) out[k] = it; }
+  return out;
+}
+
 function sanitizeBuild(b) {
   if (!b || typeof b !== 'object') throw bad('invalid build');
   if (b.version !== 1) throw bad('unsupported build version');
@@ -139,12 +184,17 @@ function sanitizeBuild(b) {
       })),
     })),
   };
-  const slots = (v, max) => arr(v, max).filter((x) => x && int(x.id) > 0)
-    .map((x) => ({ id: int(x.id), name: str(x.name, 120), img: img(x.img),
-      supports: arr(x.supports, 5).filter((y) => y && int(y.id) > 0).map((y) => ({ id: int(y.id), name: str(y.name, 120), img: img(y.img) })) }));
+  const slug = (v) => (typeof v === 'string' && /^[\w'-]{2,60}$/.test(v) ? v : null);
+  const ref = (y) => ({ id: Math.max(0, int(y && y.id)) || null, skill: slug(y && y.skill), name: str(y && y.name, 120), img: img(y && y.img) });
+  const slots = (v, max) => arr(v, max).filter((x) => x && (int(x.id) > 0 || slug(x.skill)))
+    .map((x) => ({ ...ref(x), supports: arr(x.supports, 5).filter((y) => y && (int(y.id) > 0 || slug(y.skill))).map(ref) }));
+  out.gear = cleanGear(b.gear);
   out.loadout = { active: slots(b.loadout && b.loadout.active, 5), passive: slots(b.loadout && b.loadout.passive, 4) };
+  out.talents = cleanTalents(b.talents);
+  out.traits = cleanTraits(b.traits);
   if (!out.title) throw bad('missing title');
-  if (!out.steps.some((s) => s.items.length) && !out.loadout.active.length) throw bad('empty build');
+  const talentPts = Object.values(out.talents.nodes).reduce((n, o) => n + Object.values(o).reduce((a, v) => a + v, 0), 0);
+  if (!out.steps.some((s) => s.items.length) && !out.loadout.active.length && !talentPts && !out.traits.length) throw bad('empty build');
   return out;
 }
 

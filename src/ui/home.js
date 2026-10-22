@@ -93,6 +93,25 @@ const Home = (() => {
 
   function update(s) { lastState = s; render(); refreshMetaCard(s); }
 
+  // Barre « mon build suivi » : où j'en suis, ce qu'il me faut ensuite, et mes FE (le FE seul, pas les objets à vendre).
+  function recapHtml(r) {
+    if (!r) return `<div class="card hcard brecap empty"><h2><span>${esc(t('hb.title'))} <span class="tag beta">BETA</span></span> <a data-go="build">${esc(t('hb.find'))} →</a></h2>
+      <p class="muted">${esc(t('hb.none'))}</p></div>`;
+    const done = r.stepIndex == null;
+    const afford = r.missing > 0 ? Math.min(100, Math.round((r.feInBag / r.missing) * 100)) : 100;
+    const time = r.hours == null ? t('b.hoursUnknown') : r.hours < 1 ? t('b.minutes', { n: Math.max(1, Math.round(r.hours * 60)) }) : t('b.hours', { n: nf1.format(r.hours) });
+    return `<div class="card hcard brecap"><h2><span>${esc(t('hb.title'))} <span class="tag beta">BETA</span></span> <a data-build="${esc(r.id)}">${esc(t('hb.open'))} →</a></h2>
+      <div class="br-top">${portrait(r.heroKey, 40)}<div class="br-name"><b>${esc(r.title)}</b>
+        <small class="muted">${esc(done ? t('b.allDone') : t('hb.stage', { n: r.stepIndex + 1, total: r.stepCount, title: r.stepTitle }))}</small></div>
+        <div class="br-kpis"><div><span>${esc(t('hb.feBag'))}</span><b>${fe(r.feInBag)} FE</b></div>
+          <div><span>${esc(t('hb.missing'))}</span><b>${done ? '–' : fe(r.missing) + ' FE'}</b></div>
+          <div><span>${esc(t('b.farmTime'))}</span><b>${done ? '–' : esc(time)}</b></div></div></div>
+      <div class="br-bars"><div><span>${esc(t('hb.stagePct', { pct: r.stepPct }))}</span><div class="progress"><div style="width:${r.stepPct}%"></div></div></div>
+        <div><span>${esc(t('hb.afford', { pct: afford }))}</span><div class="progress fe"><div style="width:${afford}%"></div></div></div>
+        <div><span>${esc(t('hb.overall', { pct: r.overallPct }))}</span><div class="progress all"><div style="width:${r.overallPct}%"></div></div></div></div>
+      ${r.next.length ? `<div class="br-next"><span class="muted">${esc(t('hb.next'))}</span>${r.next.map((n) => `<span class="chip${n.affordable ? ' ok' : ''}">${icon(n.img)}${esc(n.name)} <b>${n.cost ? fe(n.cost) + ' FE' : '?'}</b></span>`).join('')}</div>` : ''}</div>`;
+  }
+
   function render() {
     const s = lastState;
     if (!s || !root()) return;
@@ -168,10 +187,12 @@ const Home = (() => {
             || `<p class="muted">${esc(t('h.noDrops'))}</p>`}</div>
         </div>
       </div>
+      ${recapHtml(s.buildRecap)}
       <div class="card hcard"><h2>${esc(t('h.myClassMeta'))} <a data-go="meta">${esc(t('h.seeMeta'))} →</a></h2>
         ${s.hero ? (metaCard.html ? metaCard.html + carouselHtml() : `<p class="muted">${esc(t('b.loading'))}</p>`) : `<p class="empty-cta">${esc(t('h.noClassYet'))}</p>`}</div>
       <div class="support-strip"><span>☕ ${esc(t('sup.text'))}</span><button class="btn coffee" id="hSupport">${esc(t('sup.cta'))}</button></div>`;
     root().querySelectorAll('[data-go]').forEach((b) => (b.onclick = () => showTab(b.dataset.go)));
+    root().querySelectorAll('[data-build]').forEach((b) => (b.onclick = () => { Build.focus(b.dataset.build); showTab('bfollow'); }));
     if ($('hPickLog')) $('hPickLog').onclick = () => tli.action('pickLog');
     if ($('hOpenLog')) $('hOpenLog').onclick = () => tli.action('openLogDir');
     bindCarousel();

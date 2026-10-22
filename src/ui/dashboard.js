@@ -10,7 +10,8 @@ let openReportId = null; // fiche de session affichée, pour la retraduire si la
 const GROUPS = {
   home: ['home'],
   farm: ['live', 'bag', 'sessions', 'runs', 'items', 'history'],
-  char: ['build', 'meta', 'advisor'],
+  builds: ['build', 'bfollow', 'bmine'],
+  char: ['meta'],
   market: ['prices'],
   settings: ['settings', 'widget'],
 };
@@ -20,7 +21,7 @@ function renderSubTabs(g, name) {
   const bar = $('subTabs');
   const tabs = GROUPS[g];
   bar.hidden = tabs.length < 2;
-  bar.innerHTML = tabs.length < 2 ? '' : tabs.map((x) => `<button data-tab="${x}" class="${x === name ? 'on' : ''}">${esc(t('tab.' + x))}${x === 'bag' ? ' <span class="tag beta">NEW</span>' : ''}</button>`).join('');
+  bar.innerHTML = tabs.length < 2 ? '' : tabs.map((x) => `<button data-tab="${x}" class="${x === name ? 'on' : ''}">${esc(t('tab.' + x))}${x === 'bag' ? ' <span class="tag beta">NEW</span>' : ''}${GROUPS.builds.includes(x) ? ' <span class="tag beta">BETA</span>' : ''}</button>`).join('');
   bar.querySelectorAll('button').forEach((b) => (b.onclick = () => showTab(b.dataset.tab)));
 }
 function showTab(name) {
@@ -30,13 +31,15 @@ function showTab(name) {
   lastSub[g] = name;
   document.querySelectorAll('aside.side button[data-grp]').forEach((x) => x.classList.toggle('on', x.dataset.grp === g));
   renderSubTabs(g, name);
-  document.querySelectorAll('section').forEach((s) => s.classList.toggle('on', s.id === name));
+  // Les trois pages Builds partagent la même section.
+  const sectionId = GROUPS.builds.includes(name) ? 'build' : name;
+  document.querySelectorAll('section').forEach((s) => s.classList.toggle('on', s.id === sectionId));
   // Les compteurs de session ne s'affichent que sur les pages de jeu.
   $('kpiBar').classList.toggle('hidden', !['live', 'runs', 'items', 'history'].includes(name));
   if (name === 'home' && last) Home.update(last);
   if (name === 'sessions') { closeSession(); loadSessions(); }
   if (name === 'prices') loadPrices();
-  if (name === 'build') Build.show();
+  if (GROUPS.builds.includes(name)) Build.show(name);
   if (name === 'meta') MetaTab.show();
   if (name === 'advisor') showAdvisor();
   if (name === 'bag') Bag.show();
@@ -134,7 +137,7 @@ async function endSessionModal(id) {
           if (name.length < 2) { $('eMsg').hidden = false; $('eMsg').textContent = t('share.nameShort'); return; }
           await tli.register(name);
         }
-        $('eMsg').hidden = false; $('eMsg').textContent = t('share.sending');
+        if (!(await checkVoidChart(id))) { openSession(id); return; }
         await tli.shareReport(id);
       } catch (e) { $('eMsg').textContent = t('share.error', { msg: errMsg(e) }); return; }
     }
@@ -324,10 +327,34 @@ function renderShare(r) {
   };
 }
 
+// Avant de publier : le Void Chart est deviné depuis le log, donc souvent incomplet. Le joueur le voit,
+// le corrige et doit le valider (avec un avertissement) avant l'envoi. Une seule fois par session.
+async function checkVoidChart(id) {
+  const r = await tli.getReport(id);
+  if (!r || r.voidChartChecked) return true;
+  return new Promise((resolve) => {
+    modal(`<div class="vcm"><h1>${esc(t('vcm.title'))}</h1>
+      <p class="vcm-warn">${esc(t('vcm.warn'))}</p>
+      <div class="vce" id="vcmBox"></div>
+      <div class="foot"><button class="btn" id="vcmCancel">${esc(t('vcm.cancel'))}</button><button class="btn primary big" id="vcmOk">${esc(t('vcm.ok'))}</button></div></div>`);
+    let ed = null;
+    VoidChart.mount($('vcmBox'), r).then((x) => { ed = x; }).catch(() => { if ($('vcmBox')) $('vcmBox').textContent = ''; });
+    $('vcmCancel').onclick = () => { modal(''); resolve(false); };
+    $('vcmOk').onclick = async () => {
+      if (!confirm(t('vcm.confirm'))) return;
+      if (ed) ed.save(); // l'arbre affiché (deviné ou corrigé) devient celui de la route
+      await tli.updateReport(id, { voidChartChecked: true });
+      modal('');
+      resolve(true);
+    };
+  });
+}
+
 async function doShare(id) {
   if ($('shMsg')) $('shMsg').textContent = t('share.sending');
   try {
     await tli.updateReport(id, { title: $('dTitle').value, notes: $('dNotes').value, strategyTag: $('dTag').value });
+    if (!(await checkVoidChart(id))) { openSession(id); return; }
     await tli.shareReport(id);
     openSession(id);
   } catch (e) { if ($('shMsg')) $('shMsg').textContent = t('share.error', { msg: errMsg(e) }); }
@@ -435,7 +462,7 @@ tli.onState((s) => {
     $('feed').dataset.h = '';
     if (tab === 'sessions') { if (openReportId) openSession(openReportId); else loadSessions(); }
     if (tab === 'prices') loadPrices();
-    if (tab === 'build') Build.show();
+    if (GROUPS.builds.includes(tab)) Build.show(tab);
     if (tab === 'meta') MetaTab.show();
     refresh(true);
   }

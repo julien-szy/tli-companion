@@ -45,6 +45,8 @@ class Tracker extends EventEmitter {
   }
 
   resetBag() {
+    this.equipped = new Map(); // emplacement -> { base, gold }
+    this.equipHints = new Map(); // base -> { gold, ts }
     this.slots = new Map();
     this.snapshotReady = false;
     this.lastInitTs = 0;
@@ -121,6 +123,9 @@ class Tracker extends EventEmitter {
     return this.meta.data.heroNames[id] || (auto && auto.name) || `Hero ${id}`;
   }
 
+  // Légendaires portés repérés dans le log (ids d'objets).
+  equippedIds() { return new Set([...this.equipped.values()].map((e) => e.gold).filter(Boolean)); }
+
   // Quantité d'un objet dans le sac (tous emplacements confondus).
   bagQty(id) {
     let n = 0;
@@ -189,7 +194,22 @@ class Tracker extends EventEmitter {
       case 'voidNode': this.pendingNode = { areaId: ev.areaId, mapOrder: ev.mapOrder }; return;
       // Nouveau personnage : on oublie le sac (et les Star Shards) de l'ancien. Le jeu renvoie ensuite le sac
       // complet du nouveau perso ; ses pages vides n'envoient rien, d'où la remise à zéro.
+      // Équipement porté : le légendaire est celui que le jeu a annoncé pour cette base juste avant.
+      case 'equipHint': if (ev.gold > 0) this.equipHints.set(ev.base, { gold: ev.gold, ts: ev.ts }); return;
+      case 'equip': {
+        const h = this.equipHints.get(ev.base);
+        this.equipped.set(ev.slot, { base: ev.base, gold: h && ev.ts - h.ts < 30 * 60000 ? h.gold : 0 });
+        if (!this.replay) this.emit('changed');
+        return;
+      }
+      case 'unequip': {
+        const cur = this.equipped.get(ev.slot);
+        if (cur && cur.base === ev.base) this.equipped.delete(ev.slot);
+        return;
+      }
       case 'roleLogin': {
+        this.equipped = new Map();
+        this.equipHints = new Map();
         this.slots = new Map();
         this.initPages = new Set();
         this.lastInitTs = 0;

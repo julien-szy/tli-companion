@@ -5,6 +5,10 @@
 const TS_RE = /^\[(\d{4})\.(\d{2})\.(\d{2})-(\d{2})\.(\d{2})\.(\d{2}):(\d{3})\]/;
 const BAG_RE = /BagMgr@:(Modfy BagItem|InitBagData) PageId = (-?\d+) SlotId = (\d+) ConfigBaseId = (\d+) Num = (\d+)/;
 const REMOVE_RE = /BagMgr@:RemoveBagItem PageId = (-?\d+) SlotId = (\d+)/;
+// Équipement porté (page -1) : objet mis ou retiré d'un emplacement, et le légendaire (GoldId) que le jeu
+// annonce juste avant pour cette base. Le jeu ne renvoie pas tout l'équipement à la connexion.
+const EQUIP_RE = /BagMgr@:(AddEquipItem|RemoveEquipItem) PageId = -1 SlotId = (\d+) ConfigBaseId = (\d+)/;
+const SETEQ_RE = /AttributeMgr:SetPlayerEquipment\(BaseId=(\d+), GoldId=(\d+), (\d+)\)/;
 const PROTO_RE = /ItemChange@ ProtoName=(\w+) (start|end)/;
 const LEVELPATH_RE = /LevelMgr@:LevelPath, Model = (\S+?)\.umap/;
 const ENTER_RE = /LevelMgr:_EnterLevelSuccess\(\)\s*(\d+)/;
@@ -57,7 +61,7 @@ class LogParser {
     const hasMisc = !hasBag && !hasItem && !hasLevel && !hasXchg &&
       (line.includes('AddMapModifier(') || line.includes('PreLoadHeroId') ||
        line.includes('GetCardDataByMapOrder') || line.endsWith('[Game] AffixInfos') || line.includes('ResreshConsumData') ||
-       line.includes('SelectRoleNetMgr@_EnterLevelStep5'));
+       line.includes('SelectRoleNetMgr@_EnterLevelStep5') || line.includes('SetPlayerEquipment(BaseId='));
     if (!hasBag && !hasItem && !hasLevel && !hasXchg && !hasMisc) return;
 
     const ts = parseTs(line);
@@ -67,6 +71,8 @@ class LogParser {
     if (hasMisc) {
       // Connexion d'un personnage (premier lancement ou changement de perso) : son sac complet suit.
       if (line.includes('SelectRoleNetMgr@_EnterLevelStep5')) { this.onEvent({ type: 'roleLogin', ts: t }); return; }
+      const eq = SETEQ_RE.exec(line);
+      if (eq) { this.onEvent({ type: 'equipHint', ts: t, base: +eq[1], gold: +eq[2] }); return; }
       let m = MODIFIER_RE.exec(line);
       if (m) { this.onEvent({ type: 'mapModifier', ts: t, id: +m[1] }); return; }
       m = HERO_RE.exec(line);
@@ -82,6 +88,8 @@ class LogParser {
     }
 
     if (hasBag) {
+      const eq = EQUIP_RE.exec(line);
+      if (eq) { this.onEvent({ type: eq[1] === 'AddEquipItem' ? 'equip' : 'unequip', ts: t, slot: +eq[2], base: +eq[3] }); return; }
       let m = BAG_RE.exec(line);
       if (m) {
         const page = +m[2];

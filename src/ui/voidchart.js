@@ -138,6 +138,7 @@ const VoidChart = (() => {
       $('vceClear').onclick = () => { if (!confirm(t('vce.confirmClear'))) return; picks = {}; save(); render(); };
     };
     render();
+    return { save };
   }
   return { mount };
 })();

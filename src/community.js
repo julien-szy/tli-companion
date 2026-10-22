@@ -64,7 +64,18 @@ class CommunityClient {
   heroMap() { return this._req('GET', '/api/heromap', null, false); }
   shareBuild(build) { return this._req('POST', '/api/builds', build); }
   unshareBuild(id) { return this._req('DELETE', `/api/builds/${id}`); }
-  listBuilds(heroKey) { return this._req('GET', '/api/builds' + (heroKey ? `?hero=${encodeURIComponent(heroKey)}` : ''), null, false); }
+  // Builds publiés : { hero, tree, q, sort } (tous facultatifs).
+  listBuilds(f = {}) {
+    if (typeof f === 'string') f = { hero: f };
+    const p = new URLSearchParams();
+    for (const k of ['hero', 'tree', 'q', 'sort']) if (f[k]) p.set(k, String(f[k]).slice(0, 60));
+    const qs = p.toString();
+    return this._req('GET', '/api/builds' + (qs ? '?' + qs : ''), null, false);
+  }
+  likeBuild(id) {
+    if (!/^[0-9a-f-]{36}$/.test(id)) throw new Error('invalid id');
+    return this._req('POST', `/api/builds/${id}/like`);
+  }
   getBuild(id) {
     if (!/^[0-9a-f-]{36}$/.test(id)) throw new Error('invalid id');
     return this._req('GET', `/api/builds/${id}`, null, false);

@@ -1,6 +1,28 @@
 {
   "releases": [
     {
+      "version": "1.0.14",
+      "date": "2026-10-22",
+      "en": [
+        "Build planner (beta): the Build tab is back. Browse the builds published by other players, filter by class, talent tree or name and sort by recent, most liked or name. Like a build or import it into your own builds.",
+        "Create your own builds in a planner like the game: choose your hero and its traits, pick your God then your profession trees on banners and spend your points (real point rules, core talents, 115 points max), put your skills in 5 slots with their 5 supports (skill picker with search, tags and price) plus 4 auras, and fill your 10 gear slots: each slot only offers the right item types, with legendaries and their stats, or build your own rare item (base, up to 3 prefixes and 3 suffixes by tier, values you can edit). Hover any item to see its stats like in the game. Share it in one click. Talent trees, hero traits and skills: tlidb.com.",
+        "Publishing a farm session now asks you to check your Void Chart first: it is guessed from the game log, so fix it before it goes on the site.",
+        "The AI Advisor tab is removed: an advisor built into the app, based on the build you follow, will replace it.",
+        "Purchase advisor (beta): a build is split into progression stages (Start, Mid-game, Endgame…) with the items to get at each one. Pick where you are and the advisor lists the next upgrades from the following stage, with price and farm time. It knows what you own from your bag, your skills and the legendaries you equip while the app reads the game log. One click adds the planner's legendaries and skills to a stage.",
+        "New Builds menu (beta) with three pages: Find a build, Followed and My builds. Every build page is marked beta.",
+        "Home page: a \"My build\" card for the build you follow: current stage, the FE in your bag (FE only), what is missing for the stage, farm time, progress bars and the next purchases."
+      ],
+      "fr": [
+        "Planificateur de builds (bêta) : l'onglet Build revient. Parcours les builds publiés par les autres joueurs, filtre par classe, arbre de talents ou nom, et trie par récents, plus aimés ou nom. Aime un build ou importe-le dans tes builds.",
+        "Crée tes propres builds dans un planificateur comme en jeu : choisis ton héros et ses traits, ton dieu puis tes professions sur des bannières et répartis tes points (vraies règles, talents principaux, 115 points max), place tes compétences dans 5 emplacements avec leurs 5 soutiens (fenêtre de choix avec recherche, tags et prix) plus 4 auras, et remplis tes 10 emplacements d'équipement : chaque emplacement ne propose que les bons types d'objets, avec les légendaires et leurs stats, ou fabrique ton propre objet rare (base, jusqu'à 3 préfixes et 3 suffixes par palier, valeurs modifiables). Survole un objet pour voir ses stats comme en jeu. Partage-le en un clic. Arbres de talents, traits de héros et compétences : tlidb.com.",
+        "Publier une session de farm demande maintenant de vérifier ton Void Chart : il est deviné depuis le log du jeu, corrige-le avant qu'il parte sur le site.",
+        "L'onglet Conseiller IA est retiré : un conseiller intégré à l'app, basé sur le build que tu suis, le remplacera.",
+        "Conseiller d'achat (bêta) : un build est découpé en étapes de progression (Départ, Milieu de jeu, Fin de jeu…) avec les objets à obtenir à chacune. Choisis où tu en es et le conseiller liste les prochaines améliorations de l'étape suivante, avec prix et temps de farm. Il sait ce que tu possèdes grâce à ton sac, tes compétences et les légendaires que tu équipes pendant que l'app lit le log du jeu. Un clic ajoute à une étape les légendaires et compétences du planificateur.",
+        "Nouveau menu Builds (bêta) avec trois pages : Trouver un build, Suivis et Mes builds. Toutes les pages build sont marquées bêta.",
+        "Accueil : une carte « Mon build » pour le build que tu suis : étape en cours, les FE de ton sac (le FE seul), ce qu'il manque pour l'étape, temps de farm, barres de progression et prochains achats."
+      ]
+    },
+    {
       "version": "1.0.13",
       "date": "2026-10-22",
       "en": [

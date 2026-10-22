@@ -316,6 +316,7 @@ function adviceFor(build, snap) {
   return advise(build, {
     items, prices,
     bagQty: (id) => tracker.bagQty(id) + (skills.has(id) ? 1 : 0),
+    equipped: tracker.equippedIds(),
     perHour: farmRate(snap),
     feInBag: tracker.bagQty(FE_ID),
   });
@@ -334,6 +335,28 @@ function adviceSummary(snap) {
   };
 }
 
+// Récap du build suivi pour l'accueil : étape visée, progression, FE du sac (FE seulement) et prochains achats.
+let recapCache = { at: 0, key: '', value: null };
+function buildRecap(snap) {
+  if (!settings.activeBuild) return null;
+  const b = builds.get(settings.activeBuild);
+  if (!b) return null;
+  const key = b.id + ':' + b.updatedAt;
+  if (recapCache.key === key && Date.now() - recapCache.at < 5000) return recapCache.value;
+  const a = adviceFor(b, snap);
+  const st = a.currentIndex != null ? a.steps[a.currentIndex] : null;
+  const total = a.steps.reduce((n, s) => n + s.total, 0);
+  const value = {
+    id: b.id, title: b.title, heroKey: b.heroKey, stepCount: b.steps.length,
+    stepIndex: a.currentIndex, stepTitle: st ? st.title : '', stepPct: st ? st.pct : 100, chosen: a.chosenIndex,
+    overallPct: total > 0 ? Math.round(((total - a.remainingAll) / total) * 100) : 0,
+    missing: a.currentMissing, hours: a.currentHours, feInBag: a.feInBag,
+    next: a.next.slice(0, 4).map((i) => ({ name: i.name, img: i.img, cost: i.cost, affordable: i.affordable })),
+  };
+  recapCache = { at: Date.now(), key, value };
+  return value;
+}
+
 function broadcast() {
   lastBroadcast = Date.now();
   const snap = { ...tracker.snapshot(), status, settings: publicSettings() };
@@ -342,6 +365,7 @@ function broadcast() {
   snap.updateRequired = updateRequired;
   snap.appVersion = app.getVersion();
   snap.advice = adviceSummary(snap);
+  snap.buildRecap = buildRecap(snap);
   if (overlay && !overlay.isDestroyed()) overlay.webContents.send('state', snap);
   if (dashboard && !dashboard.isDestroyed()) dashboard.webContents.send('state', snap);
 }
@@ -804,6 +828,8 @@ ipcMain.handle('openSupport', () => shell.openExternal(SUPPORT_URL));
 ipcMain.handle('searchItems', (_e, q) => (q ? items.search(q, 40) : []).map((id) => ({ id, ...items.get(id), price: prices.value(id) })));
 ipcMain.handle('listBuilds', () => builds.list().map((b) => ({
   id: b.id, title: b.title, heroKey: b.heroKey, steps: b.steps.length, updatedAt: b.updatedAt,
+  trees: ((b.talents && b.talents.trees) || []).filter(Boolean),
+  points: Object.values((b.talents && b.talents.nodes) || {}).reduce((n, o) => n + Object.values(o).reduce((a, v) => a + v, 0), 0),
   shared: b.shared, source: b.source, active: b.id === settings.activeBuild,
 })));
 ipcMain.handle('getBuild', (_e, id) => {
@@ -811,13 +837,13 @@ ipcMain.handle('getBuild', (_e, id) => {
   if (!b) return null;
   // Emplacements de compétences avec noms, icônes et « possédée » (cache de compétences du jeu).
   const owned = readOwnedSkills();
-  const view = (sl) => { const it = items.get(sl.id); return { id: sl.id, name: it.name, img: it.img, owned: owned.has(sl.id) || tracker.bagQty(sl.id) > 0 }; };
+  const view = (sl) => ({ ...skillView(sl), owned: !!sl.id && (owned.has(sl.id) || tracker.bagQty(sl.id) > 0) });
   const lo = b.loadout || { active: [], passive: [] };
   const loadout = {
-    active: lo.active.map((sl) => ({ ...view(sl), supports: sl.supports.map((id) => view({ id })) })),
-    passive: lo.passive.map((sl) => ({ ...view(sl), supports: sl.supports.map((id) => view({ id })) })),
+    active: lo.active.map((sl) => ({ ...view(sl), supports: sl.supports.map(view) })),
+    passive: lo.passive.map((sl) => ({ ...view(sl), supports: sl.supports.map(view) })),
   };
-  return { build: b, advice: adviceFor(b, { ...tracker.snapshot() }), loadout };
+  return { build: b, advice: adviceFor(b, { ...tracker.snapshot() }), loadout, gear: gearView(b.gear) };
 });
 ipcMain.handle('saveBuild', (_e, b) => { const saved = builds.save(b); broadcast(); return saved; });
 ipcMain.handle('deleteBuild', (_e, id) => {
@@ -826,6 +852,16 @@ ipcMain.handle('deleteBuild', (_e, id) => {
   broadcast();
 });
 ipcMain.handle('setActiveBuild', (_e, id) => { settings.activeBuild = id || null; saveSettings(); broadcast(); });
+// Étape où en est le joueur pour ce build (null : automatique).
+ipcMain.handle('setBuildStage', (_e, id, stage) => {
+  const b = builds.get(id);
+  if (!b) return null;
+  b.progress = b.progress || { owned: {} };
+  b.progress.stage = Number.isInteger(stage) ? stage : null;
+  builds.save(b);
+  broadcast();
+  return true;
+});
 ipcMain.handle('setOwned', (_e, id, itemId, owned) => {
   const b = builds.get(id);
   if (!b) return null;
@@ -840,11 +876,11 @@ ipcMain.handle('shareBuild', async (_e, id) => {
   if (!b) throw new Error('build not found');
   const pub = publicBuild(b);
   for (const s of pub.steps) for (const it of s.items) { const info = items.get(it.id); it.name = info.name; it.img = info.img; }
-  const withName = (x) => { const info = items.get(x.id); return { id: x.id, name: info.name, img: info.img }; };
   pub.loadout = {
-    active: pub.loadout.active.map((sl) => ({ ...withName(sl), supports: sl.supports.map((id) => withName({ id })) })),
-    passive: pub.loadout.passive.map((sl) => ({ ...withName(sl), supports: sl.supports.map((id) => withName({ id })) })),
+    active: pub.loadout.active.map((sl) => ({ ...skillView(sl), supports: sl.supports.map(skillView) })),
+    passive: pub.loadout.passive.map((sl) => ({ ...skillView(sl), supports: sl.supports.map(skillView) })),
   };
+  pub.gear = gearView(pub.gear);
   const res = await community.shareBuild(pub);
   b.shared = { url: community.siteUrl(res.url), at: Date.now() };
   builds.save(b);
@@ -855,7 +891,33 @@ ipcMain.handle('unshareBuild', async (_e, id) => {
   const b = builds.get(id);
   if (b) { b.shared = null; builds.save(b); }
 });
-ipcMain.handle('browseBuilds', (_e, heroKey) => community.listBuilds(heroKey));
+ipcMain.handle('browseBuilds', (_e, f) => community.listBuilds(f && typeof f === 'object' ? f : { hero: f }));
+ipcMain.handle('likeBuild', (_e, id) => community.likeBuild(id));
+// Aperçu d'un build publié, sans l'importer.
+ipcMain.handle('remoteBuild', (_e, id) => community.getBuild(id));
+// Héros (traits), arbres de talents et compétences de la saison (tlidb.com, via scripts/buildsdata.js).
+let buildDataCache = null;
+const buildData = () => (buildDataCache = buildDataCache || loadJson(path.join(__dirname, '..', 'data', 'builddata.json'), { heroes: [], trees: [], skills: [] }));
+// Nom et icône d'une compétence de build : la compétence tlidb si elle est connue, sinon l'objet de la base.
+function skillView(sl) {
+  const s = sl.skill && buildData().skills.find((x) => x.slug === sl.skill);
+  const it = sl.id ? items.get(sl.id) : null;
+  return { id: sl.id || null, skill: sl.skill || null, name: (s && s.name) || (it && it.name) || '?', img: (s && s.icon) || (it && it.img) || null };
+}
+// Équipement d'un build : les objets portent déjà nom, icône et stats ; un ancien emplacement (id seul) reprend ceux de la base.
+function gearView(g) {
+  const out = {};
+  for (const [k, it] of Object.entries(g || {})) {
+    if (!it.name && it.id) { const info = items.get(it.id); out[k] = { ...it, name: info.name, img: it.img || info.img }; } else out[k] = it;
+    if (out[k].id) out[k].price = prices.value(out[k].id) || null;
+  }
+  return out;
+}
+// Équipement de la saison (tlidb.com, via scripts/geardata.js) : chargé à la demande (environ 1 Mo).
+let gearDataCache = null;
+ipcMain.handle('gearData', () => (gearDataCache = gearDataCache || loadJson(path.join(__dirname, '..', 'data', 'geardata.json'), { slots: {}, types: {} })));
+ipcMain.handle('itemPrice', (_e, id) => (Number.isInteger(id) ? prices.value(id) || null : null));
+ipcMain.handle('buildData', () => buildData());
 // Copie un build du site dans « mes builds » (nouvel id, progression vide).
 ipcMain.handle('importBuild', async (_e, remoteId) => {
   const { build, author } = await community.getBuild(remoteId);
@@ -941,6 +1003,7 @@ ipcMain.handle('updateReport', (_e, id, patch) => {
   if (typeof patch.title === 'string') r.title = patch.title.slice(0, 120);
   if (typeof patch.notes === 'string') r.notes = patch.notes.slice(0, 4000);
   if (patch.voidChart !== undefined) r.voidChart = cleanVoidChart(patch.voidChart);
+  if (patch.voidChartChecked === true) r.voidChartChecked = Date.now();
   if (typeof patch.strategyTag === 'string' && STRATEGY_TAGS.includes(patch.strategyTag)) r.strategyTag = patch.strategyTag;
   if (typeof patch.strategyTag === 'string' && r.statsSent) { r.statsSent = false; setImmediate(() => sendFarmStats(r)); }
   saveReport(r);

@@ -436,18 +436,42 @@ route('POST', /^\/api\/builds$/, async (req) => {
   return { id: b.id, url: `/b/${b.id}` };
 });
 
+// Liste des builds publiés : filtres (classe, arbre de talents, texte) et tri (récents, aimés, nom, points).
+// Le résumé (arbres, points, compétence principale) est tiré du JSON du build.
+const BUILD_SORT = { recent: 'b.updated_at DESC', likes: 'b.likes DESC, b.updated_at DESC', name: 'b.title COLLATE NOCASE ASC' };
 route('GET', /^\/api\/builds$/, (req, url) => {
   const q = url.searchParams;
   const where = ['u.banned = 0'];
   const args = [];
-  if (q.get('hero')) { where.push('b.hero_key = ?'); args.push(q.get('hero')); }
-  const sort = q.get('sort') === 'likes' ? 'b.likes DESC, b.updated_at DESC' : 'b.updated_at DESC';
-  const limit = Math.min(100, Math.max(1, +q.get('limit') || 50));
+  if (q.get('hero')) { where.push('b.hero_key = ?'); args.push(String(q.get('hero')).slice(0, 40)); }
+  const tree = String(q.get('tree') || '');
+  if (/^[A-Za-z_]{3,40}$/.test(tree)) { where.push("instr(json_extract(b.json, '$.talents.trees'), ?) > 0"); args.push(`"${tree}"`); }
+  const text = String(q.get('q') || '').trim().slice(0, 60);
+  if (text) { where.push("(b.title LIKE ? ESCAPE '!' OR u.name LIKE ? ESCAPE '!')"); const like = '%' + text.replace(/[!%_]/g, (c) => '!' + c) + '%'; args.push(like, like); }
+  const sort = BUILD_SORT[q.get('sort')] || BUILD_SORT.recent;
+  const limit = Math.min(100, Math.max(1, +q.get('limit') || 60));
   const offset = Math.max(0, +q.get('offset') || 0);
-  const rows = db.prepare(`SELECT b.id, b.hero_key, b.title, b.steps, b.likes, b.created_at, b.updated_at, u.name AS author
+  const rows = db.prepare(`SELECT b.id, b.hero_key, b.title, b.steps, b.likes, b.created_at, b.updated_at, u.name AS author, b.json
     FROM builds b JOIN users u ON u.id = b.user_id WHERE ${where.join(' AND ')} ORDER BY ${sort} LIMIT ? OFFSET ?`)
     .all(...args, limit, offset);
-  return { builds: rows };
+  const builds = rows.map(({ json, ...r }) => {
+    let b = {};
+    try { b = JSON.parse(json); } catch { /* ancien build illisible : résumé vide */ }
+    const tal = b.talents || {};
+    const points = Object.values(tal.nodes || {}).reduce((n, o) => n + Object.values(o).reduce((a, v) => a + v, 0), 0);
+    const main = b.loadout && b.loadout.active && b.loadout.active[0];
+    return { ...r, trees: (tal.trees || []).filter(Boolean), points, mainSkill: main ? { name: main.name, img: main.img } : null };
+  });
+  return { builds };
+});
+
+route('POST', /^\/api\/builds\/([0-9a-f-]{36})\/like$/, (req, url, m) => {
+  const u = auth(req);
+  rateLimit('like:' + u.id, 120, 3600000);
+  if (!db.prepare('SELECT 1 FROM builds WHERE id = ?').get(m[1])) throw new HttpError(404, 'build not found');
+  const ins = db.prepare('INSERT OR IGNORE INTO build_likes (user_id, build_id) VALUES (?, ?)').run(u.id, m[1]);
+  if (ins.changes) db.prepare('UPDATE builds SET likes = likes + 1 WHERE id = ?').run(m[1]);
+  return { liked: true, likes: db.prepare('SELECT likes FROM builds WHERE id = ?').get(m[1]).likes };
 });
 
 route('GET', /^\/api\/builds\/([0-9a-f-]{36})$/, (req, url, m) => {
@@ -461,6 +485,7 @@ route('DELETE', /^\/api\/builds\/([0-9a-f-]{36})$/, (req, url, m) => {
   const u = auth(req);
   const r = db.prepare('DELETE FROM builds WHERE id = ? AND user_id = ?').run(m[1], u.id);
   if (!r.changes) throw new HttpError(404, 'build not found');
+  db.prepare('DELETE FROM build_likes WHERE build_id = ?').run(m[1]);
   return { deleted: true };
 });
 

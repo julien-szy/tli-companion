@@ -90,6 +90,11 @@ function openDb(dataDir) {
       json        TEXT NOT NULL
     );
     CREATE INDEX IF NOT EXISTS builds_hero ON builds(hero_key);
+    CREATE TABLE IF NOT EXISTS build_likes (
+      user_id   TEXT NOT NULL,
+      build_id  TEXT NOT NULL,
+      PRIMARY KEY (user_id, build_id)
+    );
 
     -- Méta : dernier instantané agrégé du Hero Ranking par serveur / saison / classement.
     CREATE TABLE IF NOT EXISTS meta_snapshots (
