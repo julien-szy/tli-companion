@@ -35,6 +35,7 @@ const STR = {
     nothingToBuy: 'Nothing to buy', modifiers: 'Active modifiers (Netherrealm talents, compasses, probes…)',
     mgNether: 'Netherrealm talents (Void Chart)', mgTrial: 'Trials', mgMap: 'Map, compass and probe affixes', mgNodes: '{n} modifiers', mgNode1: '1 modifier',
     mgPerMap: '{n}× per map', mgShare: 'in {p} of sessions',
+    vcTitle: 'Void Chart', vcHelp: 'Lit nodes: the Netherrealm talents active in these sessions, read from the game log (placement approximate when an effect appears on several nodes). Tree layout: tlidb.com.', vcNodes: '{n} nodes',
     none: 'None', bestDrops: 'Best drops', qty: 'Qty', value: 'Value', pageTitle: 'Farming strategies',
     navStrategies: 'Strategies', navBuilds: 'Builds', buildsTitle: 'Builds',
     buildsTagline: 'Builds shared by players. Import one in the app to follow it with a purchase advisor.',
@@ -89,6 +90,7 @@ const STR = {
     nothingToBuy: 'Rien à acheter', modifiers: 'Modificateurs actifs (talents Netherrealm, compas, sondes…)',
     mgNether: 'Talents Netherrealm (Void Chart)', mgTrial: 'Épreuves (Trials)', mgMap: 'Affixes de carte, compas et sondes', mgNodes: '{n} modificateurs', mgNode1: '1 modificateur',
     mgPerMap: '{n}× par carte', mgShare: 'dans {p} des sessions',
+    vcTitle: 'Void Chart', vcHelp: 'Nœuds allumés : les talents Netherrealm actifs dans ces sessions, lus dans le log du jeu (placement approximatif quand un effet existe sur plusieurs nœuds). Forme de l’arbre : tlidb.com.', vcNodes: '{n} nœuds',
     none: 'Aucun', bestDrops: 'Meilleurs drops', qty: 'Qté', value: 'Valeur', pageTitle: 'Stratégies de farm',
     navStrategies: 'Stratégies', navBuilds: 'Builds', buildsTitle: 'Builds',
     buildsTagline: "Builds partagés par les joueurs. Importe-en un dans l'app pour le suivre avec un conseiller d'achat.",
@@ -213,4 +215,72 @@ function modGroupsHtml(mods, empty) {
         <p>${esc(m.desc)}</p><div class="mg-bar"><i style="width:${Math.max(4, Math.round(((m.perMap || 0) / max) * 100))}%"></i></div>
         <span class="muted">${esc(t('mgPerMap', { n: nf1.format(m.perMap || 0) }))}${m.share != null ? ' · ' + esc(t('mgShare', { p: Math.round(m.share * 100) + ' %' })) : ''}</span></div></div>`).join('')}</div>
     </div>`).join('')}</div>`;
+}
+
+// ---------- Void Chart : l'arbre de talents Netherrealm, avec les nœuds utilisés allumés ----------
+// Arbre (positions, liens, icônes) : tlidb.com, via scripts/voidchart.js. Les modificateurs lus dans le log
+// sont reliés aux nœuds par leur texte ; « 5× par carte » allume les 5 nœuds de cet effet les plus proches du départ.
+let VC = null;
+const vcNorm = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+function voidChartBlock(mods) {
+  const list = (mods || []).filter((m) => m && m.desc).map((m) => ({ desc: m.desc, perMap: m.perMap || 0, share: m.share }));
+  return list.length ? `<div class="vc" data-vc="${esc(JSON.stringify(list))}"></div>` : '';
+}
+async function hydrateVoidCharts(root) {
+  const boxes = [...(root || document).querySelectorAll('.vc[data-vc]:not([data-done])')];
+  if (!boxes.length) return;
+  if (!VC) {
+    try { VC = await fetch('/voidchart.json').then((r) => r.json()); } catch { return; }
+    // Distance au nœud de départ (le plus gros nœud) pour chaque constellation.
+    for (const c of VC.constellations) {
+      const adj = new Map(c.nodes.map((n) => [n.id, []]));
+      for (const [a, b] of c.links) { if (adj.has(a) && adj.has(b)) { adj.get(a).push(b); adj.get(b).push(a); } }
+      const start = c.nodes.reduce((a, n) => (n.r > a.r ? n : a), c.nodes[0]);
+      const dist = new Map([[start.id, 0]]);
+      const q = [start.id];
+      while (q.length) { const id = q.shift(); for (const nb of adj.get(id)) if (!dist.has(nb)) { dist.set(nb, dist.get(id) + 1); q.push(nb); } }
+      c.dist = dist; c.byId = new Map(c.nodes.map((n) => [n.id, n]));
+    }
+  }
+  for (const box of boxes) {
+    box.dataset.done = '1';
+    let mods = [];
+    try { mods = JSON.parse(box.dataset.vc); } catch { continue; }
+    // Nœuds allumés par constellation.
+    const lit = new Map(); // constellation -> Map(nodeId -> mod)
+    for (const m of mods) {
+      const key = vcNorm(m.desc);
+      for (const c of VC.constellations) {
+        const cands = c.nodes.filter((n) => n.effects.some((e) => vcNorm(e) === key));
+        if (!cands.length) continue;
+        cands.sort((a, b) => (c.dist.get(a.id) ?? 999) - (c.dist.get(b.id) ?? 999));
+        const k = Math.max(1, Math.min(cands.length, Math.round(m.perMap || 1)));
+        if (!lit.has(c)) lit.set(c, new Map());
+        for (const n of cands.slice(0, k)) lit.get(c).set(n.id, m);
+        break;
+      }
+    }
+    if (!lit.size) { box.remove(); continue; }
+    const order = [...lit.entries()].sort((a, b) => b[1].size - a[1].size);
+    const draw = (c) => {
+      const on = lit.get(c);
+      const xs = c.nodes.map((n) => n.x), ys = c.nodes.map((n) => n.y), pad = 80;
+      const vb = [Math.min(...xs) - pad, Math.min(...ys) - pad, Math.max(...xs) - Math.min(...xs) + 2 * pad, Math.max(...ys) - Math.min(...ys) + 2 * pad];
+      const lines = c.links.map(([a, b]) => { const A = c.byId.get(a), B = c.byId.get(b); if (!A || !B) return ''; const hot = on.has(a) && on.has(b);
+        return `<line x1="${A.x}" y1="${A.y}" x2="${B.x}" y2="${B.y}" class="${hot ? 'vc-hot' : ''}"/>`; }).join('');
+      const nodes = c.nodes.map((n) => { const m = on.get(n.id);
+        const tip = [n.name, ...n.effects].concat(m ? [t('mgPerMap', { n: nf1.format(m.perMap || 0) }) + (m.share != null ? ' · ' + t('mgShare', { p: Math.round(m.share * 100) + ' %' }) : '')] : []).join('\n');
+        // Les icônes de talents de tlidb ne sont plus servies : on dessine des ronds (taille = type de nœud).
+        const big = n.r >= 45, mid = n.r >= 38;
+        return `<g class="vc-n${m ? ' on' : ''}${big ? ' big' : mid ? ' mid' : ''}"><title>${esc(tip)}</title>${m ? `<circle class="vc-glow" cx="${n.x}" cy="${n.y}" r="${n.r + 14}"/>` : ''}<circle class="vc-dot" cx="${n.x}" cy="${n.y}" r="${Math.max(16, n.r * 0.7)}"/></g>`; }).join('');
+      return `<svg class="vc-svg" viewBox="${vb.join(' ')}"><g class="vc-links">${lines}</g>${nodes}</svg>`;
+    };
+    box.innerHTML = `<div class="vc-head"><h4>${esc(t('vcTitle'))}</h4><div class="vc-tabs">${order.map(([c, on], i) => `<button class="vc-tab${i ? '' : ' on'}" data-i="${i}">${esc(c.name)} <b>${on.size}</b></button>`).join('')}</div></div>
+      <div class="vc-view">${draw(order[0][0])}</div><p class="muted small">${esc(t('vcHelp'))}</p>`;
+    box.querySelectorAll('.vc-tab').forEach((b) => (b.onclick = (e) => {
+      e.stopPropagation();
+      box.querySelectorAll('.vc-tab').forEach((x) => x.classList.toggle('on', x === b));
+      box.querySelector('.vc-view').innerHTML = draw(order[+b.dataset.i][0]);
+    }));
+  }
 }

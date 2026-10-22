@@ -197,3 +197,22 @@ header.site nav .ver { font-size: 11px; padding: 1px 6px; border-radius: 999px; 
 .faq details { margin: 0; }
 .faq summary { cursor: pointer; font-weight: 600; font-size: 15px; }
 .faq details p { margin: 8px 0 0; line-height: 1.6; }
+
+/* Void Chart : arbre de talents avec les nœuds utilisés allumés */
+.vc { margin-bottom: 12px; border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; background: rgba(255,255,255,.02); }
+.vc-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+.vc-head h4 { margin: 0; }
+.vc-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+.vc-tab { background: var(--panel2, #161a22); border: 1px solid var(--line); color: var(--muted); border-radius: 999px; padding: 4px 10px; font: inherit; font-size: 12px; cursor: pointer; }
+.vc-tab b { color: var(--text); margin-left: 3px; }
+.vc-tab.on { border-color: rgba(255,138,61,.5); background: rgba(255,138,61,.12); color: var(--accent); }
+.vc-svg { width: 100%; max-height: 460px; background: radial-gradient(circle at 50% 40%, #191d27, #0f1115 70%); border-radius: 10px; }
+.vc-links line { stroke: rgba(255,255,255,.12); stroke-width: 10; }
+.vc-links line.vc-hot { stroke: #ff8a3d; stroke-width: 12; }
+.vc-dot { fill: #2a303c; stroke: #3d4556; stroke-width: 5; }
+.vc-n.mid .vc-dot { fill: #343b4a; stroke: #59637a; stroke-width: 6; }
+.vc-n.big .vc-dot { fill: #3b4253; stroke: #8a93a3; stroke-width: 8; }
+.vc-n.on .vc-dot { fill: #ff8a3d; stroke: #ffd1ad; }
+.vc-glow { fill: rgba(255,138,61,.22); }
+.vc-n { cursor: help; }
+.small { font-size: 12px; }

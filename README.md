@@ -61,7 +61,7 @@ The code is published for **transparency**, not as open source: you can read it,
 
 ## Credits
 
-- Item data and icons: [tlidb.com](https://tlidb.com) (icons are not included in this repository).
+- Item data and icons, Void Chart layout: [tlidb.com](https://tlidb.com) (icons are not included in this repository).
 - Community price base and zone names: [TITrack](https://github.com/astockman99/TITrack).
 - Class and talent names cross-checked with [tliherorank.com](https://tliherorank.com).
 

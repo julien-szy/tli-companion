@@ -52,7 +52,7 @@ async function load() {
     const items = b.items.length ? b.items.map((c) => `<li>${icon(c.img)}<b>${esc(c.name)}</b>
         <span class="muted">${esc(t('dItemLine', { perMap: nf1.format(c.perMap), cost: fe(c.costPerMap) }))}</span></li>`).join('')
       : `<li class="muted">${esc(t('dNone'))}</li>`;
-    const mech = modGroupsHtml(b.mechanics, t('dNoMech'));
+    const mech = voidChartBlock(b.mechanics) + modGroupsHtml(b.mechanics, t('dNoMech'));
     return `<div class="sdetail">
       <div class="sstats">
         <div><span>${esc(t('dMapsH'))}</span><b>${nf1.format(b.mapsPerHour)}</b></div>
@@ -83,6 +83,7 @@ async function load() {
     const d = document.querySelector(`#best tr[data-d="${tr.dataset.i}"]`);
     d.hidden = !d.hidden;
     tr.classList.toggle('open', !d.hidden);
+    if (!d.hidden) hydrateVoidCharts(d);
   }));
   document.querySelectorAll('#best [data-routes]').forEach((btn) => (btn.onclick = (e) => {
     e.stopPropagation();
