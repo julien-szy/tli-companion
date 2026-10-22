@@ -36,6 +36,7 @@ const STR = {
     mgNether: 'Netherrealm talents (Void Chart)', mgTrial: 'Trials', mgMap: 'Map, compass and probe affixes', mgNodes: '{n} modifiers', mgNode1: '1 modifier',
     mgPerMap: '{n}× per map', mgShare: 'in {p} of sessions',
     vcPath: 'Path node: needed to reach the talents above (not shown in the log)',
+    vcExact: 'set by the player', vcHelpExact: 'Void Chart set by the player in TLI Companion. Tree layout: tlidb.com.',
     vcTitle: 'Void Chart', vcHelp: 'Bright nodes: talents read from the game log. Darker nodes: path nodes needed to reach them. When an effect exists on several nodes, the closest one is shown. Tree layout: tlidb.com.', vcNodes: '{n} nodes',
     none: 'None', bestDrops: 'Best drops', qty: 'Qty', value: 'Value', pageTitle: 'Farming strategies',
     navStrategies: 'Strategies', navBuilds: 'Builds', buildsTitle: 'Builds',
@@ -92,6 +93,7 @@ const STR = {
     mgNether: 'Talents Netherrealm (Void Chart)', mgTrial: 'Épreuves (Trials)', mgMap: 'Affixes de carte, compas et sondes', mgNodes: '{n} modificateurs', mgNode1: '1 modificateur',
     mgPerMap: '{n}× par carte', mgShare: 'dans {p} des sessions',
     vcPath: 'Nœud de passage : nécessaire pour atteindre les talents au-dessus (absent du log)',
+    vcExact: 'coché par le joueur', vcHelpExact: 'Void Chart coché par le joueur dans TLI Companion. Forme de l’arbre : tlidb.com.',
     vcTitle: 'Void Chart', vcHelp: 'Nœuds vifs : talents lus dans le log du jeu. Nœuds plus sombres : nœuds de passage nécessaires pour les atteindre. Quand un effet existe sur plusieurs nœuds, le plus proche est affiché. Forme de l’arbre : tlidb.com.', vcNodes: '{n} nœuds',
     none: 'Aucun', bestDrops: 'Meilleurs drops', qty: 'Qté', value: 'Valeur', pageTitle: 'Stratégies de farm',
     navStrategies: 'Stratégies', navBuilds: 'Builds', buildsTitle: 'Builds',
@@ -227,8 +229,10 @@ const vcNorm = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
 // Texte sans les nombres (« … 2% chance … » et « … 10% chance … » ont le même gabarit) et 1re valeur.
 const vcTpl = (s) => String(s || '').toLowerCase().replace(/\d+(\.\d+)?/g, '#').replace(/[^a-z#]+/g, '');
 const vcNum = (s) => { const m = /(\d+(?:\.\d+)?)/.exec(String(s || '')); return m ? +m[1] : null; };
-function voidChartBlock(mods) {
+function voidChartBlock(mods, picked) {
   const list = (mods || []).filter((m) => m && m.desc).map((m) => ({ desc: m.desc, perMap: m.perMap || 0, share: m.share }));
+  // Arbre coché par le joueur dans l'app : affiché tel quel, sans rien deviner.
+  if (picked && typeof picked === 'object' && Object.keys(picked).length) return `<div class="vc" data-vc="${esc(JSON.stringify(list))}" data-picked="${esc(JSON.stringify(picked))}"></div>`;
   return list.length ? `<div class="vc" data-vc="${esc(JSON.stringify(list))}"></div>` : '';
 }
 async function hydrateVoidCharts(root) {
@@ -280,6 +284,22 @@ async function hydrateVoidCharts(root) {
         break;
       }
     }
+    let picked = null;
+    try { picked = box.dataset.picked ? JSON.parse(box.dataset.picked) : null; } catch { picked = null; }
+    if (picked) {
+      // Le texte de chaque nœud coché retrouve la fréquence lue dans le log, quand elle existe.
+      const byText = new Map(mods.map((m) => [vcNorm(m.desc), m]));
+      for (const c of VC.constellations) {
+        const ids = picked[c.slug];
+        if (!Array.isArray(ids) || !ids.length) continue;
+        const taken = new Map([[c.start, 'path']]);
+        for (const id of ids) { const n = c.byId.get(+id); if (!n) continue; const m = n.effects.map((e) => byText.get(vcNorm(e))).find(Boolean);
+          taken.set(n.id, m || { desc: n.effects.join(' '), perMap: null }); }
+        lit.set(c, taken);
+      }
+      jobs.length = 0;
+      box.dataset.exact = '1';
+    }
     jobs.sort((a, b) => a.cands.size - b.cands.size); // les talents les moins ambigus d'abord
     for (const { c, m, cands, vals, target, numeric } of jobs) {
       if (!lit.has(c)) lit.set(c, new Map([[c.start, 'path']]));
@@ -316,14 +336,14 @@ async function hydrateVoidCharts(root) {
       const lines = c.links.map(([a, b]) => { const A = c.byId.get(a), B = c.byId.get(b); if (!A || !B) return ''; const hot = on.has(a) && on.has(b);
         return `<line x1="${A.x}" y1="${A.y}" x2="${B.x}" y2="${B.y}" class="${hot ? 'vc-hot' : ''}"/>`; }).join('');
       const nodes = c.nodes.map((n) => { const v = on.get(n.id); const m = v && v !== 'path' ? v : null; const path = v === 'path';
-        const tip = [n.name, ...n.effects].concat(path ? [t('vcPath')] : []).concat(m ? [t('mgPerMap', { n: nf1.format(m.perMap || 0) }) + (m.share != null ? ' · ' + t('mgShare', { p: Math.round(m.share * 100) + ' %' }) : '')] : []).join('\n');
+        const tip = [n.name, ...n.effects].concat(path ? [t('vcPath')] : []).concat(m && m.perMap != null ? [t('mgPerMap', { n: nf1.format(m.perMap || 0) }) + (m.share != null ? ' · ' + t('mgShare', { p: Math.round(m.share * 100) + ' %' }) : '')] : []).join('\n');
         // Les icônes de talents de tlidb ne sont plus servies : on dessine des ronds (taille = type de nœud).
         const big = n.r >= 45, mid = n.r >= 38;
         return `<g class="vc-n${m ? ' on' : path ? ' path' : ''}${big ? ' big' : mid ? ' mid' : ''}"><title>${esc(tip)}</title>${m ? `<circle class="vc-glow" cx="${n.x}" cy="${n.y}" r="${n.r + 14}"/>` : ''}<circle class="vc-dot" cx="${n.x}" cy="${n.y}" r="${Math.max(16, n.r * 0.7)}"/></g>`; }).join('');
       return `<svg class="vc-svg" viewBox="${vb.join(' ')}"><g class="vc-links">${lines}</g>${nodes}</svg>`;
     };
-    box.innerHTML = `<div class="vc-head"><h4>${esc(t('vcTitle'))}</h4><div class="vc-tabs">${order.map(([c, on], i) => `<button class="vc-tab${i ? '' : ' on'}" data-i="${i}">${esc(c.name)} <b>${count(on)}</b></button>`).join('')}</div></div>
-      <div class="vc-view">${draw(order[0][0])}</div><p class="muted small">${esc(t('vcHelp'))}</p>`;
+    box.innerHTML = `<div class="vc-head"><h4>${esc(t('vcTitle'))}</h4>${box.dataset.exact ? `<span class="tag">${esc(t('vcExact'))}</span>` : ''}<div class="vc-tabs">${order.map(([c, on], i) => `<button class="vc-tab${i ? '' : ' on'}" data-i="${i}">${esc(c.name)} <b>${count(on)}</b></button>`).join('')}</div></div>
+      <div class="vc-view">${draw(order[0][0])}</div><p class="muted small">${esc(t(box.dataset.exact ? 'vcHelpExact' : 'vcHelp'))}</p>`;
     box.querySelectorAll('.vc-tab').forEach((b) => (b.onclick = (e) => {
       e.stopPropagation();
       box.querySelectorAll('.vc-tab').forEach((x) => x.classList.toggle('on', x === b));

@@ -921,11 +921,26 @@ ipcMain.handle('compareStats', async (_e, id) => {
     return { ...c, region, tier: m ? +m[2] : null, mine: r.totals.perHourReal };
   } catch { return null; }
 });
+// Arbre du Void Chart de la saison (forme : tlidb.com), pour l'éditeur de la fiche de session.
+let voidChartCache = null;
+ipcMain.handle('voidChartData', () => (voidChartCache = voidChartCache || loadJson(path.join(__dirname, '..', 'data', 'voidchart.json'), { constellations: [] })));
+// Nœuds du Void Chart cochés par le joueur : { constellation: [ids] }, bornés.
+function cleanVoidChart(v) {
+  const out = {};
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return out;
+  for (const [slug, ids] of Object.entries(v).slice(0, 40)) {
+    if (!/^[A-Za-z_]{3,60}$/.test(slug) || !Array.isArray(ids)) continue;
+    const list = [...new Set(ids.map((x) => Math.trunc(+x)).filter((x) => x > 0 && x < 1e7))].slice(0, 250);
+    if (list.length) out[slug] = list;
+  }
+  return out;
+}
 ipcMain.handle('updateReport', (_e, id, patch) => {
   const r = loadJson(reportPath(id), null);
   if (!r) return null;
   if (typeof patch.title === 'string') r.title = patch.title.slice(0, 120);
   if (typeof patch.notes === 'string') r.notes = patch.notes.slice(0, 4000);
+  if (patch.voidChart !== undefined) r.voidChart = cleanVoidChart(patch.voidChart);
   if (typeof patch.strategyTag === 'string' && STRATEGY_TAGS.includes(patch.strategyTag)) r.strategyTag = patch.strategyTag;
   if (typeof patch.strategyTag === 'string' && r.statsSent) { r.statsSent = false; setImmediate(() => sendFarmStats(r)); }
   saveReport(r);

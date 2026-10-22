@@ -1,6 +1,18 @@
 {
   "releases": [
     {
+      "version": "1.0.13",
+      "date": "2026-10-22",
+      "en": [
+        "Void Chart editor in each farm session: the app guesses your tree from the game log, you click the nodes to fix it, and it is published with your route so the website shows your exact Void Chart.",
+        "Meta tab: always opens on the latest season and the most recent ranking date, and changing another filter goes back to the most recent date."
+      ],
+      "fr": [
+        "Éditeur de Void Chart dans chaque session de farm : l'app devine ton arbre depuis le log du jeu, tu cliques sur les nœuds pour le corriger, et il est publié avec ta route pour que le site affiche ton Void Chart exact.",
+        "Onglet Méta : s'ouvre toujours sur la dernière saison et la date de classement la plus récente, et changer un autre filtre revient à la date la plus récente."
+      ]
+    },
+    {
       "version": "1.0.12",
       "date": "2026-10-21",
       "en": [

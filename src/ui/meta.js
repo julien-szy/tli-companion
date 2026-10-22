@@ -42,8 +42,9 @@ const MetaTab = (() => {
     // Par défaut : la méta de la communauté (global, sinon mon serveur), sinon mon plus gros classement local.
     if (!fileKey || !files.some((f) => f.key === fileKey)) {
       const myServer = (local.find((f) => f.server) || {}).server;
-      const pick = remote.find((f) => f.server === 'global') || remote.find((f) => f.server === myServer) || remote[0]
-        || local.slice().sort((a, b) => b.size - a.size)[0];
+      // Toujours la saison et la date de classement les plus récentes (pickFile prend la plus récente par défaut).
+      const server = remote.some((f) => f.server === 'global') ? 'global' : myServer;
+      const pick = remote.length ? pickFile(files, { src: 'r', server }) : local.slice().sort((a, b) => b.size - a.size)[0];
       fileKey = pick.key;
     }
     currentRemote = (files.find((f) => f.key === fileKey) || {}).remote;
@@ -127,6 +128,8 @@ const MetaTab = (() => {
       const cur = toolbarFiles.find((f) => f.key === fileKey) || toolbarFiles[0];
       const want = Object.fromEntries(DIMS.map((k) => [k, dimOf[k](cur)]));
       want[sel.dataset.dim] = sel.value;
+      // Changer un autre filtre revient à la date de classement la plus récente ; choisir une date la garde.
+      if (sel.dataset.dim !== 'board') delete want.board;
       fileKey = pickFile(toolbarFiles, want).key;
       show();
     }));

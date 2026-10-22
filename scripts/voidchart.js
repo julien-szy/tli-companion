@@ -1,5 +1,5 @@
 // Récupère le Void Chart de la saison depuis tlidb.com (une page par constellation) et écrit
-// server/public/voidchart.json : constellations, nœuds (position, taille, icône, effets) et liens.
+// server/public/voidchart.json (et data/voidchart.json pour l'app) : constellations, nœuds (position, taille, icône, effets) et liens.
 // Données et icônes : tlidb.com (crédité sur le site). À relancer à chaque nouvelle saison :
 //   node scripts/voidchart.js
 const fs = require('fs');
@@ -50,7 +50,9 @@ function parseConstellation(slug, html) {
     console.log(`${c.name.padEnd(22)} ${c.nodes.length} nœuds, ${c.links.length} liens`);
     await new Promise((r) => setTimeout(r, 400)); // pas de rafale sur tlidb
   }
+  // Une copie pour le site, une pour l'app (éditeur du Void Chart dans les fiches de session).
   const file = path.join(__dirname, '..', 'server', 'public', 'voidchart.json');
   fs.writeFileSync(file, JSON.stringify(out));
+  fs.writeFileSync(path.join(__dirname, '..', 'data', 'voidchart.json'), JSON.stringify(out));
   console.log('écrit', file, Math.round(fs.statSync(file).size / 1024), 'Ko');
 })().catch((e) => { console.error(e.message); process.exit(1); });

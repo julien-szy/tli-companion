@@ -35,7 +35,7 @@ api('/api/reports/' + encodeURIComponent(id)).then(({ report: r, author, likes }
     </div>
     <div class="cards">
       <div class="card"><h2>${esc(t('modifiers'))}</h2>
-        ${voidChartBlock(mods)}${modGroupsHtml(mods.slice(0, 40), t('none'))}
+        ${voidChartBlock(mods, r.voidChart)}${modGroupsHtml(mods.slice(0, 40), t('none'))}
       </tbody></table></div>
       <div class="card"><h2>${esc(t('bestDrops'))}</h2><table><thead><tr><th>${esc(t('item'))}</th><th class="r">${esc(t('qty'))}</th><th class="r">${esc(t('value'))}</th></tr></thead><tbody>
         ${r.loot.slice(0, 30).map((i) => `<tr><td>${icon(i.img)}${esc(i.name)}</td><td class="r">${qty(i.qty)}</td><td class="r ${cls(i.value)}">${fe(i.value, true)}</td></tr>`).join('')}

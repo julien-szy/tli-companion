@@ -252,6 +252,8 @@ async function openSession(id) {
         ${r.loot.slice(0, 25).map((i) => `<tr class="${i.ignored ? 'ignored' : ''}"><td>${icon(i.img)}${esc(i.name)}</td><td class="r">${qty(i.qty)}</td><td class="r ${cls(i.value)}">${fe(i.value, true)}</td></tr>`).join('')}
       </tbody></table></div>
     </div>`;
+  $('sessDetail').insertAdjacentHTML('beforeend', '<div class="card vce" id="vceBox"></div>');
+  VoidChart.mount($('vceBox'), r).catch(() => $('vceBox').remove());
   $('sessList').hidden = true;
   $('sessDetail').hidden = false;
   $('dBack').onclick = () => { closeSession(); loadSessions(); };
@@ -808,7 +810,7 @@ const Bag = (() => {
     const focus = document.activeElement && document.activeElement.id === 'bagMin';
     v.innerHTML = `
       <div class="bag-head">
-        <div><h2>${esc(t('bag.title'))}</h2><p class="muted">${esc(t('bag.intro'))}</p></div>
+        <div><h2>${esc(t('bag.title'))}</h2><p class="muted">${esc(t('bag.intro'))}</p><p class="muted" style="font-size:12px;margin-top:2px">${esc(t('bag.tip'))}</p></div>
         <button class="btn ghost" id="bagRefresh">${esc(t('btn.refresh'))}</button>
       </div>
       <div class="bag-warn"><span class="bw-ico">!</span><div><b>${esc(t('bag.warnTitle'))}</b><p>${esc(d.staleSell ? t(d.staleSell === 1 ? 'bag.warnStale1' : 'bag.warnStale', { n: d.staleSell }) : t('bag.warnText'))}</p></div></div>

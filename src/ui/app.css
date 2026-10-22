@@ -479,3 +479,24 @@ main tr[data-item] { cursor: pointer; }
 .place { color: var(--text); font-weight: 600; margin-left: 4px; }
 .place::before { content: '· '; color: var(--muted); font-weight: 400; }
 .lm-beacon { display: block; font-size: 12px; font-weight: 400; margin-top: 2px; }
+
+/* Éditeur du Void Chart (fiche de session) */
+.vce-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.vce-head h2 { margin: 0; }
+.vce-head .muted { margin-right: auto; }
+.vce-help { font-size: 12.5px; margin: 6px 0 10px; }
+.vce-tabs { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 10px; }
+.vce-tab { background: var(--panel2); border: 1px solid var(--line); color: var(--muted); border-radius: 999px; padding: 4px 10px; font: inherit; font-size: 12px; cursor: pointer; }
+.vce-tab.used { color: var(--text); }
+.vce-tab b { color: var(--accent); margin-left: 3px; }
+.vce-tab.on { border-color: rgba(255,138,61,.55); background: rgba(255,138,61,.14); color: var(--accent); }
+.vce-svg { width: 100%; max-height: 520px; background: radial-gradient(circle at 50% 40%, #191d27, #0f1115 70%); border-radius: 10px; }
+.vce-links line { stroke: rgba(255,255,255,.12); stroke-width: 10; }
+.vce-links line.hot { stroke: #ff8a3d; stroke-width: 12; }
+.vce-n { cursor: pointer; }
+.vce-n .hit { fill: transparent; }
+.vce-n .dot { fill: #2a303c; stroke: #3d4556; stroke-width: 5; }
+.vce-n.mid .dot { fill: #343b4a; stroke: #59637a; stroke-width: 6; }
+.vce-n.big .dot { fill: #3b4253; stroke: #8a93a3; stroke-width: 8; }
+.vce-n:hover .dot { stroke: #ffd1ad; }
+.vce-n.on .dot { fill: #ff8a3d; stroke: #ffd1ad; }
