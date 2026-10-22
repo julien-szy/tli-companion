@@ -115,15 +115,25 @@ tli.onState((s) => {
     $('miniMap').textContent = '–'; $('miniMapLbl').textContent = t('ov.map');
   }
 
-  // Derniers drops (les nouveaux clignotent)
-  const html = s.recent.slice(0, 40).map((e) => {
-    const key = `${e.ts}|${e.id}|${e.delta}`;
-    const isNew = !firstRender && !seen.has(key);
-    return `<div class="row${isNew ? ' new' : ''}" data-k="${esc(key)}">${icon(e.img)}<span class="n" title="${esc(e.name)} — ${esc(zoneLabel(e.zone))}">${esc(e.name)}</span><span class="q">${qty(e.delta)}</span><span class="val ${cls(e.value)}">${fe(e.value, true)}</span></div>`;
+  // Derniers drops, ou drops les plus rentables de la session (Réglages > Widget).
+  // Les nouveaux (ou ceux dont la quantité a changé) clignotent.
+  const byValue = s.settings.overlay.dropsSort === 'value';
+  const titleKey = byValue ? 'ov.topDrops' : 'ov.recentDrops';
+  if ($('dropsTitle').dataset.i18n !== titleKey) {
+    $('dropsTitle').dataset.i18n = titleKey;
+    $('dropsTitle').textContent = t(titleKey);
+    firstRender = true;
+  }
+  const list = byValue
+    ? (s.topDrops || []).map((e) => ({ key: `${e.id}|${e.qty}`, img: e.img, name: e.name, tip: e.name, delta: e.qty, value: e.value }))
+    : s.recent.slice(0, 40).map((e) => ({ key: `${e.ts}|${e.id}|${e.delta}`, img: e.img, name: e.name, tip: `${e.name} — ${zoneLabel(e.zone)}`, delta: e.delta, value: e.value }));
+  const html = list.map((e) => {
+    const isNew = !firstRender && !seen.has(e.key);
+    return `<div class="row${isNew ? ' new' : ''}" data-k="${esc(e.key)}">${icon(e.img)}<span class="n" title="${esc(e.tip)}">${esc(e.name)}</span><span class="q">${qty(e.delta)}</span><span class="val ${cls(e.value)}">${fe(e.value, true)}</span></div>`;
   }).join('');
   const box = $('recent');
   if (box.dataset.html !== html) { box.innerHTML = html; box.dataset.html = html; }
-  seen = new Set(s.recent.map((e) => `${e.ts}|${e.id}|${e.delta}`));
+  seen = new Set(list.map((e) => e.key));
   firstRender = false;
 });
 
