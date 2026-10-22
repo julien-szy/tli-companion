@@ -232,3 +232,7 @@ header.site nav .ver { font-size: 11px; padding: 1px 6px; border-radius: 999px; 
 .acc-list a:hover { background: #1b1f28; }
 .btn.danger { border-color: rgba(255,107,107,.4); color: var(--neg); }
 .btn.danger:hover { border-color: var(--neg); }
+
+/* Code du jeu partagé avec une route */
+.gcode-row { display: flex; gap: 8px; margin-top: 8px; }
+.gcode-row input { flex: 1; min-width: 0; font-family: Consolas, monospace; font-size: 13px; }

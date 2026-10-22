@@ -1,7 +1,11 @@
 {
   "unreleased": {
-    "en": [],
-    "fr": []
+    "en": [
+      "Farm routes: add an optional game code (for example your Void Chart code) to a session. It is shown on the website with a button to copy it."
+    ],
+    "fr": [
+      "Routes de farm : ajoute un code du jeu facultatif (par exemple le code de ton Void Chart) à une session. Il est affiché sur le site avec un bouton pour le copier."
+    ]
   },
   "releases": [
     {

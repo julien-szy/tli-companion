@@ -111,6 +111,7 @@ async function endSessionModal(id) {
       <label>${esc(t('end.name'))}<input id="eTitle" value="${esc(r.title || (r.strategy.maps[0] ? r.strategy.maps[0].name : ''))}"></label>
       <label>${esc(t('end.tag'))}<select id="eTag">${tagOptions(r.strategyTag)}</select></label>
       <label>${esc(t('end.notes'))}<textarea id="eNotes" rows="3" placeholder="${esc(t('end.notesPh'))}">${esc(r.notes || '')}</textarea></label>
+      <label>${esc(t('gc.label'))}<input id="eCode" maxlength="4000" placeholder="${esc(t('gc.ph'))}" value="${esc(r.gameCode || '')}"></label>
       <p class="muted" style="font-size:12px">${esc(t(last.settings.shareFarmStats !== false ? 'end.statsOn' : 'end.statsOff'))}</p>
       <label class="check"><input type="checkbox" id="ePub"> ${esc(t('end.publishSheet'))}</label>
       ${srv.registered ? '' : `<label id="eNameRow" hidden>${esc(t('share.namePh'))}<input id="eName" maxlength="24"></label>`}
@@ -128,7 +129,7 @@ async function endSessionModal(id) {
     await tli.deleteReport(id); modal(''); closeSession(); loadSessions();
   };
   $('eSave').onclick = async () => {
-    const patch = { title: $('eTitle').value, notes: $('eNotes').value, strategyTag: $('eTag').value };
+    const patch = { title: $('eTitle').value, notes: $('eNotes').value, strategyTag: $('eTag').value, gameCode: $('eCode').value };
     await tli.updateReport(id, patch);
     if ($('ePub').checked) {
       try {
@@ -238,7 +239,9 @@ async function openSession(id) {
       ${stat('d.class', esc(r.hero ? r.hero.name : '–'), 'txt')}
     </div></div>
     <div class="card"><h2>${esc(t('d.notes'))}</h2>
-      <textarea id="dNotes" placeholder="${esc(t('d.notesPh'))}">${esc(r.notes || '')}</textarea></div>
+      <textarea id="dNotes" placeholder="${esc(t('d.notesPh'))}">${esc(r.notes || '')}</textarea>
+      <label class="gc-row">${esc(t('gc.label'))}<input id="dCode" maxlength="4000" placeholder="${esc(t('gc.ph'))}" value="${esc(r.gameCode || '')}"></label>
+      <p class="muted" style="font-size:12px;margin-top:4px">${esc(t('gc.help'))}</p></div>
     <div class="cards">
       <div class="card"><h2>${esc(t('d.mapsPlayed'))}</h2><table><thead><tr><th>${esc(t('col.map'))}</th><th class="r">${esc(t('col.count'))}</th><th class="r">${esc(t('col.avgProfit'))}</th><th class="r">${esc(t('col.avgDuration'))}</th></tr></thead><tbody>
         ${r.strategy.maps.map((m) => `<tr><td>${esc(m.name)}${m.zones ? `<br><span class="muted">${Object.entries(m.zones).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([z, n]) => esc(z) + (n > 1 ? ' ×' + n : '')).join(' · ')}</span>` : ''}</td><td class="r">${m.runs}</td><td class="r ${cls(m.profit)}">${fe(m.profit / m.runs, true)}</td><td class="r">${dur(m.durationMs / m.runs)}</td></tr>`).join('')}
@@ -262,6 +265,7 @@ async function openSession(id) {
   $('dBack').onclick = () => { closeSession(); loadSessions(); };
   $('dTitle').onchange = () => tli.updateReport(id, { title: $('dTitle').value });
   $('dNotes').onchange = () => tli.updateReport(id, { notes: $('dNotes').value });
+  $('dCode').onchange = () => tli.updateReport(id, { gameCode: $('dCode').value });
   $('dTag').onchange = () => tli.updateReport(id, { strategyTag: $('dTag').value });
   $('dDelete').onclick = async () => {
     if (!confirm(t('sess.confirmDelete') + (r.shared ? '\n' + t('sess.confirmDeleteShared') : ''))) return;
@@ -353,7 +357,7 @@ async function checkVoidChart(id) {
 async function doShare(id) {
   if ($('shMsg')) $('shMsg').textContent = t('share.sending');
   try {
-    await tli.updateReport(id, { title: $('dTitle').value, notes: $('dNotes').value, strategyTag: $('dTag').value });
+    await tli.updateReport(id, { title: $('dTitle').value, notes: $('dNotes').value, strategyTag: $('dTag').value, gameCode: $('dCode').value });
     if (!(await checkVoidChart(id))) { openSession(id); return; }
     await tli.shareReport(id);
     openSession(id);

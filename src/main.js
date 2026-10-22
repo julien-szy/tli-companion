@@ -1042,6 +1042,8 @@ ipcMain.handle('updateReport', (_e, id, patch) => {
   if (!r) return null;
   if (typeof patch.title === 'string') r.title = patch.title.slice(0, 120);
   if (typeof patch.notes === 'string') r.notes = patch.notes.slice(0, 4000);
+  // Code du jeu (facultatif) que les autres joueurs pourront copier : texte sur une ligne.
+  if (typeof patch.gameCode === 'string') r.gameCode = ((v) => String(v || '').replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, 4000))(patch.gameCode);
   if (patch.voidChart !== undefined) r.voidChart = cleanVoidChart(patch.voidChart);
   if (patch.voidChartChecked === true) r.voidChartChecked = Date.now();
   if (typeof patch.strategyTag === 'string' && STRATEGY_TAGS.includes(patch.strategyTag)) r.strategyTag = patch.strategyTag;

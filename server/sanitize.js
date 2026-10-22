@@ -71,6 +71,7 @@ function sanitizeReport(r) {
     appVersion: str(r.appVersion, 20),
     title: str(r.title, 120),
     notes: str(r.notes, 4000),
+    gameCode: ((v) => String(v || '').replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, 4000))(r.gameCode) || null,
     startedAt: int(r.startedAt),
     endedAt: int(r.endedAt),
     hero: r.hero && typeof r.hero === 'object' ? { id: int(r.hero.id), name: str(r.hero.name, 60) } : null,

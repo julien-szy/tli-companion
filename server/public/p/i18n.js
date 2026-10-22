@@ -866,6 +866,9 @@
       'soc.none': "No comment yet. Be the first to ask a question!",
       'soc.signInToComment': "Sign in to comment.",
       'soc.confirmDelete': "Delete this comment?",
+      'gc.label': "Game code (optional)",
+      'gc.ph': "Paste here a code copied in the game (for example your Void Chart)",
+      'gc.help': "Optional: a code copied in the game. It is shown with your route on the website, with a button to copy it.",
     },
     fr: {
       'app.title': 'TLI Companion',
@@ -1720,6 +1723,9 @@
       'soc.none': "Pas encore de commentaire. Pose la première question !",
       'soc.signInToComment': "Connecte-toi pour commenter.",
       'soc.confirmDelete': "Supprimer ce commentaire ?",
+      'gc.label': "Code du jeu (facultatif)",
+      'gc.ph': "Colle ici un code copié dans le jeu (par exemple ton Void Chart)",
+      'gc.help': "Facultatif : un code copié dans le jeu. Il est affiché avec ta route sur le site, avec un bouton pour le copier.",
     },
   };
 

@@ -25,6 +25,8 @@ api('/api/reports/' + encodeURIComponent(id)).then(({ report: r, author, likes, 
       </div>
     </div>
     ${r.notes ? `<div class="card"><h2>${esc(t('explained'))}</h2><div class="notes">${esc(r.notes)}</div></div>` : ''}
+    ${r.gameCode ? `<div class="card gcode"><h2>${esc(t('gcTitle'))}</h2><p class="muted">${esc(t('gcHelp'))}</p>
+      <div class="gcode-row"><input id="gCode" readonly value="${esc(r.gameCode)}"><button class="btn primary" id="gCopy">${esc(t('gcCopy'))}</button></div></div>` : ''}
     <div class="cards">
       <div class="card"><h2>${esc(t('mapsPlayed'))}</h2><table><thead><tr><th>${esc(t('map'))}</th><th class="r">${esc(t('count'))}</th><th class="r">${esc(t('avgProfit'))}</th><th class="r">${esc(t('avgDuration'))}</th></tr></thead><tbody>
         ${r.strategy.maps.map((m) => `<tr><td>${esc(m.name)}${m.zones && Object.keys(m.zones).length ? `<br><span class="muted">${Object.entries(m.zones).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([z, n]) => esc(z) + (n > 1 ? ' ×' + n : '')).join(' · ')}</span>` : ''}</td><td class="r">${m.runs}</td><td class="r ${cls(m.profit)}">${fe(m.profit / m.runs, true)}</td><td class="r">${dur(m.durationMs / m.runs)}</td></tr>`).join('')}
@@ -42,6 +44,10 @@ api('/api/reports/' + encodeURIComponent(id)).then(({ report: r, author, likes, 
       </tbody></table></div>
     </div>`;
   hydrateVoidCharts($('content'));
+  if ($('gCopy')) $('gCopy').onclick = async () => {
+    try { await navigator.clipboard.writeText(r.gameCode); } catch { $('gCode').select(); document.execCommand('copy'); }
+    $('gCopy').textContent = t('gcCopied');
+  };
   // Votes et commentaires (bêta).
   const signIn = () => { location.href = `/auth/google?next=${encodeURIComponent(location.pathname)}`; };
   $('content').insertAdjacentHTML('afterbegin', '<div id="sVotes" style="float:right"></div>');
