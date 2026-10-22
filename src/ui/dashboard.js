@@ -112,39 +112,39 @@ async function endSessionModal(id) {
   modal(`<h1>${esc(t('end.title'))}</h1>
     <p class="muted">${esc(t('end.summary', { maps: r.totals.runs, profit: fe(r.totals.profit, true), hour: fe(r.totals.perHourReal), time: dur(r.totals.realMs) }))}</p>
     <div class="body end-form">
-      <label>${esc(t('end.name'))}<input id="eTitle" value="${esc(r.title || (r.strategy.maps[0] ? r.strategy.maps[0].name : ''))}"></label>
-      <label>${esc(t('end.tag'))}<select id="eTag">${tagOptions(r.strategyTag)}</select></label>
-      <label>${esc(t('end.notes'))}<textarea id="eNotes" rows="3" placeholder="${esc(t('end.notesPh'))}">${esc(r.notes || '')}</textarea></label>
-      <label>${esc(t('gc.label'))}<input id="eCode" maxlength="4000" placeholder="${esc(t('gc.ph'))}" value="${esc(r.gameCode || '')}"></label>
+      <label>${esc(t('end.name'))}<input id="endTitle" value="${esc(r.title || (r.strategy.maps[0] ? r.strategy.maps[0].name : ''))}"></label>
+      <label>${esc(t('end.tag'))}<select id="endTag">${tagOptions(r.strategyTag)}</select></label>
+      <label>${esc(t('end.notes'))}<textarea id="endNotes" rows="3" placeholder="${esc(t('end.notesPh'))}">${esc(r.notes || '')}</textarea></label>
+      <label>${esc(t('gc.label'))}<input id="endCode" maxlength="4000" placeholder="${esc(t('gc.ph'))}" value="${esc(r.gameCode || '')}"></label>
       <p class="muted" style="font-size:12px">${esc(t(last.settings.shareFarmStats !== false ? 'end.statsOn' : 'end.statsOff'))}</p>
-      <label class="check"><input type="checkbox" id="ePub"> ${esc(t('end.publishSheet'))}</label>
-      ${srv.registered ? '' : `<label id="eNameRow" hidden>${esc(t('share.namePh'))}<input id="eName" maxlength="24"></label>`}
-      <p class="muted" id="eMsg" style="font-size:12px" hidden>${esc(t('share.what'))}</p>
+      <label class="check"><input type="checkbox" id="endPub"> ${esc(t('end.publishSheet'))}</label>
+      ${srv.registered ? '' : `<label id="endNameRow" hidden>${esc(t('share.namePh'))}<input id="endName" maxlength="24"></label>`}
+      <p class="muted" id="endMsg" style="font-size:12px" hidden>${esc(t('share.what'))}</p>
     </div>
-    <div class="foot"><button class="btn" id="eDrop">${esc(t('end.discard'))}</button>
-      <button class="btn primary big" id="eSave">${esc(t('end.save'))}</button></div>`);
-  $('ePub').onchange = () => {
-    $('eSave').textContent = t($('ePub').checked ? 'end.savePublish' : 'end.save');
-    if ($('eNameRow')) $('eNameRow').hidden = !$('ePub').checked;
-    $('eMsg').hidden = !$('ePub').checked;
+    <div class="foot"><button class="btn" id="endDrop">${esc(t('end.discard'))}</button>
+      <button class="btn primary big" id="endSave">${esc(t('end.save'))}</button></div>`);
+  $('endPub').onchange = () => {
+    $('endSave').textContent = t($('endPub').checked ? 'end.savePublish' : 'end.save');
+    if ($('endNameRow')) $('endNameRow').hidden = !$('endPub').checked;
+    $('endMsg').hidden = !$('endPub').checked;
   };
-  $('eDrop').onclick = async () => {
+  $('endDrop').onclick = async () => {
     if (!confirm(t('sess.confirmDelete'))) return;
     await tli.deleteReport(id); modal(''); closeSession(); loadSessions();
   };
-  $('eSave').onclick = async () => {
-    const patch = { title: $('eTitle').value, notes: $('eNotes').value, strategyTag: $('eTag').value, gameCode: $('eCode').value };
+  $('endSave').onclick = async () => {
+    const patch = { title: $('endTitle').value, notes: $('endNotes').value, strategyTag: $('endTag').value, gameCode: $('endCode').value };
     await tli.updateReport(id, patch);
-    if ($('ePub').checked) {
+    if ($('endPub').checked) {
       try {
         if (!srv.registered) {
-          const name = $('eName').value.trim();
-          if (name.length < 2) { $('eMsg').hidden = false; $('eMsg').textContent = t('share.nameShort'); return; }
+          const name = $('endName').value.trim();
+          if (name.length < 2) { $('endMsg').hidden = false; $('endMsg').textContent = t('share.nameShort'); return; }
           await tli.register(name);
         }
         if (!(await checkVoidChart(id))) { openSession(id); return; }
         await tli.shareReport(id);
-      } catch (e) { $('eMsg').textContent = t('share.error', { msg: errMsg(e) }); return; }
+      } catch (e) { $('endMsg').textContent = t('share.error', { msg: errMsg(e) }); return; }
     }
     modal('');
     openSession(id);

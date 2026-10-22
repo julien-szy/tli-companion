@@ -1,7 +1,11 @@
 {
   "unreleased": {
-    "en": [],
-    "fr": []
+    "en": [
+      "Fix: the Save button of the \"Farm session finished\" window did nothing after the build editor had been opened."
+    ],
+    "fr": [
+      "Correctif : le bouton Enregistrer de la fenêtre « Session de farm terminée » ne faisait plus rien après un passage dans l'éditeur de build."
+    ]
   },
   "releases": [
     {
