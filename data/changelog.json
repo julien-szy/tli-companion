@@ -1,7 +1,11 @@
 {
   "unreleased": {
-    "en": [],
-    "fr": []
+    "en": [
+      "Widget: new \"Drops list\" option in Settings › Widget to show the most valuable drops of the session (grouped by item, sorted by total value) instead of the latest ones. Thanks to lukezamboni for this contribution!"
+    ],
+    "fr": [
+      "Widget : nouvelle option « Liste des drops » dans Réglages › Widget pour afficher les drops les plus rentables de la session (regroupés par objet, triés par valeur totale) au lieu des derniers. Merci à lukezamboni pour cette contribution !"
+    ]
   },
   "releases": [
     {
