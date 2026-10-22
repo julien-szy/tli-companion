@@ -1,0 +1,29 @@
+/* Classes de l'app utilisées par le planificateur, en version site (le reste vient de /style.css). */
+:root { --radius: 12px; }
+.fchip { background: var(--panel); border: 1px solid var(--line); color: var(--muted); border-radius: 999px; padding: 5px 12px; font: inherit; font-size: 12.5px; cursor: pointer; }
+.fchip:hover { border-color: #3a4252; color: var(--text); }
+.fchip.on { background: rgba(255,138,61,.14); border-color: rgba(255,138,61,.45); color: var(--accent); }
+.fchips { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.tag.beta { background: rgba(255,154,61,.15); color: var(--accent); font-weight: 700; letter-spacing: .05em; vertical-align: middle; }
+.tag.loot { background: rgba(95,211,141,.12); color: var(--pos); }
+.chip { font-size: 12px; padding: 4px 10px; border-radius: 999px; background: var(--panel2); color: var(--muted); border: 1px solid var(--line); }
+.small { font-size: 12px; }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+textarea { background: var(--bg); border: 1px solid var(--line); color: var(--text); border-radius: 8px; padding: 8px; font: inherit; width: 100%; min-height: 70px; resize: vertical; }
+.modal-bg { position: fixed; inset: 0; background: rgba(5,6,9,.78); display: flex; align-items: center; justify-content: center; z-index: 100; }
+.modal { width: min(620px, 92vw); background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 26px 28px; box-shadow: 0 30px 80px rgba(0,0,0,.6); }
+.modal h1 { font-size: 20px; margin-bottom: 6px; }
+.modal .body { line-height: 1.6; }
+.modal .foot { display: flex; justify-content: space-between; margin-top: 20px; gap: 8px; }
+.pk-h h1 { margin: 0; }
+/* Barre d'outils de la page « Créer un build » */
+.pl-bar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 8px; }
+.pl-bar .pl-title { flex: 1; min-width: 240px; font-size: 16px; padding: 9px 12px; }
+.pl-help { margin-bottom: 14px; }
+.pl-head { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
+.pl-head .grow { flex: 1; min-width: 220px; }
+.pl-steps .pl-step { margin-bottom: 10px; }
+.pl-steps .pl-step h3 { font-size: 14px; margin-bottom: 6px; }
+.bfil { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 14px; }
+.bfil input { min-width: 220px; }
+.tchip { font-size: 11.5px; padding: 2px 8px; }

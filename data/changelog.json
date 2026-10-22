@@ -5,6 +5,16 @@
   },
   "releases": [
     {
+      "version": "1.0.15",
+      "date": "2026-10-22",
+      "en": [
+        "Build codes (beta): create a build on tlicompanion.com/planner (same planner as the app) and get it in the app with Builds › My builds › Import a code. Each build sheet also has a \"Copy the code\" button to share it."
+      ],
+      "fr": [
+        "Codes de build (bêta) : crée un build sur tlicompanion.com/planner (le même planificateur que l'app) et récupère-le dans l'app avec Builds › Mes builds › Importer un code. Chaque fiche de build a aussi un bouton « Copier le code » pour le partager."
+      ]
+    },
+    {
       "version": "1.0.14",
       "date": "2026-10-22",
       "en": [

@@ -51,7 +51,7 @@ const Build = (() => {
     const names = await Promise.all(list.map((b) => Talents.treeNames(b.trees)));
     root().innerHTML = `<div class="tools">
         ${kind === 'followed' ? `<button class="btn primary" id="bFind">${esc(t('b.findOne'))}</button><span class="muted">${esc(t('b.followHelp'))}</span>`
-          : `<button class="btn primary" id="bNew">${esc(t('b.new'))}</button><span class="muted">${esc(t('b.help'))}</span>`}
+          : `<button class="btn primary" id="bNew">${esc(t('b.new'))}</button><button class="btn" id="bCode">${esc(t('code.import'))}</button><span class="muted">${esc(t('b.help'))}</span>`}
       </div>
       <table><thead><tr><th>${esc(t('b.colBuild'))}</th><th>${esc(t('col.class'))}</th><th>${esc(t('b.colTrees'))}</th><th class="r">${esc(t('b.colPoints'))}</th><th>${esc(t('b.colStatus'))}</th></tr></thead><tbody>
       ${list.map((b, i) => `<tr class="click" data-id="${b.id}">
@@ -63,8 +63,27 @@ const Build = (() => {
         || `<tr><td colspan="5" class="muted">${esc(t(kind === 'followed' ? 'b.followEmpty' : 'b.empty'))}</td></tr>`}
       </tbody></table>`;
     if ($('bNew')) $('bNew').onclick = newBuild;
+    if ($('bCode')) $('bCode').onclick = importCode;
     if ($('bFind')) $('bFind').onclick = () => showTab('build');
     root().querySelectorAll('tr.click').forEach((tr) => (tr.onclick = () => openDetail(tr.dataset.id)));
+  }
+
+  // Importer un build depuis un code (fait sur tlicompanion.com ou donné par un joueur) : il s'ouvre dans l'éditeur.
+  function importCode() {
+    modal(`<h1>${esc(t('code.import'))}</h1><p class="muted">${esc(t('code.importHelp'))}</p>
+      <div class="body" style="min-height:0"><textarea id="cdIn" rows="5" placeholder="TLIC1.…"></textarea><p class="neg" id="cdErr" style="margin-top:6px"></p></div>
+      <div class="foot"><button class="btn" id="cdCancel">${esc(t('b.cancel'))}</button><button class="btn primary big" id="cdGo">${esc(t('code.open'))}</button></div>`);
+    $('cdCancel').onclick = () => modal('');
+    $('cdGo').onclick = async () => {
+      try {
+        const b = await Planner.decode($('cdIn').value);
+        draft = { title: '', heroKey: '', description: '', steps: [], talents: { trees: [], nodes: {}, core: {} }, traits: [], loadout: { active: [], passive: [] }, gear: {}, ...b, id: undefined };
+        if (!draft.steps.length) draft.steps = ['adv.s1', 'adv.s2', 'adv.s3'].map((k) => ({ title: t(k), notes: '', items: [] }));
+        modal('');
+        currentId = null;
+        renderEdit();
+      } catch (e) { $('cdErr').textContent = errMsg(e); }
+    };
   }
 
   // ---------- Builds publiés (communauté) : filtres et tri ----------
@@ -173,6 +192,7 @@ const Build = (() => {
           <div class="muted">${esc(heroLabel(b.heroKey))}${b.source ? ' · ' + esc(t('b.from', { author: b.source.author || '?' })) : ''}</div></div>
         <button class="btn ${active ? '' : 'primary'}" id="bFollow">${esc(active ? t('b.unfollow') : t('b.follow'))}</button>
         <button class="btn" id="bEdit">${esc(t('b.edit'))}</button>
+        <button class="btn" id="bCopyCode" title="${esc(t('code.copyHelp'))}">${esc(t('code.copy'))}</button>
         <button class="btn" id="bShare">${esc(b.shared ? t('b.updateShare') : t('b.share'))}</button>
         <button class="btn" id="bDelete">${esc(t('btn.delete'))}</button>
       </div>
@@ -237,6 +257,10 @@ const Build = (() => {
     };
     $('bDelete').onclick = async () => { if (confirm(t('b.confirmDelete'))) { await tli.deleteBuild(id); backToList(); } };
     $('bShare').onclick = () => shareBuild(id);
+    $('bCopyCode').onclick = async () => {
+      try { await navigator.clipboard.writeText(await Planner.encode({ ...b, loadout: lo, gear: res.gear || {} })); $('bShareMsg').textContent = t('code.copied'); }
+      catch (e) { $('bShareMsg').textContent = t('share.error', { msg: errMsg(e) }); }
+    };
     if (b.shared) {
       $('bOpen').onclick = (e) => { e.preventDefault(); tli.openSite(new URL(b.shared.url).pathname); };
       $('bUnshare').onclick = async (e) => {

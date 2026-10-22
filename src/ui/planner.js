@@ -56,9 +56,8 @@ const Planner = (() => {
             <div class="pk-tags">${(sel.tags || []).map((x) => `<span class="pk-tag">${esc(x)}</span>`).join('')}</div></div></div>
             <p class="muted" id="pkPrice">${sel.itemId ? esc(t('pl.priceLoading')) : esc(t('pl.noItem'))}</p>`
           : `<p class="muted pk-empty">${esc(t('pl.selectSkill'))}</p>`;
-        if (sel && sel.itemId) tli.searchItems(sel.name).then((r) => {
-          const it = r.find((x) => x.id === sel.itemId);
-          if ($('pkPrice')) $('pkPrice').textContent = it && it.price ? t('pl.price', { fe: fe(it.price) }) : t('pl.noPrice');
+        if (sel && sel.itemId) tli.itemPrice(sel.itemId).then((price) => {
+          if ($('pkPrice')) $('pkPrice').textContent = price ? t('pl.price', { fe: fe(price) }) : t('pl.noPrice');
         }).catch(() => {});
       };
       const draw = () => {
@@ -342,5 +341,35 @@ const Planner = (() => {
     render();
   }
 
-  return { load, section, bindSections, heroCard, pickHero, mountSkills, mountGear, info };
+  // ---------- Code de build : passer un build du site à l'app (et entre joueurs) ----------
+  // « TLIC1. » + JSON compressé (deflate) en base64url. Ne contient que le build : rien sur le joueur.
+  const CODE_PREFIX = 'TLIC1.';
+  const b64 = (bytes) => { let s = ''; for (const c of bytes) s += String.fromCharCode(c); return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); };
+  const unb64 = (str) => { const s = atob(str.replace(/-/g, '+').replace(/_/g, '/')); return Uint8Array.from(s, (c) => c.charCodeAt(0)); };
+  async function pipe(bytes, stream) { return new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(stream)).arrayBuffer()); }
+  function portable(b) {
+    const ref = (x) => ({ id: x.id || null, skill: x.skill || null });
+    const lo = b.loadout || { active: [], passive: [] };
+    return {
+      title: b.title || '', heroKey: b.heroKey || '', description: b.description || '', traits: b.traits || [], talents: b.talents || {},
+      loadout: { active: lo.active.map((x) => ({ ...ref(x), supports: (x.supports || []).map(ref) })), passive: lo.passive.map((x) => ({ ...ref(x), supports: (x.supports || []).map(ref) })) },
+      gear: Object.fromEntries(Object.entries(b.gear || {}).map(([k, g]) => { const { price, ...rest } = g; return [k, rest]; })),
+      steps: (b.steps || []).map((st) => ({ title: st.title || '', notes: st.notes || '', items: (st.items || []).map((i) => ({ id: i.id, qty: i.qty || 1, priority: i.priority, note: i.note || '', name: i.name, img: i.img })) })),
+    };
+  }
+  async function encode(b) {
+    const json = new TextEncoder().encode(JSON.stringify(portable(b)));
+    return CODE_PREFIX + b64(await pipe(json, new CompressionStream('deflate-raw')));
+  }
+  async function decode(code) {
+    const c = String(code || '').trim();
+    if (!c.startsWith(CODE_PREFIX) || c.length > 200000) throw new Error(t('code.bad'));
+    try {
+      const b = JSON.parse(new TextDecoder().decode(await pipe(unb64(c.slice(CODE_PREFIX.length)), new DecompressionStream('deflate-raw'))));
+      if (!b || typeof b !== 'object') throw new Error('');
+      return b;
+    } catch { throw new Error(t('code.bad')); }
+  }
+
+  return { load, encode, decode, section, bindSections, heroCard, pickHero, mountSkills, mountGear, info };
 })();
