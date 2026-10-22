@@ -35,7 +35,8 @@ const STR = {
     nothingToBuy: 'Nothing to buy', modifiers: 'Active modifiers (Netherrealm talents, compasses, probes…)',
     mgNether: 'Netherrealm talents (Void Chart)', mgTrial: 'Trials', mgMap: 'Map, compass and probe affixes', mgNodes: '{n} modifiers', mgNode1: '1 modifier',
     mgPerMap: '{n}× per map', mgShare: 'in {p} of sessions',
-    vcTitle: 'Void Chart', vcHelp: 'Lit nodes: the Netherrealm talents active in these sessions, read from the game log (placement approximate when an effect appears on several nodes). Tree layout: tlidb.com.', vcNodes: '{n} nodes',
+    vcPath: 'Path node: needed to reach the talents above (not shown in the log)',
+    vcTitle: 'Void Chart', vcHelp: 'Bright nodes: talents read from the game log. Darker nodes: path nodes needed to reach them. When an effect exists on several nodes, the closest one is shown. Tree layout: tlidb.com.', vcNodes: '{n} nodes',
     none: 'None', bestDrops: 'Best drops', qty: 'Qty', value: 'Value', pageTitle: 'Farming strategies',
     navStrategies: 'Strategies', navBuilds: 'Builds', buildsTitle: 'Builds',
     buildsTagline: 'Builds shared by players. Import one in the app to follow it with a purchase advisor.',
@@ -90,7 +91,8 @@ const STR = {
     nothingToBuy: 'Rien à acheter', modifiers: 'Modificateurs actifs (talents Netherrealm, compas, sondes…)',
     mgNether: 'Talents Netherrealm (Void Chart)', mgTrial: 'Épreuves (Trials)', mgMap: 'Affixes de carte, compas et sondes', mgNodes: '{n} modificateurs', mgNode1: '1 modificateur',
     mgPerMap: '{n}× par carte', mgShare: 'dans {p} des sessions',
-    vcTitle: 'Void Chart', vcHelp: 'Nœuds allumés : les talents Netherrealm actifs dans ces sessions, lus dans le log du jeu (placement approximatif quand un effet existe sur plusieurs nœuds). Forme de l’arbre : tlidb.com.', vcNodes: '{n} nœuds',
+    vcPath: 'Nœud de passage : nécessaire pour atteindre les talents au-dessus (absent du log)',
+    vcTitle: 'Void Chart', vcHelp: 'Nœuds vifs : talents lus dans le log du jeu. Nœuds plus sombres : nœuds de passage nécessaires pour les atteindre. Quand un effet existe sur plusieurs nœuds, le plus proche est affiché. Forme de l’arbre : tlidb.com.', vcNodes: '{n} nœuds',
     none: 'Aucun', bestDrops: 'Meilleurs drops', qty: 'Qté', value: 'Valeur', pageTitle: 'Stratégies de farm',
     navStrategies: 'Stratégies', navBuilds: 'Builds', buildsTitle: 'Builds',
     buildsTagline: "Builds partagés par les joueurs. Importe-en un dans l'app pour le suivre avec un conseiller d'achat.",
@@ -235,47 +237,71 @@ async function hydrateVoidCharts(root) {
     for (const c of VC.constellations) {
       const adj = new Map(c.nodes.map((n) => [n.id, []]));
       for (const [a, b] of c.links) { if (adj.has(a) && adj.has(b)) { adj.get(a).push(b); adj.get(b).push(a); } }
-      const start = c.nodes.reduce((a, n) => (n.r > a.r ? n : a), c.nodes[0]);
+      const start = c.nodes.find((n) => /initial node/i.test(n.name)) || c.nodes.reduce((a, n) => (n.r > a.r ? n : a), c.nodes[0]);
       const dist = new Map([[start.id, 0]]);
       const q = [start.id];
       while (q.length) { const id = q.shift(); for (const nb of adj.get(id)) if (!dist.has(nb)) { dist.set(nb, dist.get(id) + 1); q.push(nb); } }
-      c.dist = dist; c.byId = new Map(c.nodes.map((n) => [n.id, n]));
+      c.dist = dist; c.adj = adj; c.start = start.id; c.byId = new Map(c.nodes.map((n) => [n.id, n]));
     }
   }
   for (const box of boxes) {
     box.dataset.done = '1';
     let mods = [];
     try { mods = JSON.parse(box.dataset.vc); } catch { continue; }
-    // Nœuds allumés par constellation.
-    const lit = new Map(); // constellation -> Map(nodeId -> mod)
+    // Nœuds pris, par constellation. Comme dans le jeu, un nœud n'est accessible que relié au départ :
+    // on prend chaque talent lu dans le log au plus près de ce qui est déjà pris, et on allume aussi les
+    // nœuds de passage (valeur 'path'), que le log ne montre pas toujours.
+    const lit = new Map(); // constellation -> Map(nodeId -> mod | 'path')
+    const jobs = [];
     for (const m of mods) {
       const key = vcNorm(m.desc);
       for (const c of VC.constellations) {
-        const cands = c.nodes.filter((n) => n.effects.some((e) => vcNorm(e) === key));
-        if (!cands.length) continue;
-        cands.sort((a, b) => (c.dist.get(a.id) ?? 999) - (c.dist.get(b.id) ?? 999));
-        const k = Math.max(1, Math.min(cands.length, Math.round(m.perMap || 1)));
-        if (!lit.has(c)) lit.set(c, new Map());
-        for (const n of cands.slice(0, k)) lit.get(c).set(n.id, m);
+        const cands = new Set(c.nodes.filter((n) => n.effects.some((e) => vcNorm(e) === key)).map((n) => n.id));
+        if (!cands.size) continue;
+        jobs.push({ c, m, cands, k: Math.max(1, Math.min(cands.size, Math.round(m.perMap || 1))) });
         break;
       }
     }
+    jobs.sort((a, b) => (a.cands.size - a.k) - (b.cands.size - b.k)); // les talents les moins ambigus d'abord
+    for (const { c, m, cands, k } of jobs) {
+      if (!lit.has(c)) lit.set(c, new Map([[c.start, 'path']]));
+      const taken = lit.get(c);
+      for (let i = 0; i < k; i++) {
+        // Recherche en largeur depuis tout ce qui est pris : le candidat libre le plus proche, et le chemin pour l'atteindre.
+        const prev = new Map([...taken.keys()].map((id) => [id, null]));
+        const q = [...taken.keys()];
+        let found = null;
+        while (q.length && !found) {
+          const id = q.shift();
+          for (const nb of c.adj.get(id) || []) {
+            if (prev.has(nb)) continue;
+            prev.set(nb, id); q.push(nb);
+            if (cands.has(nb)) { found = nb; break; }
+          }
+        }
+        if (!found) break;
+        taken.set(found, m);
+        for (let id = prev.get(found); id != null && !taken.has(id); id = prev.get(id)) taken.set(id, 'path');
+      }
+    }
+    for (const [c, taken] of [...lit]) if (![...taken.values()].some((v) => v !== 'path')) lit.delete(c);
     if (!lit.size) { box.remove(); continue; }
     const order = [...lit.entries()].sort((a, b) => b[1].size - a[1].size);
+    const count = (on) => on.size - 1; // sans le nœud de départ
     const draw = (c) => {
       const on = lit.get(c);
       const xs = c.nodes.map((n) => n.x), ys = c.nodes.map((n) => n.y), pad = 80;
       const vb = [Math.min(...xs) - pad, Math.min(...ys) - pad, Math.max(...xs) - Math.min(...xs) + 2 * pad, Math.max(...ys) - Math.min(...ys) + 2 * pad];
       const lines = c.links.map(([a, b]) => { const A = c.byId.get(a), B = c.byId.get(b); if (!A || !B) return ''; const hot = on.has(a) && on.has(b);
         return `<line x1="${A.x}" y1="${A.y}" x2="${B.x}" y2="${B.y}" class="${hot ? 'vc-hot' : ''}"/>`; }).join('');
-      const nodes = c.nodes.map((n) => { const m = on.get(n.id);
-        const tip = [n.name, ...n.effects].concat(m ? [t('mgPerMap', { n: nf1.format(m.perMap || 0) }) + (m.share != null ? ' · ' + t('mgShare', { p: Math.round(m.share * 100) + ' %' }) : '')] : []).join('\n');
+      const nodes = c.nodes.map((n) => { const v = on.get(n.id); const m = v && v !== 'path' ? v : null; const path = v === 'path';
+        const tip = [n.name, ...n.effects].concat(path ? [t('vcPath')] : []).concat(m ? [t('mgPerMap', { n: nf1.format(m.perMap || 0) }) + (m.share != null ? ' · ' + t('mgShare', { p: Math.round(m.share * 100) + ' %' }) : '')] : []).join('\n');
         // Les icônes de talents de tlidb ne sont plus servies : on dessine des ronds (taille = type de nœud).
         const big = n.r >= 45, mid = n.r >= 38;
-        return `<g class="vc-n${m ? ' on' : ''}${big ? ' big' : mid ? ' mid' : ''}"><title>${esc(tip)}</title>${m ? `<circle class="vc-glow" cx="${n.x}" cy="${n.y}" r="${n.r + 14}"/>` : ''}<circle class="vc-dot" cx="${n.x}" cy="${n.y}" r="${Math.max(16, n.r * 0.7)}"/></g>`; }).join('');
+        return `<g class="vc-n${m ? ' on' : path ? ' path' : ''}${big ? ' big' : mid ? ' mid' : ''}"><title>${esc(tip)}</title>${m ? `<circle class="vc-glow" cx="${n.x}" cy="${n.y}" r="${n.r + 14}"/>` : ''}<circle class="vc-dot" cx="${n.x}" cy="${n.y}" r="${Math.max(16, n.r * 0.7)}"/></g>`; }).join('');
       return `<svg class="vc-svg" viewBox="${vb.join(' ')}"><g class="vc-links">${lines}</g>${nodes}</svg>`;
     };
-    box.innerHTML = `<div class="vc-head"><h4>${esc(t('vcTitle'))}</h4><div class="vc-tabs">${order.map(([c, on], i) => `<button class="vc-tab${i ? '' : ' on'}" data-i="${i}">${esc(c.name)} <b>${on.size}</b></button>`).join('')}</div></div>
+    box.innerHTML = `<div class="vc-head"><h4>${esc(t('vcTitle'))}</h4><div class="vc-tabs">${order.map(([c, on], i) => `<button class="vc-tab${i ? '' : ' on'}" data-i="${i}">${esc(c.name)} <b>${count(on)}</b></button>`).join('')}</div></div>
       <div class="vc-view">${draw(order[0][0])}</div><p class="muted small">${esc(t('vcHelp'))}</p>`;
     box.querySelectorAll('.vc-tab').forEach((b) => (b.onclick = (e) => {
       e.stopPropagation();

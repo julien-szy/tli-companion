@@ -216,3 +216,4 @@ header.site nav .ver { font-size: 11px; padding: 1px 6px; border-radius: 999px; 
 .vc-glow { fill: rgba(255,138,61,.22); }
 .vc-n { cursor: help; }
 .small { font-size: 12px; }
+.vc-n.path .vc-dot { fill: #8a5a3a; stroke: #ff8a3d; }
