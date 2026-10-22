@@ -81,15 +81,8 @@ function clientIp(req) {
   return (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress;
 }
 
-function auth(req) {
-  const h = req.headers.authorization || '';
-  const m = /^Bearer ([A-Za-z0-9_-]{20,100})$/.exec(h);
-  if (!m) throw new HttpError(401, 'login required');
-  const user = db.prepare('SELECT id, name, banned FROM users WHERE token_hash = ?').get(sha256(m[1]));
-  if (!user) throw new HttpError(401, 'unknown token');
-  if (user.banned) throw new HttpError(403, 'account suspended');
-  return user;
-}
+// Qui fait la requête : jeton de l'app ou cookie du site (voir accounts.js).
+function auth(req) { return Accounts.auth(req); }
 
 function cleanName(n) {
   n = String(n || '').normalize('NFKC').replace(/[\u0000-\u001f<>]/g, '').trim();
@@ -101,6 +94,7 @@ function cleanName(n) {
 
 const routes = [];
 const route = (method, pattern, handler) => routes.push({ method, pattern, handler });
+const Accounts = require('./accounts')({ db, route, HttpError, sha256, clientIp, rateLimit, readJson, DATA_DIR });
 
 route('GET', /^\/api\/health$/, () => ({ ok: true, time: Date.now() }));
 
@@ -113,19 +107,6 @@ route('POST', /^\/api\/register$/, async (req) => {
   const id = crypto.randomUUID();
   db.prepare('INSERT INTO users (id, name, token_hash, created_at) VALUES (?, ?, ?, ?)').run(id, name, sha256(token), Date.now());
   return { userId: id, name, token };
-});
-
-route('GET', /^\/api\/me$/, (req) => {
-  const u = auth(req);
-  return { userId: u.id, name: u.name };
-});
-
-route('PATCH', /^\/api\/me$/, async (req) => {
-  const u = auth(req);
-  const body = await readJson(req);
-  const name = cleanName(body.name);
-  db.prepare('UPDATE users SET name = ? WHERE id = ?').run(name, u.id);
-  return { userId: u.id, name };
 });
 
 // Publier (ou mettre à jour) une fiche de session.
@@ -475,10 +456,10 @@ route('POST', /^\/api\/builds\/([0-9a-f-]{36})\/like$/, (req, url, m) => {
 });
 
 route('GET', /^\/api\/builds\/([0-9a-f-]{36})$/, (req, url, m) => {
-  const row = db.prepare(`SELECT b.json, b.likes, b.updated_at, u.name AS author FROM builds b
+  const row = db.prepare(`SELECT b.json, b.likes, b.updated_at, b.user_id, u.name AS author FROM builds b
     JOIN users u ON u.id = b.user_id WHERE b.id = ? AND u.banned = 0`).get(m[1]);
   if (!row) throw new HttpError(404, 'build not found');
-  return { build: JSON.parse(row.json), author: row.author, likes: row.likes, updatedAt: row.updated_at };
+  return { build: JSON.parse(row.json), author: row.author, userId: row.user_id, likes: row.likes, updatedAt: row.updated_at };
 });
 
 route('DELETE', /^\/api\/builds\/([0-9a-f-]{36})$/, (req, url, m) => {
@@ -817,10 +798,16 @@ const server = http.createServer(async (req, res) => {
       for (const r of routes) {
         if (r.method !== req.method) continue;
         const m = r.pattern.exec(url.pathname);
-        if (m) return send(res, 200, await r.handler(req, url, m), { 'Cache-Control': 'no-store' });
+        if (m) {
+          const out = await r.handler(req, url, m);
+          const headers = { 'Cache-Control': 'no-store' };
+          if (out && out.__cookie) { headers['Set-Cookie'] = out.__cookie; delete out.__cookie; }
+          return send(res, 200, out, headers);
+        }
       }
       throw new HttpError(404, 'unknown route');
     }
+    if (url.pathname.startsWith('/auth/') && await Accounts.handlePage(req, res, url)) return;
     if (req.method !== 'GET' && req.method !== 'HEAD') throw new HttpError(405, 'method not allowed');
     serveStatic(req, res, url.pathname);
   } catch (e) {

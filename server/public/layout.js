@@ -155,7 +155,12 @@ function renderLayout() {
     header.innerHTML = `
       <a class="brand" href="/"><img class="logo" src="/logo.svg" alt="">TLI Companion</a>
       <nav>${link('/', 'navHome', 'home')}${link('/meta', 'navMeta', 'meta')}${link('/builds', 'navBuilds', 'builds')}${link('/strategies', 'navStrategies', 'strategies')}${link('/download', 'navDownload', 'download')}</nav>
-      <div class="right"><a class="btn coffee" href="${SUPPORT_URL}" target="_blank" rel="noopener">☕ ${esc(t('supButton'))}</a><button class="lang" id="langSwitch"></button><a class="btn" href="/account">${esc(t('navAccount'))}</a></div>`;
+      <div class="right"><a class="btn coffee" href="${SUPPORT_URL}" target="_blank" rel="noopener">☕ ${esc(t('supButton'))}</a><button class="lang" id="langSwitch"></button><a class="btn" id="accBtn" href="/account">${esc(t('navAccount'))}</a></div>`;
+    // Connecté (bêta) : le bouton Compte affiche le pseudo.
+    fetch('/api/me', { credentials: 'same-origin' }).then((r) => (r.ok ? r.json() : null)).then((me) => {
+      const b = document.getElementById('accBtn');
+      if (me && me.name && b) { b.textContent = me.name; window.ME = me; document.dispatchEvent(new Event('me')); }
+    }).catch(() => {});
   }
   const footer = document.querySelector('footer.site');
   if (footer) footer.innerHTML = `<div style="margin-bottom:8px"><a href="${SUPPORT_URL}" target="_blank" rel="noopener" style="color:#ffdd00">☕ ${esc(t('supFooter'))}</a></div><div>${esc(t('footerLine'))} · <a href="https://github.com/julien-szy/tli-companion" target="_blank" rel="noopener">${esc(t('openSource'))}</a></div><div>${esc(t('footerCredits'))}</div><div style="margin-top:6px"><a href="/privacy">${LANG === 'fr' ? 'Confidentialité' : 'Privacy'}</a> · <a href="/terms">${LANG === 'fr' ? "Conditions d'utilisation" : 'Terms of use'}</a></div><div id="appVer" style="margin-top:8px"></div>`;

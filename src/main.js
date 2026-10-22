@@ -14,7 +14,8 @@ const { buildAdvisorContext } = require('./advisor');
 const AI = require('./ai');
 const { autoUpdater } = require('electron-updater');
 // Fonctions en travaux, masquées dans la version publiée (« Bientôt disponible »).
-const FEATURES = { builds: false, advisor: false };
+// accounts : comptes Google (bêta, pas encore en ligne) ; TLI_ACCOUNTS=1 les montre pour les tests.
+const FEATURES = { builds: false, advisor: false, accounts: process.env.TLI_ACCOUNTS === '1' };
 const I18N = require('./i18n');
 
 // TLI_USERDATA : dossier de données séparé (tests à côté de l'app installée).
@@ -365,6 +366,7 @@ function broadcast() {
   snap.updateRequired = updateRequired;
   snap.appVersion = app.getVersion();
   snap.advice = adviceSummary(snap);
+  snap.features = { accounts: FEATURES.accounts };
   snap.buildRecap = buildRecap(snap);
   if (overlay && !overlay.isDestroyed()) overlay.webContents.send('state', snap);
   if (dashboard && !dashboard.isDestroyed()) dashboard.webContents.send('state', snap);
@@ -920,11 +922,41 @@ ipcMain.handle('itemPrice', (_e, id) => (Number.isInteger(id) ? prices.value(id)
 ipcMain.handle('buildData', () => buildData());
 // Copie un build du site dans « mes builds » (nouvel id, progression vide).
 ipcMain.handle('importBuild', async (_e, remoteId) => {
-  const { build, author } = await community.getBuild(remoteId);
+  const { build, author, userId } = await community.getBuild(remoteId);
+  if (userId && userId === settings.server.userId) {
+    return builds.save(cleanBuild({ ...build, progress: { owned: {} }, shared: { url: community.siteUrl(`/b/${remoteId}`), at: Date.now() } }));
+  }
   const copy = cleanBuild({ ...build, id: undefined, createdAt: Date.now(), progress: { owned: {} },
     source: { url: community.siteUrl(`/b/${remoteId}`), author } });
   return builds.save(copy);
 });
+// Connexion avec Google (bêta) : le navigateur s'ouvre sur tlicompanion.com, l'app attend son jeton (10 min max).
+// Un ancien pseudo de l'app est rattaché au compte Google, avec tout ce qu'il a partagé.
+let googleLogin = null;
+ipcMain.handle('googleLogin', async () => {
+  if (googleLogin) return googleLogin;
+  googleLogin = (async () => {
+    const { code, url } = await community.appLoginStart();
+    shell.openExternal(community.siteUrl(url));
+    for (let i = 0; i < 300; i++) {
+      await new Promise((r) => setTimeout(r, 2000));
+      let r;
+      try { r = await community.appLoginPoll(code); } catch (e) { if (/expired|410/.test(e.message)) throw new Error('expired'); continue; }
+      if (r.pending) continue;
+      Object.assign(settings.server, { token: r.token, userId: r.userId, name: r.name, google: true, named: r.named });
+      saveSettings(); broadcast();
+      return { name: r.name, named: r.named };
+    }
+    throw new Error('expired');
+  })().finally(() => { googleLogin = null; });
+  return googleLogin;
+});
+ipcMain.handle('accountLogout', async () => {
+  if (settings.server.google) await community.logout().catch(() => {});
+  Object.assign(settings.server, { token: null, userId: null, name: null, google: false, named: true });
+  saveSettings(); broadcast();
+});
+ipcMain.handle('myOnlineBuilds', async () => (FEATURES.accounts && community.registered ? (await community.myContent()).builds : []));
 ipcMain.handle('register', async (_e, name) => { const r = await community.register(name); broadcast(); return r; });
 ipcMain.handle('shareReport', async (_e, id) => {
   const r = loadJson(reportPath(id), null);

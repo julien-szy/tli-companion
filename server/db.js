@@ -180,6 +180,23 @@ function openDb(dataDir) {
     if (!cols.has(c)) db.exec(`ALTER TABLE reports ADD COLUMN ${c} ${type}`);
   }
   db.exec('CREATE INDEX IF NOT EXISTS reports_region ON reports(region, timemark)');
+  // Comptes (bêta) : connexion Google (seul l'identifiant Google est gardé), profil et sessions.
+  const ucols = new Set(db.prepare('PRAGMA table_info(users)').all().map((c) => c.name));
+  for (const [c, type] of [['google_sub', 'TEXT'], ['avatar', 'TEXT'], ['bio', 'TEXT'], ['named', 'INTEGER NOT NULL DEFAULT 1']]) {
+    if (!ucols.has(c)) db.exec(`ALTER TABLE users ADD COLUMN ${c} ${type}`);
+  }
+  db.exec(`
+    CREATE UNIQUE INDEX IF NOT EXISTS users_google ON users(google_sub) WHERE google_sub IS NOT NULL;
+    -- Sessions : cookie du site (web) ou jeton d'une app connectée avec Google (app). Seule l'empreinte est gardée.
+    CREATE TABLE IF NOT EXISTS sessions (
+      token_hash TEXT PRIMARY KEY,
+      user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      kind       TEXT NOT NULL,
+      created_at INTEGER NOT NULL,
+      expires_at INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS sessions_user ON sessions(user_id);
+  `);
   return db;
 }
 

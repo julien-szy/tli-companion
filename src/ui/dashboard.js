@@ -431,6 +431,26 @@ function renderWidgetCfg(s) {
   $('wcAll').onclick = () => tli.action('widgetShowAll');
 }
 $('sLock').onchange = (e) => tli.action('lock', e.target.checked);
+// Compte (bêta) : connexion avec Google pour retrouver ses builds et routes partout.
+let accBusy = false;
+function renderAccount(srv) {
+  const box = $('accBox');
+  if (!box) return;
+  const key = `${srv.google}|${srv.registered}|${srv.name}|${accBusy}|${LANG}`;
+  if (box.dataset.k === key) return;
+  box.dataset.k = key;
+  box.innerHTML = srv.google
+    ? `<span class="chip ok">${esc(t('acc.connected', { name: srv.name || '?' }))}</span> <a href="#" id="accSite">${esc(t('acc.openSite'))}</a> · <a href="#" id="accOut">${esc(t('acc.logout'))}</a>`
+    : `<button class="btn primary" id="accIn" ${accBusy ? 'disabled' : ''}>${esc(t(accBusy ? 'acc.waiting' : 'acc.signIn'))}</button> <span class="muted">${esc(t(srv.registered ? 'acc.helpLink' : 'acc.help'))}</span> <span id="accMsg"></span>`;
+  if ($('accSite')) $('accSite').onclick = (e) => { e.preventDefault(); tli.openSite('/account'); };
+  if ($('accOut')) $('accOut').onclick = async (e) => { e.preventDefault(); if (confirm(t('acc.confirmLogout'))) await tli.accountLogout(); };
+  if ($('accIn')) $('accIn').onclick = async () => {
+    accBusy = true; renderAccount(srv);
+    try { const r = await tli.googleLogin(); if (!r.named) $('sPseudo').focus(); }
+    catch (e) { accBusy = false; renderAccount(srv); if ($('accMsg')) $('accMsg').textContent = t('share.error', { msg: errMsg(e) }); return; }
+    accBusy = false;
+  };
+}
 $('sDropsSort').onchange = (e) => tli.action('dropsSort', e.target.value);
 
 let searchTimer;
@@ -506,6 +526,9 @@ tli.onState((s) => {
     $('sStar').checked = s.settings.starAlerts !== false;
     $('sAutoPause').checked = s.settings.autoPause !== false;
     $('sLock').checked = !!s.settings.overlay.locked;
+    // Comptes (bêta) : visibles seulement quand ils sont activés.
+    document.querySelectorAll('.acc-row').forEach((el) => (el.hidden = !(s.features && s.features.accounts)));
+    if (s.features && s.features.accounts) renderAccount(s.settings.server);
     $('sDropsSort').value = s.settings.overlay.dropsSort === 'value' ? 'value' : 'recent';
     $('sOpacity').disabled = !!s.settings.overlay.solid;
   }

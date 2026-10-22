@@ -44,6 +44,18 @@ async function showCode(b) {
   $('cdCopy').onclick = async () => { try { await navigator.clipboard.writeText(code); $('cdMsg').textContent = t('code.copied'); } catch { $('cdOut').select(); document.execCommand('copy'); $('cdMsg').textContent = t('code.copied'); } };
 }
 
+// Build au format du serveur (comme l'app l'envoie) : noms et icônes joints pour l'affichage sur le site.
+function publishable(b, id) {
+  const ref = (x) => { const i = Planner.info(x) || {}; return { id: x.id || null, skill: x.skill || null, name: i.name || x.name || '', img: i.icon || x.img || null }; };
+  const lo = b.loadout || { active: [], passive: [] };
+  return {
+    version: 1, id, title: b.title.trim(), heroKey: b.heroKey || '', description: b.description || '', createdAt: Date.now(), updatedAt: Date.now(),
+    steps: (b.steps || []).map((s) => ({ title: s.title || '', notes: s.notes || '', items: (s.items || []).filter((i) => i.id).map((i) => ({ id: i.id, name: i.name || '', img: i.img || null, qty: i.qty || 1, priority: i.priority, note: i.note || '' })) })),
+    loadout: { active: lo.active.map((x) => ({ ...ref(x), supports: (x.supports || []).map(ref) })), passive: lo.passive.map((x) => ({ ...ref(x), supports: (x.supports || []).map(ref) })) },
+    talents: b.talents, traits: b.traits, gear: b.gear,
+  };
+}
+
 // ---------- Éditeur ----------
 async function editor() {
   document.title = `TLI Companion — ${t('code.createTitle')}`;
@@ -58,13 +70,32 @@ async function editor() {
         <button class="btn primary" id="pCode">${esc(t('code.get'))}</button>
         <button class="btn" id="pImport">${esc(t('code.import'))}</button>
         <button class="btn" id="pNew">${esc(t('code.newBuild'))}</button>
+        <button class="btn" id="pPub" hidden>${esc(t('acc.publish'))}</button>
       </div>
+      <p class="muted small" id="pPubMsg"></p>
       <p class="muted small pl-help">${esc(t('code.editorHelp'))}</p>
       ${plannerHtml(b, false)}
       ${Planner.section('notes', t('b.description'), `<textarea id="pDesc" maxlength="4000" placeholder="${esc(t('b.descPh'))}">${esc(b.description)}</textarea>`)}`;
     $('pTitle').oninput = (e) => { b.title = e.target.value; changed(); };
     $('pDesc').oninput = (e) => { b.description = e.target.value; changed(); };
     $('pCode').onclick = () => showCode(b);
+    // Publier sur son compte (bêta) : visible quand on est connecté.
+    const showPub = () => { if (window.ME && $('pPub')) { $('pPub').hidden = false; $('pPub').textContent = t(b.publishedId ? 'acc.update' : 'acc.publish'); } };
+    showPub(); document.addEventListener('me', showPub, { once: true });
+    $('pPub').onclick = async () => {
+      if (!b.title.trim()) { $('pTitle').focus(); $('pPubMsg').textContent = t('b.titleRequired'); return; }
+      $('pPub').disabled = true;
+      try {
+        const id = b.publishedId || crypto.randomUUID();
+        const r = await fetch('/api/builds', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(publishable(b, id)) });
+        const j = await r.json();
+        if (!r.ok) throw new Error(j.error || r.status);
+        b.publishedId = id; changed();
+        $('pPubMsg').innerHTML = `${esc(t('acc.published'))} <a href="/b/${esc(id)}">tlicompanion.com/b/${esc(id.slice(0, 8))}…</a>`;
+        showPub();
+      } catch (e) { $('pPubMsg').textContent = t('share.error', { msg: errMsg(e) }); }
+      $('pPub').disabled = false;
+    };
     $('pNew').onclick = () => { if (!confirm(t('code.confirmNew'))) return; Object.assign(b, emptyBuild()); changed(); render(); };
     $('pImport').onclick = () => {
       modal(`<h1>${esc(t('code.import'))}</h1><p class="muted">${esc(t('code.importHelpSite'))}</p>
@@ -90,13 +121,20 @@ async function viewer(id) {
   $('content').innerHTML = `
     <div class="pl-head">${portrait(hero, 56)}<div class="grow"><div class="title">${esc(b.title)} <span class="tag beta">BETA</span></div>
       <div class="muted">${esc(heroLabel(hero))} · ${esc(t('by'))} <b>${esc(author)}</b> · ${new Date(updatedAt).toLocaleDateString(LOCALE)} · ♥ ${likes || 0}</div></div>
-      <button class="btn primary" id="pCode">${esc(t('code.get'))}</button><button class="btn" id="pCopyEdit">${esc(t('code.editCopy'))}</button></div>
+      <button class="btn" id="pLike">♥ <span id="pLikes">${likes || 0}</span></button><button class="btn primary" id="pCode">${esc(t('code.get'))}</button><button class="btn" id="pCopyEdit">${esc(t('code.editCopy'))}</button></div>
+    <p class="muted small" id="pLikeMsg"></p>
     ${b.description ? `<div class="card notes">${esc(b.description)}</div>` : ''}
     ${plannerHtml(b, true)}
     ${steps.length ? Planner.section('items', t('pl.items'), `<div class="pl-steps">${steps.map((s, i) => `<div class="pl-step"><h3>${i + 1}. ${esc(s.title || '')}</h3>
       <div class="fchips">${s.items.map((it) => `<span class="chip">${icon(it.img)}${esc(it.name || '#' + it.id)}${it.qty > 1 ? ' ×' + it.qty : ''}</span>`).join('')}</div></div>`).join('')}</div>`) : ''}
     <p class="muted small" style="margin-top:12px">${esc(t('code.viewHelp'))}</p>`;
   $('pCode').onclick = () => showCode(b);
+  $('pLike').onclick = async () => {
+    if (!window.ME) { $('pLikeMsg').innerHTML = `${esc(t('acc.likeSignIn'))} <a href="/auth/google?next=${encodeURIComponent(location.pathname)}">${esc(t('acc.signIn'))}</a>`; return; }
+    const r = await fetch(`/api/builds/${id}/like`, { method: 'POST', credentials: 'same-origin' });
+    const j = await r.json().catch(() => ({}));
+    if (r.ok) { $('pLikes').textContent = j.likes; $('pLike').classList.add('on'); } else $('pLikeMsg').textContent = j.error || r.status;
+  };
   $('pCopyEdit').onclick = () => {
     if (localStorage.getItem(DRAFT_KEY) && !confirm(t('code.confirmReplace'))) return;
     writeDraft({ ...emptyBuild(), ...b, id: undefined, title: b.title });

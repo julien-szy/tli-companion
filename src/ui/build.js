@@ -64,8 +64,26 @@ const Build = (() => {
       </tbody></table>`;
     if ($('bNew')) $('bNew').onclick = newBuild;
     if ($('bCode')) $('bCode').onclick = importCode;
+    if (kind === 'mine') onlineBuilds(all);
     if ($('bFind')) $('bFind').onclick = () => showTab('build');
     root().querySelectorAll('tr.click').forEach((tr) => (tr.onclick = () => openDetail(tr.dataset.id)));
+  }
+
+  // Builds de mon compte (faits sur le site ou sur un autre PC) qui ne sont pas encore dans cette app.
+  async function onlineBuilds(local) {
+    let list = [];
+    try { list = await tli.myOnlineBuilds(); } catch { return; }
+    const have = new Set(local.map((b) => b.id));
+    const missing = list.filter((b) => !have.has(b.id));
+    if (!missing.length || view !== 'list') return;
+    root().insertAdjacentHTML('beforeend', `<div class="card" style="margin-top:14px"><h2>${esc(t('acc.onlineTitle'))} <span class="tag beta">BETA</span></h2>
+      <p class="muted" style="margin-bottom:8px">${esc(t('acc.onlineHelp'))}</p>
+      <table><tbody>${missing.map((b) => `<tr><td>${portrait(b.hero_key, 26)} <b>${esc(b.title)}</b></td><td class="muted">${esc(dayLabel(b.updated_at))}</td>
+        <td class="r"><button class="btn" data-pull="${esc(b.id)}">${esc(t('acc.pull'))}</button></td></tr>`).join('')}</tbody></table></div>`);
+    root().querySelectorAll('[data-pull]').forEach((btn) => (btn.onclick = async () => {
+      btn.disabled = true;
+      try { const b = await tli.importBuild(btn.dataset.pull); openDetail(b.id); } catch (e) { btn.textContent = errMsg(e); }
+    }));
   }
 
   // Importer un build depuis un code (fait sur tlicompanion.com ou donné par un joueur) : il s'ouvre dans l'éditeur.
