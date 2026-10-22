@@ -236,3 +236,5 @@ header.site nav .ver { font-size: 11px; padding: 1px 6px; border-radius: 999px; 
 /* Code du jeu partagé avec une route */
 .gcode-row { display: flex; gap: 8px; margin-top: 8px; }
 .gcode-row input { flex: 1; min-width: 0; font-family: Consolas, monospace; font-size: 13px; }
+
+.nowrap { white-space: nowrap; }

@@ -142,11 +142,12 @@ route('POST', /^\/api\/reports$/, async (req) => {
 });
 
 const SORTS = {
-  perhour: 'per_hour_real DESC',
-  perhourmap: 'per_hour_map DESC',
-  profit: 'profit DESC',
-  recent: 'created_at DESC',
-  likes: '(likes - dislikes) DESC, likes DESC, created_at DESC',
+  perhour: 'r.per_hour_real DESC',
+  perhourmap: 'r.per_hour_map DESC',
+  profit: 'r.profit DESC',
+  recent: 'r.created_at DESC',
+  oldest: 'r.created_at ASC',
+  likes: '(r.likes - r.dislikes) DESC, r.likes DESC, r.created_at DESC',
 };
 
 // Nom le plus proposé pour chaque héros.

@@ -97,8 +97,9 @@ async function load() {
       <td>${esc(r.hero_id != null ? heroName(r.hero_id, r.hero_display) : '–')}</td><td class="hide-sm muted">${esc(r.author)}${r.server_region ? `<br><span style="font-size:12px">${esc(r.server_region)}</span>` : ''}</td>
       <td class="r">${r.runs}</td><td class="r hide-sm">${dur(r.real_ms)}</td>
       <td class="r ${cls(r.profit)}">${fe(r.profit, true)}</td><td class="r"><b>${fe(r.per_hour_real)}</b></td>
-      <td class="r hide-sm muted">${r.likes || ''}</td></tr>`).join('')
-    || `<tr><td colspan="8" class="empty">${esc(t('empty'))}</td></tr>`;
+      <td class="r hide-sm muted">${r.likes || ''}</td>
+      <td class="r muted nowrap" title="${esc(new Date(r.created_at).toLocaleString(LOCALE))}">${esc(new Date(r.created_at).toLocaleDateString(LOCALE))}</td></tr>`).join('')
+    || `<tr><td colspan="9" class="empty">${esc(t('empty'))}</td></tr>`;
   document.querySelectorAll('#rows tr.click').forEach((tr) => (tr.onclick = () => (location.href = '/s/' + tr.dataset.id)));
 }
 
