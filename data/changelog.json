@@ -1,13 +1,19 @@
 {
   "unreleased": {
-    "en": [
-      "Fix: the Save button of the \"Farm session finished\" window did nothing after the build editor had been opened."
-    ],
-    "fr": [
-      "Correctif : le bouton Enregistrer de la fenêtre « Session de farm terminée » ne faisait plus rien après un passage dans l'éditeur de build."
-    ]
+    "en": [],
+    "fr": []
   },
   "releases": [
+    {
+      "version": "1.0.19",
+      "date": "2026-10-22",
+      "en": [
+        "Fix: the Save button of the \"Farm session finished\" window did nothing after the build editor had been opened."
+      ],
+      "fr": [
+        "Correctif : le bouton Enregistrer de la fenêtre « Session de farm terminée » ne faisait plus rien après un passage dans l'éditeur de build."
+      ]
+    },
     {
       "version": "1.0.18",
       "date": "2026-10-22",
