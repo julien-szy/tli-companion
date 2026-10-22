@@ -224,6 +224,9 @@ function modGroupsHtml(mods, empty) {
 // sont reliés aux nœuds par leur texte ; « 5× par carte » allume les 5 nœuds de cet effet les plus proches du départ.
 let VC = null;
 const vcNorm = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+// Texte sans les nombres (« … 2% chance … » et « … 10% chance … » ont le même gabarit) et 1re valeur.
+const vcTpl = (s) => String(s || '').toLowerCase().replace(/\d+(\.\d+)?/g, '#').replace(/[^a-z#]+/g, '');
+const vcNum = (s) => { const m = /(\d+(?:\.\d+)?)/.exec(String(s || '')); return m ? +m[1] : null; };
 function voidChartBlock(mods) {
   const list = (mods || []).filter((m) => m && m.desc).map((m) => ({ desc: m.desc, perMap: m.perMap || 0, share: m.share }));
   return list.length ? `<div class="vc" data-vc="${esc(JSON.stringify(list))}"></div>` : '';
@@ -253,20 +256,36 @@ async function hydrateVoidCharts(root) {
     // nœuds de passage (valeur 'path'), que le log ne montre pas toujours.
     const lit = new Map(); // constellation -> Map(nodeId -> mod | 'path')
     const jobs = [];
+    // Le jeu additionne les nœuds identiques : « Embers … 10% » = cinq nœuds « Embers … 2% ». On compare donc
+    // le texte sans les nombres, et la valeur du log (× nombre d'apparitions par carte) donne combien de nœuds
+    // prendre, en déduisant la valeur de chaque nœud pris (un nœud à 8 % compte pour quatre à 2 %).
     for (const m of mods) {
-      const key = vcNorm(m.desc);
+      const key = vcTpl(m.desc), exact = vcNorm(m.desc), want = vcNum(m.desc), times = Math.max(1, Math.round(m.perMap || 1));
+      // Sans nombre identique, seulement pour les effets propres au Void Chart (pas les affixes de compas ou de carte).
+      // 1er passage : texte identique, dans toutes les constellations ; 2e passage seulement sinon : même texte, autres nombres.
+      const anyExact = VC.constellations.some((c) => c.nodes.some((n) => n.effects.some((x) => vcNorm(x) === exact)));
+      const loose = !anyExact && /netherrealm|trial|malice/i.test(m.desc);
       for (const c of VC.constellations) {
-        const cands = new Set(c.nodes.filter((n) => n.effects.some((e) => vcNorm(e) === key)).map((n) => n.id));
-        if (!cands.size) continue;
-        jobs.push({ c, m, cands, k: Math.max(1, Math.min(cands.size, Math.round(m.perMap || 1))) });
+        const vals = new Map();
+        for (const n of c.nodes) {
+          const e = n.effects.find((x) => vcNorm(x) === exact) || (loose ? n.effects.find((x) => vcTpl(x) === key) : null);
+          if (!e) continue;
+          const v = vcNum(e);
+          if (want != null && v != null && v > want + 1e-9) continue; // un nœud plus fort que le total ne peut pas en faire partie
+          vals.set(n.id, v);
+        }
+        if (!vals.size) continue;
+        const target = want != null ? want * times : times; // sans nombre : un nœud par apparition
+        jobs.push({ c, m, cands: new Set(vals.keys()), vals, target, numeric: want != null });
         break;
       }
     }
-    jobs.sort((a, b) => (a.cands.size - a.k) - (b.cands.size - b.k)); // les talents les moins ambigus d'abord
-    for (const { c, m, cands, k } of jobs) {
+    jobs.sort((a, b) => a.cands.size - b.cands.size); // les talents les moins ambigus d'abord
+    for (const { c, m, cands, vals, target, numeric } of jobs) {
       if (!lit.has(c)) lit.set(c, new Map([[c.start, 'path']]));
       const taken = lit.get(c);
-      for (let i = 0; i < k; i++) {
+      let left = target;
+      for (let guard = 0; left > 1e-6 && guard < 60; guard++) {
         // Recherche en largeur depuis tout ce qui est pris : le candidat libre le plus proche, et le chemin pour l'atteindre.
         const prev = new Map([...taken.keys()].map((id) => [id, null]));
         const q = [...taken.keys()];
@@ -281,6 +300,8 @@ async function hydrateVoidCharts(root) {
         }
         if (!found) break;
         taken.set(found, m);
+        cands.delete(found);
+        left -= numeric ? (vals.get(found) || left) : 1;
         for (let id = prev.get(found); id != null && !taken.has(id); id = prev.get(id)) taken.set(id, 'path');
       }
     }
