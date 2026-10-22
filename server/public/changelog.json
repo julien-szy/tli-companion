@@ -1,6 +1,20 @@
 {
   "releases": [
     {
+      "version": "1.0.17",
+      "date": "2026-10-22",
+      "en": [
+        "Accounts (beta): sign in with Google in Settings › Account to find your builds and routes on any computer and on tlicompanion.com. Your current pseudo and everything you shared move to your account. We only keep your Google identifier, never your email or your real name.",
+        "Votes and comments (beta): like or dislike published builds and farm routes, and ask questions in the comments, in the app and on the website. The best-rated builds come first in \"Most liked\".",
+        "Builds made on the website with your account show up in Builds › My builds, ready to get in the app."
+      ],
+      "fr": [
+        "Comptes (bêta) : connecte-toi avec Google dans Réglages › Compte pour retrouver tes builds et tes routes sur n'importe quel PC et sur tlicompanion.com. Ton pseudo actuel et tout ce que tu as partagé passent sur ton compte. On ne garde que ton identifiant Google, jamais ton email ni ton vrai nom.",
+        "Votes et commentaires (bêta) : aime ou n'aime pas les builds et routes de farm publiés, et pose tes questions en commentaire, dans l'app et sur le site. Les builds les mieux notés passent en premier dans « Les plus aimés ».",
+        "Les builds faits sur le site avec ton compte apparaissent dans Builds › Mes builds, prêts à être récupérés dans l'app."
+      ]
+    },
+    {
       "version": "1.0.16",
       "date": "2026-10-22",
       "en": [

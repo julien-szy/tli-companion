@@ -14,8 +14,8 @@ const { buildAdvisorContext } = require('./advisor');
 const AI = require('./ai');
 const { autoUpdater } = require('electron-updater');
 // Fonctions en travaux, masquées dans la version publiée (« Bientôt disponible »).
-// accounts : comptes Google (bêta, pas encore en ligne) ; TLI_ACCOUNTS=1 les montre pour les tests.
-const FEATURES = { builds: false, advisor: false, accounts: process.env.TLI_ACCOUNTS === '1' };
+// accounts : comptes Google, votes et commentaires (bêta) ; TLI_ACCOUNTS=0 les cache.
+const FEATURES = { builds: false, advisor: false, accounts: process.env.TLI_ACCOUNTS !== '0' };
 const I18N = require('./i18n');
 
 // TLI_USERDATA : dossier de données séparé (tests à côté de l'app installée).
