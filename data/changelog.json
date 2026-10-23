@@ -5,6 +5,18 @@
   },
   "releases": [
     {
+      "version": "1.0.23",
+      "date": "2026-10-23",
+      "en": [
+        "Widget: new \"Most valuable drops of the current map\" list (the map you are in, or the last one in the hideout), next to \"Latest drops\" and \"Most valuable of the session\".",
+        "Widget: a small button next to the drops list title switches between Live, Session and Map in one click."
+      ],
+      "fr": [
+        "Widget : nouvelle liste « Drops les plus rentables de la carte en cours » (la carte où tu es, ou la dernière au repaire), en plus de « Derniers drops » et « Plus rentables de la session ».",
+        "Widget : un petit bouton à côté du titre de la liste des drops passe de Direct à Session puis Carte en un clic."
+      ]
+    },
+    {
       "version": "1.0.22",
       "date": "2026-10-23",
       "en": [

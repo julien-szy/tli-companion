@@ -544,7 +544,7 @@ tli.onState((s) => {
     // Comptes (bêta) : visibles seulement quand ils sont activés.
     document.querySelectorAll('.acc-row').forEach((el) => (el.hidden = !(s.features && s.features.accounts)));
     if (s.features && s.features.accounts) renderAccount(s.settings.server);
-    $('sDropsSort').value = s.settings.overlay.dropsSort === 'value' ? 'value' : 'recent';
+    $('sDropsSort').value = ['value', 'map'].includes(s.settings.overlay.dropsSort) ? s.settings.overlay.dropsSort : 'recent';
     $('sOpacity').disabled = !!s.settings.overlay.solid;
   }
   $('zoneNow').textContent = s.zone.name;

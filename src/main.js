@@ -1523,7 +1523,7 @@ ipcMain.handle('action', async (_e, name, arg) => {
     }
     case 'widgetShowAll': settings.overlay.hide = []; saveSettings(); broadcast(); break;
     // Liste de drops du widget : 'recent' (derniers) ou 'value' (plus rentables de la session).
-    case 'dropsSort': settings.overlay.dropsSort = arg === 'value' ? 'value' : 'recent'; saveSettings(); broadcast(); break;
+    case 'dropsSort': settings.overlay.dropsSort = ['value', 'map'].includes(arg) ? arg : 'recent'; saveSettings(); broadcast(); break;
     case 'lock': setLocked(arg === undefined ? !settings.overlay.locked : arg); break;
     case 'community':
       settings.communityPrices = !!arg; saveSettings();

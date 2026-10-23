@@ -479,6 +479,9 @@ class Tracker extends EventEmitter {
       for (const id in m) if (m[id] > 0) addQty(gains, id, m[id]);
     }
     const topDrops = this.itemList(gains).filter((i) => i.value > 0).slice(0, 15);
+    // Même chose pour la carte en cours (ou la dernière carte au repaire).
+    const mapRun = s.currentRun || s.runs[0];
+    const mapDrops = mapRun ? this.itemList(mapRun.loot).filter((i) => i.qty > 0 && i.value > 0).slice(0, 15) : [];
 
     return {
       mode, timeMode: this.settings.timeMode,
@@ -506,6 +509,7 @@ class Tracker extends EventEmitter {
       lastRun: s.runs[0] ? this.runSummary(s.runs[0]) : null,
       recent,
       topDrops,
+      mapDrops,
     };
   }
 

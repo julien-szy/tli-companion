@@ -50,6 +50,10 @@
   .body > .list { flex: 1 1 auto; }
   .collapsed .body { display: none; }
   .pos { color: var(--pos); } .neg { color: var(--neg); } .zero { color: var(--muted); }
+  .dhead { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+  .dsw { display: inline-flex; align-items: center; gap: 4px; padding: 2px 7px; border: 1px solid var(--line); border-radius: 999px; font-size: 10.5px; line-height: 1.4; }
+  .dsw:hover { color: var(--text, #fff); border-color: var(--accent, #f08a3c); }
+  .dsw svg { width: 11px; height: 11px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
   .k { color: var(--muted); font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em; }
 
   /* Carte en cours */
@@ -155,7 +159,8 @@
     </div>
     <div class="tart" id="tart" data-w="tartarus" hidden><span class="k">Tartarus</span><div class="tbar"><i id="tartFill"></i><em id="tartMark"></em></div><b id="tartVal"></b></div>
 
-    <div class="k" id="dropsTitle" data-i18n="ov.recentDrops" data-w="drops"></div>
+    <div class="dhead" data-w="drops"><div class="k" id="dropsTitle" data-i18n="ov.recentDrops"></div>
+      <button class="dsw" id="dropsSwitch" data-i18n-title="ov.dropsSwitch"><svg viewBox="0 0 24 24"><path d="M4 8h13l-3-3M20 16H7l3 3"/></svg><span id="dropsMode"></span></button></div>
     <div class="list" id="recent" data-w="drops"></div>
   </div>
 </div>

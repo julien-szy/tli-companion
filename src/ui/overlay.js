@@ -7,6 +7,10 @@ $('btnDash').onclick = () => tli.action('dashboardToggle');
 $('btnPause').onclick = () => tli.action('pause');
 $('btnHide').onclick = () => tli.action('hideOverlay');
 $('updBtn').onclick = () => tli.action('installUpdate');
+// Bouton du bas : derniers drops → plus rentables de la session → plus rentables de la carte.
+const DROP_MODES = ['recent', 'value', 'map'];
+let dropsSort = 'recent';
+$('dropsSwitch').onclick = () => tli.action('dropsSort', DROP_MODES[(DROP_MODES.indexOf(dropsSort) + 1) % DROP_MODES.length]);
 $('btnLock').onclick = () => tli.action('lock', true);
 let recording = false;
 $('btnRec').onclick = () => tli.action(recording ? 'stopFarm' : 'startFarm');
@@ -117,15 +121,18 @@ tli.onState((s) => {
 
   // Derniers drops, ou drops les plus rentables de la session (Réglages > Widget).
   // Les nouveaux (ou ceux dont la quantité a changé) clignotent.
-  const byValue = s.settings.overlay.dropsSort === 'value';
-  const titleKey = byValue ? 'ov.topDrops' : 'ov.recentDrops';
+  const sort = DROP_MODES.includes(s.settings.overlay.dropsSort) ? s.settings.overlay.dropsSort : 'recent';
+  dropsSort = sort;
+  $('dropsMode').textContent = t('ov.dm.' + sort);
+  const byValue = sort === 'value' || sort === 'map';
+  const titleKey = sort === 'map' ? 'ov.mapDrops' : byValue ? 'ov.topDrops' : 'ov.recentDrops';
   if ($('dropsTitle').dataset.i18n !== titleKey) {
     $('dropsTitle').dataset.i18n = titleKey;
     $('dropsTitle').textContent = t(titleKey);
     firstRender = true;
   }
   const list = byValue
-    ? (s.topDrops || []).map((e) => ({ key: `${e.id}|${e.qty}`, img: e.img, name: e.name, tip: e.name, delta: e.qty, value: e.value }))
+    ? ((sort === 'map' ? s.mapDrops : s.topDrops) || []).map((e) => ({ key: `${e.id}|${e.qty}`, img: e.img, name: e.name, tip: e.name, delta: e.qty, value: e.value }))
     : s.recent.slice(0, 40).map((e) => ({ key: `${e.ts}|${e.id}|${e.delta}`, img: e.img, name: e.name, tip: `${e.name} — ${zoneLabel(e.zone)}`, delta: e.delta, value: e.value }));
   const html = list.map((e) => {
     const isNew = !firstRender && !seen.has(e.key);
