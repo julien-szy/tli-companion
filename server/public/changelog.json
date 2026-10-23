@@ -1,6 +1,16 @@
 {
   "releases": [
     {
+      "version": "1.0.21",
+      "date": "2026-10-23",
+      "en": [
+        "New Strategies menu in the app, no need to open the website: \"Best FE/h\" (the global strategy from all players, with its details, loot, consumables and Void Chart) and \"Shared routes\" (every published route with its full sheet, game code, votes and comments). Same filters as the website, including \"Big drops\"."
+      ],
+      "fr": [
+        "Nouveau menu Stratégies dans l'app, plus besoin d'ouvrir le site : « Meilleur FE/h » (la stratégie globale de tous les joueurs, avec son détail, son butin, ses consommables et son Void Chart) et « Routes partagées » (toutes les routes publiées avec leur fiche complète, code du jeu, votes et commentaires). Mêmes filtres que le site, dont « Gros drops »."
+      ]
+    },
+    {
       "version": "1.0.20",
       "date": "2026-10-23",
       "en": [
