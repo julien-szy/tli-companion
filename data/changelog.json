@@ -1,10 +1,10 @@
 {
   "unreleased": {
     "en": [
-      "New option in Settings: show values after the Auction House tax (12.5%, editable). Loot, drops, bag value and Scan my bag then show what you really get after selling; costs stay at full price."
+      "Values after the Auction House tax (12.5%, editable): on by default, loot, drops, bag value and Scan my bag show what you really get after selling; costs stay at full price. Untick it in Settings to see full prices."
     ],
     "fr": [
-      "Nouvelle option dans Réglages : afficher les valeurs après la taxe de l'hôtel des ventes (12,5 %, modifiable). Le butin, les drops, la valeur du sac et Analyser mon sac montrent alors ce que tu touches vraiment après la vente ; les coûts restent au prix plein."
+      "Valeurs après la taxe de l'hôtel des ventes (12,5 %, modifiable) : activée par défaut, le butin, les drops, la valeur du sac et Analyser mon sac montrent ce que tu touches vraiment après la vente ; les coûts restent au prix plein. Décoche-la dans Réglages pour voir les prix pleins."
     ]
   },
   "releases": [

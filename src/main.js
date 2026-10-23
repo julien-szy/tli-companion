@@ -54,7 +54,7 @@ const DEFAULTS = {
   sounds: { tartarusReady: 'builtin', tartarusFull: 'builtin', stock: 'builtin', beacon: 'builtin', beaconEmpty: 'builtin', starFull: 'builtin' },
   volumes: { tartarusReady: 100, tartarusFull: 100, stock: 100, beacon: 100, beaconEmpty: 100, starFull: 100 }, // volume de chaque son d'alerte, en %
   minLootValue: 0,       // loot qui vaut moins de X FE pièce : ignoré dans le profit (0 = tout compter)
-  afterTax: false,       // valeurs de vente après la taxe de l'hôtel des ventes (1 FE sur 8 en jeu)
+  afterTax: true,        // valeurs de vente après la taxe de l'hôtel des ventes (1 FE sur 8 en jeu), décochable
   taxRate: 12.5,         // taxe en % (les 200 premiers FE de la saison, sans taxe, ne sont pas comptés)
   shareFarmStats: true,  // stats de farm ANONYMES envoyées à chaque session (désactivable)
   farmStatsNotice: false,
