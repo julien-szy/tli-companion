@@ -869,6 +869,9 @@
       'gc.label': "Game code (optional)",
       'gc.ph': "Paste here a code copied in the game (for example your Void Chart)",
       'gc.help': "Optional: a code copied in the game. It is shown with your route on the website, with a button to copy it.",
+      'set.tax': "Auction House tax",
+      'set.taxOn': "Show values after tax",
+      'set.taxHelp': "The game takes 1 Flame Elementium for every 8 earned by selling (12.5%). When this is on, loot, drops, bag value and Scan my bag show what you really get after selling. Costs (what you buy) stay at full price. The first 200 tax-free FE of the season are not counted.",
     },
     fr: {
       'app.title': 'TLI Companion',
@@ -1726,6 +1729,9 @@
       'gc.label': "Code du jeu (facultatif)",
       'gc.ph': "Colle ici un code copié dans le jeu (par exemple ton Void Chart)",
       'gc.help': "Facultatif : un code copié dans le jeu. Il est affiché avec ta route sur le site, avec un bouton pour le copier.",
+      'set.tax': "Taxe de l'hôtel des ventes",
+      'set.taxOn': "Afficher les valeurs après taxe",
+      'set.taxHelp': "Le jeu prélève 1 Flame Elementium sur 8 gagnés en vendant (12,5 %). Activé, le butin, les drops, la valeur du sac et Analyser mon sac affichent ce que tu touches vraiment après la vente. Les coûts (ce que tu achètes) restent au prix plein. Les 200 premiers FE de la saison sans taxe ne sont pas comptés.",
     },
   };
 

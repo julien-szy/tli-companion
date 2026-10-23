@@ -1,6 +1,18 @@
 {
   "releases": [
     {
+      "version": "1.0.20",
+      "date": "2026-10-23",
+      "en": [
+        "Values after the Auction House tax (12.5%, editable): on by default, loot, drops, bag value and Scan my bag show what you really get after selling; costs stay at full price. Untick it in Settings to see full prices.",
+        "Website: new \"Big drops\" filter on the farm strategies page to remove rare expensive drops (items worth 50 to 1000 FE or more each) from FE/h and profit, for numbers closer to a normal session."
+      ],
+      "fr": [
+        "Valeurs après la taxe de l'hôtel des ventes (12,5 %, modifiable) : activée par défaut, le butin, les drops, la valeur du sac et Analyser mon sac montrent ce que tu touches vraiment après la vente ; les coûts restent au prix plein. Décoche-la dans Réglages pour voir les prix pleins.",
+        "Site : nouveau filtre « Gros drops » sur la page des stratégies de farm pour retirer les drops rares et chers (objets de 50 à 1000 FE et plus chacun) du FE/h et du profit, pour des chiffres plus proches d'une session normale."
+      ]
+    },
+    {
       "version": "1.0.19",
       "date": "2026-10-22",
       "en": [
