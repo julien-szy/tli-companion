@@ -59,7 +59,7 @@ async function signedIn(me, msg) {
     ${msg ? `<div class="card acc-msg">${esc(msg)}</div>` : ''}
     ${!me.named ? `<div class="card acc-msg">${esc(tt('welcome'))}</div>` : ''}
     <div class="card acc-prof">
-      <div class="acc-top">${hero ? portrait(hero, 64) : '<span class="acc-noav">?</span>'}<div><div class="title">${esc(me.name)}</div>
+      <div class="acc-top">${hero ? portrait(hero, 64) : '<span class="acc-noav">?</span>'}<div><div class="title">${esc(me.name)}${supBadge(me.supporter)}</div>
         <div class="muted">${esc(tt('since', { d: date(me.createdAt) }))}${me.google ? ' · ' + esc(tt('google2')) : ''}</div></div></div>
       <h2>${esc(tt('profile'))}</h2>
       <label>${esc(tt('pseudo'))}<input id="aName" maxlength="24" value="${esc(me.name)}"></label>

@@ -5,6 +5,8 @@
 const Social = (() => {
   const SVG_UP = '<svg viewBox="0 0 24 24"><path d="M7 11v9H4v-9zM7 11l4-8c1.5 0 2.5 1 2.5 2.5V9h5.2a2 2 0 0 1 2 2.3l-1.2 7A2 2 0 0 1 17.5 20H7"/></svg>';
   const SVG_DOWN = '<svg viewBox="0 0 24 24"><path d="M17 13V4h3v9zM17 13l-4 8c-1.5 0-2.5-1-2.5-2.5V15H5.3a2 2 0 0 1-2-2.3l1.2-7A2 2 0 0 1 6.5 4H17"/></svg>';
+  // Badge « Supporter » (soutien Buy Me a Coffee) : décoratif, à côté du pseudo.
+  const badge = (on) => (on ? `<span class="sup-badge" title="${esc(t('soc.supporter'))}"><svg viewBox="0 0 24 24"><path d="M12.6 2.5c.6 2.6-.5 4.2-1.8 5.7C9.4 9.8 7.8 11.5 7.8 14.5 7.8 17.7 9.8 20.5 12.1 20.5c2.8 0 4.9-2.4 4.9-5.4 0-2-1-3.7-2-4.8.1 1.4-.3 2.3-1.1 2.9.2-2.1-.4-4-1.2-5.6 1.4-1.4 1.7-3.3-.1-5.1z"/></svg></span>` : '');
   const when = (ts) => new Date(ts).toLocaleDateString(typeof LOCALE !== 'undefined' ? LOCALE : undefined, { day: 'numeric', month: 'short', year: 'numeric' });
 
   // Barre de vote. init = { likes, dislikes, myVote }. opts.signIn() : appelé si le visiteur n'est pas connecté.
@@ -52,7 +54,7 @@ const Social = (() => {
       if (c.deleted) return `<div class="soc-c deleted${reply ? ' reply' : ''}"><p class="muted">${esc(t('soc.deleted'))}</p></div>`;
       const isEdit = editing === c.id;
       return `<div class="soc-c${reply ? ' reply' : ''}" data-c="${esc(c.id)}">
-        <div class="soc-h">${opts.avatar ? opts.avatar(c.author.avatar) : ''}<b>${esc(c.author.name)}</b>${c.author.isOwner ? ` <span class="tag">${esc(t('soc.author'))}</span>` : ''}
+        <div class="soc-h">${opts.avatar ? opts.avatar(c.author.avatar) : ''}<b>${esc(c.author.name)}</b>${badge(c.author.supporter)}${c.author.isOwner ? ` <span class="tag">${esc(t('soc.author'))}</span>` : ''}
           <span class="muted small">${esc(when(c.createdAt))}${c.editedAt ? ' · ' + esc(t('soc.edited')) : ''}</span></div>
         ${isEdit ? `<div class="soc-form" data-edit="${esc(c.id)}"><textarea maxlength="1000">${esc(c.body)}</textarea>
             <div class="soc-fbar"><button class="btn" data-cancel>${esc(t('b.cancel'))}</button><button class="btn primary" data-save>${esc(t('btn.save'))}</button></div><p class="neg small" data-err></p></div>`
@@ -107,5 +109,5 @@ const Social = (() => {
     load();
   }
 
-  return { mountVotes, mountComments };
+  return { mountVotes, mountComments, badge };
 })();

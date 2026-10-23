@@ -67,13 +67,13 @@ module.exports = function setupSocial({ db, route, HttpError, rateLimit, readJso
     const id = url.searchParams.get('id');
     const t = target(kind, id);
     const me = Accounts.authOptional(req);
-    const rows = db.prepare(`SELECT c.id, c.parent_id, c.body, c.created_at, c.edited_at, c.deleted, c.user_id, u.name, u.avatar
+    const rows = db.prepare(`SELECT c.id, c.parent_id, c.body, c.created_at, c.edited_at, c.deleted, c.user_id, u.name, u.avatar, u.supporter
       FROM comments c JOIN users u ON u.id = c.user_id WHERE c.kind = ? AND c.target_id = ? AND u.banned = 0 ORDER BY c.created_at ASC LIMIT 500`).all(kind, id);
     return {
       comments: rows.map((c) => ({
         id: c.id, parentId: c.parent_id, createdAt: c.created_at, editedAt: c.edited_at,
         deleted: !!c.deleted, body: c.deleted ? '' : c.body,
-        author: c.deleted ? null : { name: c.name, avatar: c.avatar, isOwner: c.user_id === t.owner },
+        author: c.deleted ? null : { name: c.name, avatar: c.avatar, isOwner: c.user_id === t.owner, supporter: !!c.supporter },
         mine: !!me && me.id === c.user_id, canDelete: !!me && !c.deleted && (me.id === c.user_id || me.id === t.owner),
       })),
       signedIn: !!me,

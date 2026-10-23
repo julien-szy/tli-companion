@@ -169,6 +169,10 @@ function dur(ms) {
   return h ? `${h}h${String(m).padStart(2, '0')}` : `${m}:${String(sec).padStart(2, '0')}`;
 }
 function cls(v) { return v > 0.05 ? 'pos' : v < -0.05 ? 'neg' : 'zero'; }
+// Badge « Supporter » (soutien Buy Me a Coffee) : décoratif, à côté du pseudo.
+function supBadge(on) {
+  return on ? `<span class="sup-badge" title="${LANG === 'fr' ? 'Soutient TLI Companion' : 'Supports TLI Companion'}"><svg viewBox="0 0 24 24"><path d="M12.6 2.5c.6 2.6-.5 4.2-1.8 5.7C9.4 9.8 7.8 11.5 7.8 14.5 7.8 17.7 9.8 20.5 12.1 20.5c2.8 0 4.9-2.4 4.9-5.4 0-2-1-3.7-2-4.8.1 1.4-.3 2.3-1.1 2.9.2-2.1-.4-4-1.2-5.6 1.4-1.4 1.7-3.3-.1-5.1z"/></svg></span>` : '';
+}
 function esc(s) { return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 function icon(img) { return img ? `<img class="ico" src="${esc(img)}" loading="lazy" alt="">` : '<span class="ico"></span>'; }
 document.addEventListener('error', (e) => { if (e.target.tagName === 'IMG') e.target.style.visibility = 'hidden'; }, true);

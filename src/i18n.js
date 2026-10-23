@@ -934,6 +934,7 @@
       'st.colVotes': "Votes",
       'st.voteSignIn': "Sign in to vote: Settings › Account › Sign in with Google. Open Settings now?",
       'st.hide': "Hide details",
+      'soc.supporter': "Supports TLI Companion",
     },
     fr: {
       'app.title': 'TLI Companion',
@@ -1857,6 +1858,7 @@
       'st.colVotes': "Votes",
       'st.voteSignIn': "Connecte-toi pour voter : Réglages › Compte › Se connecter avec Google. Ouvrir les Réglages ?",
       'st.hide': "Masquer le détail",
+      'soc.supporter': "Soutient TLI Companion",
     },
   };
 

@@ -132,7 +132,7 @@ const Strategies = (() => {
       ${res.reports.map((r) => `<tr class="click" data-id="${esc(r.id)}">
           <td><b>${esc(r.title || r.main_map || t('st.session'))}</b><br><span class="muted">${esc(place(r.region, r.timemark))}${r.strategy_tag ? ' · ' + esc(tagName(r.strategy_tag)) : ''}</span></td>
           <td>${heroOfGame(r.hero_id) ? portrait(heroOfGame(r.hero_id).key, 24) + ' ' : ''}${esc(r.hero_id != null ? heroName(r.hero_id, r.hero_display) : '–')}</td>
-          <td class="muted">${esc(r.author)}${r.server_region ? `<br><span class="small">${esc(r.server_region)}</span>` : ''}</td>
+          <td class="muted">${esc(r.author)}${Social.badge(r.author_supporter)}${r.server_region ? `<br><span class="small">${esc(r.server_region)}</span>` : ''}</td>
           <td class="r">${r.runs}</td><td class="r">${dur(r.real_ms)}</td>
           <td class="r ${cls(r.profit)}">${fe(r.profit, true)}${r.big_removed > 0 ? `<br><span class="muted small">−${fe(r.big_removed)} ${esc(t('st.bigShort'))}</span>` : ''}</td>
           <td class="r"><b>${fe(r.per_hour_real)}</b></td><td class="r nowrap" data-sort="${(r.likes || 0) - (r.dislikes || 0)}">${voteCell(r)}</td>
@@ -184,7 +184,7 @@ const Strategies = (() => {
     root.innerHTML = `<p class="muted">${esc(t('b.loading'))}</p>`;
     let res;
     try { res = await tli.siteGet('/api/reports/' + id); } catch (e) { root.innerHTML = `<div class="tools"><button class="btn" id="stBack">${esc(t('btn.back'))}</button></div>${errBox(e)}`; $('stBack').onclick = back; return; }
-    const { report: r, author, likes, dislikes, myVote } = res;
+    const { report: r, author, likes, dislikes, myVote, authorSupporter } = res;
     const tot = r.totals;
     const title = r.title || (r.strategy.maps[0] && r.strategy.maps[0].name) || t('st.session');
     const h = r.hero ? heroOfGame(r.hero.id) : null;
@@ -194,7 +194,7 @@ const Strategies = (() => {
         <button class="btn" id="stBack">${esc(t('btn.back'))}</button>
         ${h ? portrait(h.key, 40) : ''}
         <div style="flex:1;min-width:200px"><div style="font-size:16px;font-weight:600">${esc(title)}</div>
-          <div class="muted">${esc(t('b.by', { author: author || '?' }))} · ${esc(h ? `${h.hero} — ${h.trait}` : (r.hero && (r.hero.display || r.hero.name)) || '–')} · ${esc(dayLabel(r.startedAt))}${r.strategyTag ? ' · ' + esc(tagName(r.strategyTag)) : ''}</div></div>
+          <div class="muted">${esc(t('b.by', { author: author || '?' }))}${Social.badge(authorSupporter)} · ${esc(h ? `${h.hero} — ${h.trait}` : (r.hero && (r.hero.display || r.hero.name)) || '–')} · ${esc(dayLabel(r.startedAt))}${r.strategyTag ? ' · ' + esc(tagName(r.strategyTag)) : ''}</div></div>
         <span id="stVotes"></span>
       </div>
       <div class="card"><div class="bigstats">

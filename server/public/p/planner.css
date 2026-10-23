@@ -273,3 +273,8 @@
 .soc-act a { color: var(--muted); text-decoration: none; }
 .soc-act a:hover { color: var(--accent); }
 
+/* Badge Supporter (décoratif) */
+.sup-badge { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; margin-left: 4px; border-radius: 50%; vertical-align: -3px;
+  background: radial-gradient(circle at 50% 35%, #ffe08a, #f0b23a 60%, #b8761a); box-shadow: 0 0 0 1px rgba(255,200,90,.5), 0 0 8px rgba(255,180,60,.45); }
+.sup-badge svg { width: 12px; height: 12px; fill: #5a2a00; }
+
