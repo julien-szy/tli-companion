@@ -90,15 +90,17 @@ const VoidChart = (() => {
     return picks;
   }
 
-  // Monte l'éditeur dans `box` pour la session `r`.
-  async function mount(box, r) {
+  // Monte l'éditeur dans `box` pour la session `r`. opts.readOnly : affichage seul (route d'un autre joueur).
+  async function mount(box, r, opts = {}) {
     await load();
-    let picks = r.voidChart ? JSON.parse(JSON.stringify(r.voidChart)) : guess(r.strategy.modifiers || []);
-    const fromLog = !r.voidChart;
+    const ro = !!opts.readOnly;
+    let picks = r.voidChart && Object.keys(r.voidChart).length ? JSON.parse(JSON.stringify(r.voidChart)) : guess(r.strategy.modifiers || []);
+    const fromLog = !(r.voidChart && Object.keys(r.voidChart).length);
     const sets = () => Object.fromEntries(data.constellations.map((c) => [c.slug, new Set(picks[c.slug] || [])]));
     let cur = (Object.entries(picks).sort((a, b) => b[1].length - a[1].length)[0] || [data.constellations[0].slug])[0];
     const points = () => Object.entries(picks).reduce((n, [slug, ids]) => { const c = bySlug(slug); return n + ids.filter((id) => !c || id !== c.start).length; }, 0);
     const save = () => {
+      if (ro) return;
       const clean = {};
       for (const [slug, ids] of Object.entries(picks)) if (ids.some((id) => id !== bySlug(slug).start)) clean[slug] = ids;
       picks = clean;
@@ -117,12 +119,13 @@ const VoidChart = (() => {
         return `<g class="vce-n${on.has(n.id) ? ' on' : ''}${n.id === c.start ? ' start' : ''}${big ? ' big' : mid ? ' mid' : ''}" data-node="${n.id}"><title>${esc([n.name, ...n.effects].join('\n'))}</title>
           <circle class="hit" cx="${n.x}" cy="${n.y}" r="${n.r + 16}"/><circle class="dot" cx="${n.x}" cy="${n.y}" r="${Math.max(16, n.r * 0.7)}"/></g>`; }).join('');
       box.innerHTML = `<div class="vce-head"><h2>${esc(t('vce.title'))}</h2><span class="muted${points() > 92 ? " neg" : ""}">${esc(t("vce.points", { n: points() }))}</span>
-          <button class="btn" id="vceAuto">${esc(t('vce.auto'))}</button><button class="btn" id="vceClear">${esc(t('vce.clear'))}</button></div>
-        <p class="muted vce-help">${esc(t(fromLog && !r.voidChart ? 'vce.helpGuess' : 'vce.help'))}${r.shared ? ' ' + esc(t('vce.helpShared')) : ''}</p>
-        <div class="vce-tabs">${data.constellations.map((k) => { const n = (s[k.slug] || new Set()).size; const cnt = n ? n - (s[k.slug].has(k.start) ? 1 : 0) : 0;
+          ${ro ? '' : `<button class="btn" id="vceAuto">${esc(t('vce.auto'))}</button><button class="btn" id="vceClear">${esc(t('vce.clear'))}</button>`}</div>
+        <p class="muted vce-help">${esc(ro ? t(fromLog ? 'vce.roGuess' : 'vce.roExact') : t(fromLog && !r.voidChart ? 'vce.helpGuess' : 'vce.help'))}${!ro && r.shared ? ' ' + esc(t('vce.helpShared')) : ''}</p>
+        <div class="vce-tabs">${data.constellations.filter((k) => !ro || (s[k.slug] && s[k.slug].size > 1)).map((k) => { const n = (s[k.slug] || new Set()).size; const cnt = n ? n - (s[k.slug].has(k.start) ? 1 : 0) : 0;
           return `<button class="vce-tab${k.slug === cur ? ' on' : ''}${cnt ? ' used' : ''}" data-slug="${esc(k.slug)}">${esc(k.name)}${cnt ? ` <b>${cnt}</b>` : ''}</button>`; }).join('')}</div>
         <svg class="vce-svg" viewBox="${vb.join(' ')}"><g class="vce-links">${lines}</g>${nodes}</svg>`;
       box.querySelectorAll('.vce-tab').forEach((b) => (b.onclick = () => { cur = b.dataset.slug; render(); }));
+      if (ro) return;
       box.querySelectorAll('.vce-n').forEach((g) => (g.onclick = () => {
         const id = +g.dataset.node;
         const taken = new Set(picks[cur] || []);

@@ -10,6 +10,7 @@ let openReportId = null; // fiche de session affichée, pour la retraduire si la
 const GROUPS = {
   home: ['home'],
   farm: ['live', 'bag', 'sessions', 'runs', 'items', 'history'],
+  strat: ['stratBest', 'stratRoutes'],
   builds: ['build', 'bfollow', 'bmine'],
   char: ['meta'],
   market: ['prices'],
@@ -47,6 +48,7 @@ function showTab(name) {
   if (name === 'meta') MetaTab.show();
   if (name === 'advisor') showAdvisor();
   if (name === 'bag') Bag.show();
+  if (name === 'stratBest' || name === 'stratRoutes') Strategies.show(name);
   refresh(true);
 }
 document.querySelectorAll('aside.side button[data-grp]').forEach((b) => (b.onclick = () => showGroup(b.dataset.grp)));

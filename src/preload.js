@@ -50,6 +50,7 @@ contextBridge.exposeInMainWorld('tli', {
   likeBuild: (id) => ipcRenderer.invoke('likeBuild', id),
   remoteBuild: (id) => ipcRenderer.invoke('remoteBuild', id),
   buildData: () => ipcRenderer.invoke('buildData'),
+  siteGet: (p) => ipcRenderer.invoke('siteGet', p),
   googleLogin: () => ipcRenderer.invoke('googleLogin'),
   accountLogout: () => ipcRenderer.invoke('accountLogout'),
   myOnlineBuilds: () => ipcRenderer.invoke('myOnlineBuilds'),

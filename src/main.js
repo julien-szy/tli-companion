@@ -895,6 +895,12 @@ ipcMain.handle('unshareBuild', async (_e, id) => {
   const b = builds.get(id);
   if (b) { b.shared = null; builds.save(b); }
 });
+// Stratégies de farm (onglets Meilleur FE/h et Routes partagées) : lecture seule, chemins autorisés uniquement.
+const SITE_GET = /^\/api\/(stats|strategies\/best|reports|reports\/[0-9a-f-]{36})(\?[\w=&%.\-|+]*)?$/;
+ipcMain.handle('siteGet', (_e, p) => {
+  if (typeof p !== 'string' || !SITE_GET.test(p)) throw new Error('invalid path');
+  return community._req('GET', p, null, 'optional');
+});
 ipcMain.handle('browseBuilds', (_e, f) => community.listBuilds(f && typeof f === 'object' ? f : { hero: f }));
 ipcMain.handle('likeBuild', (_e, id) => community.likeBuild(id));
 // Aperçu d'un build publié, sans l'importer.

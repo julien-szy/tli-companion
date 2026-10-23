@@ -796,3 +796,18 @@ main tr[data-item] { cursor: pointer; }
 /* Code du jeu (facultatif) dans la fiche de session */
 .gc-row { display: grid; gap: 4px; margin-top: 10px; font-size: 12px; color: var(--muted); }
 .gc-row input { width: 100%; font-family: Consolas, monospace; }
+
+/* Stratégies de farm (onglets Meilleur FE/h et Routes partagées) */
+.st-filters { flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.st-filters select { max-width: 220px; }
+tr.open .st-chev { display: inline-block; transform: rotate(180deg); }
+.st-drow > td { background: #10131a; padding: 14px; }
+.st-detail { display: grid; gap: 12px; }
+.st-detail .card { margin: 0; }
+.st-small { font-size: 13px; font-weight: 500; }
+.st-mods { display: flex; flex-wrap: wrap; gap: 6px; }
+.st-mods .chip b { color: var(--accent); margin-left: 4px; }
+.st-code { display: flex; gap: 8px; }
+.st-code input { flex: 1; min-width: 0; font-family: Consolas, monospace; }
+.bigstats .v.st-classes { font-size: 13px; font-weight: 500; line-height: 1.4; }
+.nowrap { white-space: nowrap; }
