@@ -114,13 +114,13 @@ async function editor() {
 // ---------- Fiche d'un build publié ----------
 async function viewer(id) {
   $('content').innerHTML = `<div class="empty">${esc(t('loading'))}</div>`;
-  const [{ build: b, author, likes, dislikes, myVote, updatedAt, authorSupporter }] = await Promise.all([api('/api/builds/' + encodeURIComponent(id)), heroes()]);
+  const [{ build: b, author, likes, dislikes, myVote, updatedAt }] = await Promise.all([api('/api/builds/' + encodeURIComponent(id)), heroes()]);
   const hero = heroOf(b.heroKey);
   document.title = `${b.title} — TLI Companion`;
   const steps = (b.steps || []).filter((s) => s.items && s.items.length);
   $('content').innerHTML = `
     <div class="pl-head">${portrait(hero, 56)}<div class="grow"><div class="title">${esc(b.title)} <span class="tag beta">BETA</span></div>
-      <div class="muted">${esc(heroLabel(hero))} · ${esc(t('by'))} <b>${esc(author)}</b>${supBadge(authorSupporter)} · ${new Date(updatedAt).toLocaleDateString(LOCALE)}</div></div>
+      <div class="muted">${esc(heroLabel(hero))} · ${esc(t('by'))} <b>${esc(author)}</b> · ${new Date(updatedAt).toLocaleDateString(LOCALE)}</div></div>
       <span id="pVotes"></span><button class="btn primary" id="pCode">${esc(t('code.get'))}</button><button class="btn" id="pCopyEdit">${esc(t('code.editCopy'))}</button></div>
     ${b.description ? `<div class="card notes">${esc(b.description)}</div>` : ''}
     ${plannerHtml(b, true)}

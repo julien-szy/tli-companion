@@ -182,8 +182,7 @@ function openDb(dataDir) {
   db.exec('CREATE INDEX IF NOT EXISTS reports_region ON reports(region, timemark)');
   // Comptes (bêta) : connexion Google (seul l'identifiant Google est gardé), profil et sessions.
   const ucols = new Set(db.prepare('PRAGMA table_info(users)').all().map((c) => c.name));
-  // supporter : badge décoratif (soutien Buy Me a Coffee), activé à la main pour un pseudo ; aucun avantage.
-  for (const [c, type] of [['google_sub', 'TEXT'], ['avatar', 'TEXT'], ['bio', 'TEXT'], ['named', 'INTEGER NOT NULL DEFAULT 1'], ['supporter', 'INTEGER NOT NULL DEFAULT 0']]) {
+  for (const [c, type] of [['google_sub', 'TEXT'], ['avatar', 'TEXT'], ['bio', 'TEXT'], ['named', 'INTEGER NOT NULL DEFAULT 1']]) {
     if (!ucols.has(c)) db.exec(`ALTER TABLE users ADD COLUMN ${c} ${type}`);
   }
   db.exec(`

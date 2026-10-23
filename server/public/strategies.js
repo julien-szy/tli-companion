@@ -94,7 +94,7 @@ async function load() {
 
   $('rows').innerHTML = reports.map((r) => `<tr class="click" data-id="${esc(r.id)}">
       <td><b>${esc(r.title || r.main_map || t('farmSession'))}</b><br><span class="muted">${esc(mapLabel(r.region, r.timemark))}${r.strategy_tag ? ' · ' + esc(tagName(r.strategy_tag)) : ''}</span></td>
-      <td>${esc(r.hero_id != null ? heroName(r.hero_id, r.hero_display) : '–')}</td><td class="hide-sm muted">${esc(r.author)}${supBadge(r.author_supporter)}${r.server_region ? `<br><span style="font-size:12px">${esc(r.server_region)}</span>` : ''}</td>
+      <td>${esc(r.hero_id != null ? heroName(r.hero_id, r.hero_display) : '–')}</td><td class="hide-sm muted">${esc(r.author)}${r.server_region ? `<br><span style="font-size:12px">${esc(r.server_region)}</span>` : ''}</td>
       <td class="r">${r.runs}</td><td class="r hide-sm">${dur(r.real_ms)}</td>
       <td class="r ${cls(r.profit)}">${fe(r.profit, true)}${r.big_removed > 0 ? `<br><span class="muted small" title="${esc(t('bigRemovedTip'))}">−${fe(r.big_removed)} ${esc(t('bigRemoved'))}</span>` : ''}</td><td class="r"><b>${fe(r.per_hour_real)}</b></td>
       <td class="r hide-sm muted">${r.likes || ''}</td>

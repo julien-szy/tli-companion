@@ -15,7 +15,7 @@ async function loadList() {
         <td>${portrait(byKey[b.hero_key])}${esc(heroLabel(byKey[b.hero_key]))}</td>
         <td class="hide-sm">${names[i].map((n) => `<span class="chip tchip">${esc(n)}</span>`).join(' ') || '<span class="muted">–</span>'}</td>
         <td class="r hide-sm">${b.points || '–'}</td>
-        <td class="hide-sm muted">${esc(b.author)}${supBadge(b.author_supporter)}</td><td class="r nowrap"><span class="pos">▲ ${b.likes || 0}</span> <span class="muted">▼ ${b.dislikes || 0}</span>${b.comments ? ` <span class="muted">· 💬 ${b.comments}</span>` : ''}</td>
+        <td class="hide-sm muted">${esc(b.author)}</td><td class="r nowrap"><span class="pos">▲ ${b.likes || 0}</span> <span class="muted">▼ ${b.dislikes || 0}</span>${b.comments ? ` <span class="muted">· 💬 ${b.comments}</span>` : ''}</td>
         <td class="r hide-sm muted">${new Date(b.updated_at).toLocaleDateString(LOCALE)}</td></tr>`).join('')
       || `<tr><td colspan="7" class="empty">${esc(t('b.communityEmpty'))}</td></tr>`;
     document.querySelectorAll('tr.click').forEach((tr) => (tr.onclick = () => (location.href = '/b/' + tr.dataset.id)));

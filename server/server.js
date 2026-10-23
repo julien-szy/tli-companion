@@ -185,7 +185,7 @@ route('GET', /^\/api\/reports$/, (req, url) => {
   const limit = Math.min(100, Math.max(1, +q.get('limit') || 50));
   const offset = Math.max(0, +q.get('offset') || 0);
   const cut = bigCut(q);
-  const cols = `r.id, r.user_id, u.name AS author, u.supporter AS author_supporter, r.hero_id, r.hero_name, r.title, r.main_map, r.profit,
+  const cols = `r.id, r.user_id, u.name AS author, r.hero_id, r.hero_name, r.title, r.main_map, r.profit,
       r.per_hour_real, r.per_hour_map, r.runs, r.real_ms, r.started_at, r.created_at, r.likes, r.dislikes,
       r.region, r.timemark, r.strategy_tag, r.server_region`;
   let rows;
@@ -223,13 +223,13 @@ route('GET', /^\/api\/reports$/, (req, url) => {
 });
 
 route('GET', /^\/api\/reports\/([0-9a-f-]{36})$/, (req, url, m) => {
-  const row = db.prepare(`SELECT r.json, r.user_id, r.likes, r.dislikes, r.created_at, u.name AS author, u.supporter FROM reports r
+  const row = db.prepare(`SELECT r.json, r.user_id, r.likes, r.dislikes, r.created_at, u.name AS author FROM reports r
     JOIN users u ON u.id = r.user_id WHERE r.id = ? AND u.banned = 0`).get(m[1]);
   if (!row) throw new HttpError(404, 'session not found');
   const names = heroNameMap();
   const report = JSON.parse(row.json);
   if (report.hero && names[report.hero.id]) report.hero.display = names[report.hero.id];
-  return { report, author: row.author, authorSupporter: !!row.supporter, userId: row.user_id, likes: row.likes, dislikes: row.dislikes, myVote: Social.myVote(req, 'report', m[1]), createdAt: row.created_at };
+  return { report, author: row.author, userId: row.user_id, likes: row.likes, dislikes: row.dislikes, myVote: Social.myVote(req, 'report', m[1]), createdAt: row.created_at };
 });
 
 route('DELETE', /^\/api\/reports\/([0-9a-f-]{36})$/, (req, url, m) => {
@@ -470,7 +470,7 @@ route('GET', /^\/api\/builds$/, (req, url) => {
   const sort = BUILD_SORT[q.get('sort')] || BUILD_SORT.recent;
   const limit = Math.min(100, Math.max(1, +q.get('limit') || 60));
   const offset = Math.max(0, +q.get('offset') || 0);
-  const rows = db.prepare(`SELECT b.id, b.hero_key, b.title, b.steps, b.likes, b.dislikes, b.created_at, b.updated_at, u.name AS author, u.supporter AS author_supporter, b.json,
+  const rows = db.prepare(`SELECT b.id, b.hero_key, b.title, b.steps, b.likes, b.dislikes, b.created_at, b.updated_at, u.name AS author, b.json,
     (SELECT COUNT(*) FROM comments c WHERE c.kind = 'build' AND c.target_id = b.id AND c.deleted = 0) AS comments
     FROM builds b JOIN users u ON u.id = b.user_id WHERE ${where.join(' AND ')} ORDER BY ${sort} LIMIT ? OFFSET ?`)
     .all(...args, limit, offset);
@@ -495,10 +495,10 @@ route('POST', /^\/api\/builds\/([0-9a-f-]{36})\/like$/, (req, url, m) => {
 });
 
 route('GET', /^\/api\/builds\/([0-9a-f-]{36})$/, (req, url, m) => {
-  const row = db.prepare(`SELECT b.json, b.likes, b.dislikes, b.updated_at, b.user_id, u.name AS author, u.supporter FROM builds b
+  const row = db.prepare(`SELECT b.json, b.likes, b.dislikes, b.updated_at, b.user_id, u.name AS author FROM builds b
     JOIN users u ON u.id = b.user_id WHERE b.id = ? AND u.banned = 0`).get(m[1]);
   if (!row) throw new HttpError(404, 'build not found');
-  return { build: JSON.parse(row.json), author: row.author, authorSupporter: !!row.supporter, userId: row.user_id, likes: row.likes, dislikes: row.dislikes, myVote: Social.myVote(req, 'build', m[1]), updatedAt: row.updated_at };
+  return { build: JSON.parse(row.json), author: row.author, userId: row.user_id, likes: row.likes, dislikes: row.dislikes, myVote: Social.myVote(req, 'build', m[1]), updatedAt: row.updated_at };
 });
 
 route('DELETE', /^\/api\/builds\/([0-9a-f-]{36})$/, (req, url, m) => {

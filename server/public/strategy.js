@@ -3,7 +3,7 @@ $('content').innerHTML = `<div class="empty">${esc(t('loading'))}</div>`;
 
 function stat(k, v, c = '') { return `<div><div class="k">${esc(t(k))}</div><div class="v ${c}">${v}</div></div>`; }
 
-api('/api/reports/' + encodeURIComponent(id)).then(({ report: r, author, likes, dislikes, myVote, authorSupporter }) => {
+api('/api/reports/' + encodeURIComponent(id)).then(({ report: r, author, likes, dislikes, myVote }) => {
   const tot = r.totals;
   const heroName = r.hero ? (r.hero.display || r.hero.name) : '–';
   const title = r.title || (r.strategy.maps[0] && r.strategy.maps[0].name) || t('farmSession');
@@ -12,7 +12,7 @@ api('/api/reports/' + encodeURIComponent(id)).then(({ report: r, author, likes, 
   $('content').innerHTML = `
     <div class="card">
       <div class="title">${esc(title)}</div>
-      <div class="muted" style="margin-bottom:14px">${esc(t('by'))} <b>${esc(author)}</b>${supBadge(authorSupporter)} · ${esc(heroName)} · ${new Date(r.startedAt).toLocaleDateString(LOCALE)}</div>
+      <div class="muted" style="margin-bottom:14px">${esc(t('by'))} <b>${esc(author)}</b> · ${esc(heroName)} · ${new Date(r.startedAt).toLocaleDateString(LOCALE)}</div>
       <div class="stats">
         ${stat('perHourReal', fe(tot.perHourReal))}
         ${stat('perHourMap', fe(tot.perHourMap))}

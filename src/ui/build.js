@@ -144,7 +144,7 @@ const Build = (() => {
           <td>${portrait(b.hero_key, 28)} ${esc(heroLabel(b.hero_key))}</td>
           <td>${treeChips(names[i]) || '<span class="muted">–</span>'}</td>
           <td class="r">${b.points || '–'}</td>
-          <td class="muted">${esc(b.author)}${Social.badge(b.author_supporter)}</td>
+          <td class="muted">${esc(b.author)}</td>
           <td class="r">${b.likes || 0}</td>
           <td class="r muted" data-sort="${b.updated_at}">${esc(dayLabel(b.updated_at))}</td></tr>`).join('')
         || `<tr><td colspan="7" class="muted">${esc(t('b.communityEmpty'))}</td></tr>`;
@@ -166,14 +166,14 @@ const Build = (() => {
       $('bBack').onclick = () => openCommunity();
       return;
     }
-    const { build: b, author, likes, dislikes, myVote, authorSupporter } = res;
+    const { build: b, author, likes, dislikes, myVote } = res;
     const items = (b.steps || []).flatMap((s) => s.items || []);
     root().innerHTML = `
       <div class="detail-head">
         <button class="btn" id="bBack">${esc(t('btn.back'))}</button>
         ${portrait(b.heroKey, 40)}
         <div style="flex:1;min-width:200px"><div style="font-size:16px;font-weight:600">${esc(b.title)}</div>
-          <div class="muted">${esc(heroLabel(b.heroKey))} · ${esc(t('b.by', { author: author || '?' }))}${Social.badge(authorSupporter)}</div></div>
+          <div class="muted">${esc(heroLabel(b.heroKey))} · ${esc(t('b.by', { author: author || '?' }))}</div></div>
         ${socialOn() ? '<span id="bVotes"></span>' : `<button class="btn" id="bLike">♥ <span id="bLikes">${likes || 0}</span></button>`}
         <button class="btn primary" id="bImport">${esc(t('b.import'))}</button>
       </div>

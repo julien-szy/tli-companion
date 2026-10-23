@@ -195,8 +195,8 @@ module.exports = function setupAccounts({ db, route, HttpError, sha256, clientIp
   });
 
   function profile(id) {
-    const u = db.prepare('SELECT id, name, avatar, bio, google_sub, named, supporter, created_at FROM users WHERE id = ?').get(id);
-    return { userId: u.id, name: u.name, avatar: u.avatar || null, bio: u.bio || '', google: !!u.google_sub, named: !!u.named, supporter: !!u.supporter, createdAt: u.created_at };
+    const u = db.prepare('SELECT id, name, avatar, bio, google_sub, named, created_at FROM users WHERE id = ?').get(id);
+    return { userId: u.id, name: u.name, avatar: u.avatar || null, bio: u.bio || '', google: !!u.google_sub, named: !!u.named, createdAt: u.created_at };
   }
   route('GET', /^\/api\/me$/, (req) => profile(auth(req).id));
   route('PATCH', /^\/api\/me$/, async (req) => {

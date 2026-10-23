@@ -775,11 +775,6 @@ main tr[data-item] { cursor: pointer; }
 .soc-act a { color: var(--muted); text-decoration: none; }
 .soc-act a:hover { color: var(--accent); }
 
-/* Badge Supporter (décoratif) */
-.sup-badge { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; margin-left: 4px; border-radius: 50%; vertical-align: -3px;
-  background: radial-gradient(circle at 50% 35%, #ffe08a, #f0b23a 60%, #b8761a); box-shadow: 0 0 0 1px rgba(255,200,90,.5), 0 0 8px rgba(255,180,60,.45); }
-.sup-badge svg { width: 12px; height: 12px; fill: #5a2a00; }
-
 /* Menu Builds (bêta) et récap du build suivi sur l'accueil */
 .rail button .beta-dot { position: absolute; top: 4px; right: 4px; font-style: normal; font-size: 9px; font-weight: 800; color: #1a1006; background: var(--accent); border-radius: 999px; width: 14px; height: 14px; display: flex; align-items: center; justify-content: center; }
 .rail button { position: relative; }
