@@ -1,5 +1,5 @@
 // Stratégies de farm : les plus rentables au cours actuel + toutes les sessions partagées, avec filtres.
-const FILTERS = ['hero', 'region', 'tier', 'tag', 'item', 'server', 'sort'];
+const FILTERS = ['hero', 'region', 'tier', 'tag', 'item', 'server', 'big', 'sort'];
 const TAGS = ['mapping', 'boss', 'netherrealm', 'dream', 'vorax', 'overrealm', 'sandlord', 'clockwork', 'blacksail', 'deepspace', 'leveling', 'other'];
 const params = new URLSearchParams(location.search);
 FILTERS.forEach((k) => { if (params.get(k)) $(k).dataset.want = params.get(k); });
@@ -96,7 +96,7 @@ async function load() {
       <td><b>${esc(r.title || r.main_map || t('farmSession'))}</b><br><span class="muted">${esc(mapLabel(r.region, r.timemark))}${r.strategy_tag ? ' · ' + esc(tagName(r.strategy_tag)) : ''}</span></td>
       <td>${esc(r.hero_id != null ? heroName(r.hero_id, r.hero_display) : '–')}</td><td class="hide-sm muted">${esc(r.author)}${r.server_region ? `<br><span style="font-size:12px">${esc(r.server_region)}</span>` : ''}</td>
       <td class="r">${r.runs}</td><td class="r hide-sm">${dur(r.real_ms)}</td>
-      <td class="r ${cls(r.profit)}">${fe(r.profit, true)}</td><td class="r"><b>${fe(r.per_hour_real)}</b></td>
+      <td class="r ${cls(r.profit)}">${fe(r.profit, true)}${r.big_removed > 0 ? `<br><span class="muted small" title="${esc(t('bigRemovedTip'))}">−${fe(r.big_removed)} ${esc(t('bigRemoved'))}</span>` : ''}</td><td class="r"><b>${fe(r.per_hour_real)}</b></td>
       <td class="r hide-sm muted">${r.likes || ''}</td>
       <td class="r muted nowrap" title="${esc(new Date(r.created_at).toLocaleString(LOCALE))}">${esc(new Date(r.created_at).toLocaleDateString(LOCALE))}</td></tr>`).join('')
     || `<tr><td colspan="9" class="empty">${esc(t('empty'))}</td></tr>`;

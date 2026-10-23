@@ -21,6 +21,7 @@ const STR = {
     tag_overrealm: 'Overrealm', tag_sandlord: 'Sandlord', tag_clockwork: 'Clockwork Ballet', tag_blacksail: 'Blacksail', tag_deepspace: 'Deep Space',
     tag_leveling: 'Leveling', tag_other: 'Other',
     sortPerHour: 'Best FE/h (real time)', sortPerHourMap: 'Best FE/h (in map)', sortProfit: 'Biggest profit',
+    fBig: 'Big drops', bigAll: 'Keep all', bigHelp: 'Remove rare expensive drops (items worth at least this much each) for an FE/h closer to a normal session', bigRemoved: 'big drops', bigRemovedTip: 'Value of the big drops removed from this session',
     sortLikes: 'Most liked', sortRecent: 'Most recent', sortOldest: 'Oldest first', colPublished: 'Published',
     totals: '{reports} sessions shared by {players} player(s)',
     colStrategy: 'Strategy', colClass: 'Class', colPlayer: 'Player', colMaps: 'Maps', colDuration: 'Duration',
@@ -79,6 +80,7 @@ const STR = {
     tag_overrealm: 'Overrealm', tag_sandlord: 'Sandlord', tag_clockwork: 'Clockwork Ballet', tag_blacksail: 'Blacksail', tag_deepspace: 'Deep Space',
     tag_leveling: 'Leveling', tag_other: 'Autre',
     sortPerHour: 'Meilleur FE/h (temps réel)', sortPerHourMap: 'Meilleur FE/h (en carte)', sortProfit: 'Plus gros profit',
+    fBig: 'Gros drops', bigAll: 'Tout garder', bigHelp: 'Retire les drops rares et chers (objets qui valent au moins ce montant chacun) pour un FE/h plus proche d\'une session normale', bigRemoved: 'gros drops', bigRemovedTip: 'Valeur des gros drops retirés de cette session',
     sortLikes: 'Plus aimées', sortRecent: 'Plus récentes', sortOldest: 'Plus anciennes', colPublished: 'Publiée le',
     totals: '{reports} sessions partagées par {players} joueur(s)',
     colStrategy: 'Stratégie', colClass: 'Classe', colPlayer: 'Joueur', colMaps: 'Cartes', colDuration: 'Durée',
@@ -139,6 +141,7 @@ function applyI18n() {
   if (typeof renderLayout === 'function') renderLayout();
   document.querySelectorAll('[data-i18n-html]').forEach((el) => { el.innerHTML = t(el.dataset.i18nHtml); }); // textes de confiance (dictionnaire)
   document.querySelectorAll('[data-i18n]').forEach((el) => { el.textContent = t(el.dataset.i18n); });
+  document.querySelectorAll('[data-i18n-title]').forEach((el) => { el.title = t(el.dataset.i18nTitle); });
   const sw = $('langSwitch');
   if (sw) {
     sw.textContent = LANG === 'en' ? 'FR' : 'EN';

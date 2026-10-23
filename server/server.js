@@ -173,17 +173,43 @@ function reportFilters(q) {
   return { where, args };
 }
 
+// « Gros drops » : objets dont le prix à l'unité dépasse le seuil choisi (jackpots rares). Les retirer donne un
+// FE/h plus proche d'une session normale. 0 = tout garder.
+const BIG_CUTS = [0, 50, 100, 250, 500, 1000];
+const bigCut = (q) => { const v = +q.get('big') || 0; return BIG_CUTS.includes(v) ? v : 0; };
+
 route('GET', /^\/api\/reports$/, (req, url) => {
   const q = url.searchParams;
   const { where, args } = reportFilters(q);
   const sort = SORTS[q.get('sort')] || SORTS.perhour;
   const limit = Math.min(100, Math.max(1, +q.get('limit') || 50));
   const offset = Math.max(0, +q.get('offset') || 0);
-  const rows = db.prepare(`SELECT r.id, r.user_id, u.name AS author, r.hero_id, r.hero_name, r.title, r.main_map, r.profit,
+  const cut = bigCut(q);
+  const cols = `r.id, r.user_id, u.name AS author, r.hero_id, r.hero_name, r.title, r.main_map, r.profit,
       r.per_hour_real, r.per_hour_map, r.runs, r.real_ms, r.started_at, r.created_at, r.likes,
-      r.region, r.timemark, r.strategy_tag, r.server_region
-    FROM reports r JOIN users u ON u.id = r.user_id WHERE ${where.join(' AND ')} ORDER BY ${sort} LIMIT ? OFFSET ?`)
-    .all(...args, limit, offset);
+      r.region, r.timemark, r.strategy_tag, r.server_region`;
+  let rows;
+  if (!cut) {
+    rows = db.prepare(`SELECT ${cols} FROM reports r JOIN users u ON u.id = r.user_id WHERE ${where.join(' AND ')} ORDER BY ${sort} LIMIT ? OFFSET ?`)
+      .all(...args, limit, offset);
+  } else {
+    // Sans les gros drops : profit et FE/h recalculés pour chaque session, puis tri et pagination ici.
+    rows = db.prepare(`SELECT ${cols}, r.json FROM reports r JOIN users u ON u.id = r.user_id WHERE ${where.join(' AND ')} ORDER BY ${sort} LIMIT 5000`).all(...args);
+    for (const r of rows) {
+      let removed = 0;
+      try { for (const i of JSON.parse(r.json).loot || []) if (i.qty > 0 && i.unit >= cut) removed += i.value || i.qty * i.unit; } catch { /* fiche illisible : rien retiré */ }
+      delete r.json;
+      // Même base de temps que l'app : le FE/h baisse dans la même proportion que le profit.
+      const k = r.profit > 0 ? Math.max(0, r.profit - removed) / r.profit : 1;
+      r.big_removed = removed;
+      r.profit -= removed;
+      r.per_hour_real *= k;
+      r.per_hour_map *= k;
+    }
+    const key = { perhour: 'per_hour_real', perhourmap: 'per_hour_map', profit: 'profit' }[q.get('sort') || 'perhour'];
+    if (key) rows.sort((a, b) => b[key] - a[key]);
+    rows = rows.slice(offset, offset + limit);
+  }
   const names = heroNameMap();
   for (const r of rows) r.hero_display = names[r.hero_id] || r.hero_name;
   return { reports: rows };
@@ -336,6 +362,7 @@ route('GET', /^\/api\/strategies\/best$/, (req, url) => {
   const hit = bestCache.get(key);
   if (hit && Date.now() - hit.at < 5 * 60000) return hit.body;
   const { where, args } = statsFilters(q);
+  const cut = bigCut(q);
   const rows = db.prepare(`SELECT contributor, region, timemark, strategy_tag, hero_id, runs, real_ms, map_ms, afk_ms, per_hour, json
     FROM farm_stats WHERE ${where.join(' AND ')} ORDER BY created_at DESC LIMIT 5000`).all(...args);
   const priceNow = reliablePrices();
@@ -347,9 +374,11 @@ route('GET', /^\/api\/strategies\/best$/, (req, url) => {
     let value = 0;
     const k = `${row.region || '?'}|${row.timemark ?? ''}|${row.strategy_tag || ''}`;
     const g = (groups[k] = groups[k] || { region: row.region, timemark: row.timemark, tag: row.strategy_tag, sessions: 0, players: new Set(),
-      hours: 0, mapHours: 0, runs: 0, valueNow: 0, valueThen: 0, heroes: {}, items: {}, loot: {}, mods: {}, modSessions: 0 });
+      hours: 0, mapHours: 0, runs: 0, valueNow: 0, valueThen: 0, cutValue: 0, heroes: {}, items: {}, loot: {}, mods: {}, modSessions: 0 });
     for (const i of d.loot) {
-      const v = i.qty * priceNow(i.id, i.unit);
+      const unitNow = priceNow(i.id, i.unit);
+      const v = i.qty * unitNow;
+      if (cut && i.qty > 0 && unitNow >= cut) { g.cutValue += v; continue; }
       value += v;
       const l = (g.loot[i.id] = g.loot[i.id] || { id: i.id, name: i.name || null, img: i.img || null, qty: 0, value: 0 });
       l.qty += i.qty; l.value += v;
@@ -385,7 +414,7 @@ route('GET', /^\/api\/strategies\/best$/, (req, url) => {
       region: g.region, timemark: g.timemark, tag: g.tag, sessions: g.sessions, players: g.players.size,
       hours: Math.round(g.hours * 10) / 10, efficiency: g.hours ? g.mapHours / g.hours : null,
       mapsPerHour: g.runs / g.hours, avgMapMin: g.runs ? (g.mapHours * 60) / g.runs : null,
-      perHourNow: g.valueNow / g.hours, perHourThen: g.valueThen / g.hours,
+      perHourNow: g.valueNow / g.hours, perHourThen: (g.valueThen - g.cutValue) / g.hours, cutPerHour: g.cutValue / g.hours,
       heroes: Object.entries(g.heroes).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([id, n]) => ({ id: +id, name: names[id] || null, n })),
       items: Object.values(g.items).sort((a, b) => b.n - a.n).slice(0, 6).map((i) => ({ ...i, perMap: i.qty / g.runs, costPerMap: i.cost / g.runs })),
       topLoot,
