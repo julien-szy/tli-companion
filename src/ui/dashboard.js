@@ -381,6 +381,8 @@ $('sCheckUpd').onclick = () => tli.action('checkUpdates');
 $('sTartarus').onchange = (e) => tli.action('tartarusAlerts', e.target.checked);
 $('sStar').onchange = (e) => tli.action('starAlerts', e.target.checked);
 $('sMinLoot').onchange = (e) => tli.action('minLootValue', e.target.value);
+$('sAfterTax').onchange = (e) => tli.action('afterTax', e.target.checked);
+$('sTaxRate').onchange = (e) => tli.action('taxRate', e.target.value);
 $('sStockTest').onclick = () => tli.action('testStockAlert');
 tli.onStockAlert((a) => { flash(stockText(a)); if (a.sound) alertSound(a); });
 // Son de chaque alerte : son intégré ou fichier du joueur (bouton ▶ pour écouter).
@@ -527,6 +529,9 @@ tli.onState((s) => {
     $('sTartarus').checked = s.settings.tartarusAlerts !== false;
     renderSounds(s);
     if (document.activeElement !== $('sMinLoot')) $('sMinLoot').value = s.settings.minLootValue || 0;
+    $('sAfterTax').checked = !!s.settings.afterTax;
+    if (document.activeElement !== $('sTaxRate')) $('sTaxRate').value = s.settings.taxRate ?? 12.5;
+    $('sTaxRate').disabled = !s.settings.afterTax;
     $('sHub').value = s.settings.hubPatterns.join(', ');
     $('sOpacity').value = s.settings.overlay.opacity;
     $('sScale').value = s.settings.overlay.scale;

@@ -136,7 +136,7 @@ class Tracker extends EventEmitter {
   // Valeur totale du sac au prix actuel.
   netWorth() {
     let v = 0;
-    for (const { id, num } of this.slots.values()) v += num * this.unitPrice(id);
+    for (const { id, num } of this.slots.values()) v += num * this.sellPrice(id);
     return v;
   }
 
@@ -380,9 +380,28 @@ class Tracker extends EventEmitter {
     return p.price;
   }
 
+  // Taxe de l'hôtel des ventes (réglage « valeurs après taxe ») : ce qu'on vend rapporte le prix moins la
+  // taxe ; ce qu'on achète (coûts) et le FE lui-même restent au prix plein.
+  taxRate() {
+    if (!this.settings.afterTax) return 0;
+    const r = +this.settings.taxRate;
+    return Math.min(50, Math.max(0, Number.isFinite(r) ? r : 12.5)) / 100;
+  }
+  sellPrice(id) {
+    const u = this.unitPrice(id);
+    return +id === FE ? u : u * (1 - this.taxRate());
+  }
+  // Prix d'une quantité : un gain se vend (après taxe), une perte se rachète (prix plein).
+  priceFor(id, qty) { return qty > 0 ? this.sellPrice(id) : this.unitPrice(id); }
+
   valueOf(qtyMap) {
     let v = 0;
     for (const id in qtyMap) v += qtyMap[id] * this.unitPrice(+id);
+    return v;
+  }
+  gainValueOf(qtyMap) {
+    let v = 0;
+    for (const id in qtyMap) v += qtyMap[id] * this.priceFor(+id, qtyMap[id]);
     return v;
   }
 
@@ -393,7 +412,7 @@ class Tracker extends EventEmitter {
   }
   lootValueOf(qtyMap) {
     let v = 0;
-    for (const id in qtyMap) if (!(qtyMap[id] > 0 && this.ignored(id))) v += qtyMap[id] * this.unitPrice(+id);
+    for (const id in qtyMap) if (!(qtyMap[id] > 0 && this.ignored(id))) v += qtyMap[id] * this.priceFor(+id, qtyMap[id]);
     return v;
   }
 
@@ -419,7 +438,7 @@ class Tracker extends EventEmitter {
       const id = +k;
       const it = this.items.get(id);
       const p = this.prices.get(id);
-      const unit = this.unitPrice(id);
+      const unit = this.priceFor(id, qtyMap[k]);
       const ignored = qtyMap[k] > 0 && this.ignored(id);
       return { id, name: it.name, img: it.img, qty: qtyMap[k], unit, source: p.source, value: ignored ? 0 : qtyMap[k] * unit, ...(ignored ? { ignored: true } : {}) };
     }).sort((a, b) => Math.abs(b.value) - Math.abs(a.value));
@@ -431,7 +450,7 @@ class Tracker extends EventEmitter {
     const mode = this.settings.mode;
     const lootV = this.lootValueOf(s.loot);
     const costV = this.valueOf(s.cost);
-    const otherV = this.valueOf(s.other);
+    const otherV = this.gainValueOf(s.other);
     const farmProfit = lootV + costV;
     const profit = mode === 'all' ? farmProfit + otherV : farmProfit;
 
@@ -493,7 +512,7 @@ class Tracker extends EventEmitter {
   _feedEntry(e) {
     const it = this.items.get(e.id);
     const p = this.prices.get(e.id);
-    const unit = this.unitPrice(e.id);
+    const unit = this.priceFor(e.id, e.delta);
     return { ...e, name: it.name, img: it.img, unit, source: p.source, value: e.delta * unit };
   }
 

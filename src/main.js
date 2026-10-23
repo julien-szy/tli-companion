@@ -54,6 +54,8 @@ const DEFAULTS = {
   sounds: { tartarusReady: 'builtin', tartarusFull: 'builtin', stock: 'builtin', beacon: 'builtin', beaconEmpty: 'builtin', starFull: 'builtin' },
   volumes: { tartarusReady: 100, tartarusFull: 100, stock: 100, beacon: 100, beaconEmpty: 100, starFull: 100 }, // volume de chaque son d'alerte, en %
   minLootValue: 0,       // loot qui vaut moins de X FE pièce : ignoré dans le profit (0 = tout compter)
+  afterTax: false,       // valeurs de vente après la taxe de l'hôtel des ventes (1 FE sur 8 en jeu)
+  taxRate: 12.5,         // taxe en % (les 200 premiers FE de la saison, sans taxe, ne sont pas comptés)
   shareFarmStats: true,  // stats de farm ANONYMES envoyées à chaque session (désactivable)
   farmStatsNotice: false,
   autoPause: true, // pause automatique de la session de farm après 3 min sans activité au repaire // information « stats anonymes » déjà montrée
@@ -769,7 +771,7 @@ ipcMain.handle('bagScan', (_e, opts) => {
     const it = items.get(id);
     const p = prices.get(id);
     const bound = /^Bound /i.test(it.name);
-    const unit = p.price || 0;
+    const unit = (p.price || 0) * (1 - tracker.taxRate());
     const value = unit * n;
     const verdict = bound ? 'bound' : isVariablePrice(it) ? 'variable' : (!unit || p.source === 'inconnu' || p.source === 'nonconfirme') ? 'noprice' : value >= min ? 'sell' : 'low';
     rows.push({ id, name: it.name, img: it.img, qty: n, unit, value: verdict === 'variable' ? 0 : value, source: p.source, ts: p.ts || null, players: p.players || null,
@@ -779,7 +781,7 @@ ipcMain.handle('bagScan', (_e, opts) => {
   const sum = (v) => rows.filter((r) => r.verdict === v);
   const total = (l) => l.reduce((x, r) => x + r.value, 0);
   return {
-    ready: tracker.snapshotReady, fe: tracker.bagQty(FE_ID), hidden, min, rows,
+    ready: tracker.snapshotReady, fe: tracker.bagQty(FE_ID), hidden, min, rows, taxRate: tracker.taxRate(),
     totals: { all: total(rows), sell: total(sum('sell')), low: total(sum('low')) },
     staleSell: rows.filter((r) => r.verdict === 'sell' && (r.stale || !r.ts)).length,
     counts: { all: rows.length, sell: sum('sell').length, low: sum('low').length, noprice: sum('noprice').length, variable: sum('variable').length, bound: sum('bound').length },
@@ -1485,6 +1487,8 @@ ipcMain.handle('action', async (_e, name, arg) => {
     }
     case 'testTartarus': { const kind = arg === 'full' ? 'full' : 'ready'; const n = kind === 'full' ? TARTARUS_MAX : TARTARUS_ENTRY;
       sendAlert({ kind: 'tartarus-' + kind, text: tr()('tart.' + kind, { n, max: TARTARUS_MAX }), level: kind === 'full' ? 1 : 5, qty: kind === 'full' ? 1 : 5 }); break; }
+    case 'afterTax': settings.afterTax = !!arg; saveSettings(); broadcast(); break;
+    case 'taxRate': settings.taxRate = Math.max(0, Math.min(50, +String(arg).replace(',', '.') || 0)); saveSettings(); broadcast(); break;
     case 'minLootValue': settings.minLootValue = Math.max(0, Math.min(1000, +String(arg).replace(',', '.') || 0)); saveSettings(); break;
     case 'testStockAlert': { const ids = Object.keys((meta.data.mapConsumables) || {}); const id = +(ids[0] || 0);
       const it = items.get(id); const a = { id, name: id ? it.name : 'Beacon', img: id ? it.img : null, qty: 5, level: 5 };

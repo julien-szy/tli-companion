@@ -9,7 +9,7 @@ function buildReport(sess, tracker, { appVersion, title = '' } = {}) {
   const runs = sess.runs.slice().reverse(); // ordre chronologique
   const lootV = tracker.lootValueOf(sess.loot);
   const costV = tracker.valueOf(sess.cost);
-  const otherV = tracker.valueOf(sess.other);
+  const otherV = tracker.gainValueOf(sess.other);
   const profit = lootV + costV;
   // Les pauses (bouton ou AFK automatique) ne comptent pas dans la durée de la session.
   const realMs = Math.max(0, sess.endedAt - sess.startedAt - (sess.pausedMs || 0));
@@ -71,6 +71,7 @@ function buildReport(sess, tracker, { appVersion, title = '' } = {}) {
       afkMs: Math.min(Math.max(0, realMs - mapMs), sess.afkMs || 0),
       hubMs: Math.max(0, realMs - mapMs - Math.min(Math.max(0, realMs - mapMs), sess.afkMs || 0)),
       minLootValue: +tracker.settings.minLootValue || 0,
+      taxRate: tracker.taxRate(), // valeurs après taxe de l'hôtel des ventes (0 = prix plein)
       pausedMs: sess.pausedMs || 0,
     },
     strategy: {
