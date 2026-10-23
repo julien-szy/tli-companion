@@ -186,7 +186,7 @@ route('GET', /^\/api\/reports$/, (req, url) => {
   const offset = Math.max(0, +q.get('offset') || 0);
   const cut = bigCut(q);
   const cols = `r.id, r.user_id, u.name AS author, r.hero_id, r.hero_name, r.title, r.main_map, r.profit,
-      r.per_hour_real, r.per_hour_map, r.runs, r.real_ms, r.started_at, r.created_at, r.likes,
+      r.per_hour_real, r.per_hour_map, r.runs, r.real_ms, r.started_at, r.created_at, r.likes, r.dislikes,
       r.region, r.timemark, r.strategy_tag, r.server_region`;
   let rows;
   if (!cut) {
@@ -212,6 +212,13 @@ route('GET', /^\/api\/reports$/, (req, url) => {
   }
   const names = heroNameMap();
   for (const r of rows) r.hero_display = names[r.hero_id] || r.hero_name;
+  // Vote du visiteur connecté sur chaque route de la liste (boutons j'aime / je n'aime pas).
+  const me = Accounts.authOptional(req);
+  if (me && rows.length) {
+    const mine = new Map(db.prepare(`SELECT report_id, value FROM likes WHERE user_id = ? AND report_id IN (${rows.map(() => '?').join(',')})`)
+      .all(me.id, ...rows.map((r) => r.id)).map((v) => [v.report_id, v.value]));
+    for (const r of rows) { r.my_vote = mine.get(r.id) || 0; r.mine = r.user_id === me.id; }
+  }
   return { reports: rows };
 });
 

@@ -811,3 +811,17 @@ tr.open .st-chev { display: inline-block; transform: rotate(180deg); }
 .st-code input { flex: 1; min-width: 0; font-family: Consolas, monospace; }
 .bigstats .v.st-classes { font-size: 13px; font-weight: 500; line-height: 1.4; }
 .nowrap { white-space: nowrap; }
+tr.click.open > td { background: rgba(255,138,61,.08); }
+tr.click.open > td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
+.st-chev { display: inline-block; transition: transform .15s; }
+.st-acts { display: flex; gap: 8px; flex-wrap: wrap; }
+/* Votes dans la liste des routes */
+.st-votes { display: inline-flex; gap: 4px; }
+.st-v { display: inline-flex; align-items: center; gap: 4px; background: var(--panel2); border: 1px solid var(--line); color: var(--muted); border-radius: 999px; padding: 3px 8px; font: inherit; font-size: 12px; cursor: pointer; }
+.st-v svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linejoin: round; }
+.st-v b { color: var(--text); font-weight: 600; }
+.st-v:hover:not([disabled]) { border-color: #3a4252; color: var(--text); }
+.st-v.up.on { border-color: rgba(95,211,141,.55); background: rgba(95,211,141,.12); color: var(--pos); }
+.st-v.down.on { border-color: rgba(255,107,107,.55); background: rgba(255,107,107,.1); color: var(--neg); }
+.st-v[disabled] { opacity: .5; cursor: default; }
+.st-votes.st-err .st-v { border-color: var(--neg); }

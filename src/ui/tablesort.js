@@ -49,13 +49,20 @@
       groups.forEach((r) => { r.hidden = false; });
     } else {
       const k = st.dir === 'asc' ? 1 : -1;
+      // Lignes de détail dépliables (une cellule sur toute la largeur) : elles suivent leur ligne.
+      const follow = new Map();
+      let prev = null;
+      for (const r of rows) {
+        if (r.classList.contains('day')) { prev = null; continue; }
+        if (r.cells.length > 1) { prev = r; follow.set(r, []); } else if (prev) follow.get(prev).push(r);
+      }
       data.sort((a, b) => {
         const va = valueOf(a.cells[st.col]), vb = valueOf(b.cells[st.col]);
         if (va.n == null && vb.n == null) return k * va.s.localeCompare(vb.s);
         if (va.n == null) return 1; // vides toujours en bas
         if (vb.n == null) return -1;
         return k * (va.n - vb.n);
-      }).forEach((r) => body.appendChild(r));
+      }).forEach((r) => { body.appendChild(r); for (const d of follow.get(r) || []) body.appendChild(d); });
       // Lignes de regroupement par jour masquées pendant un tri (elles n'ont plus de sens).
       groups.forEach((r) => { r.hidden = true; });
     }

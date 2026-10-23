@@ -1,7 +1,13 @@
 {
   "unreleased": {
-    "en": [],
-    "fr": []
+    "en": [
+      "Strategies: like or dislike shared routes right from the list (one vote per account, click again to remove it) and sort them by most liked.",
+      "Fix: an opened \"Best FE/h\" line could not be closed after sorting the table; details now stay under their line and have a \"Hide details\" button."
+    ],
+    "fr": [
+      "Stratégies : aime ou n'aime pas les routes partagées directement dans la liste (un vote par compte, re-clique pour l'enlever) et trie-les par les plus aimées.",
+      "Correctif : une ligne « Meilleur FE/h » ouverte ne se refermait plus après un tri du tableau ; le détail reste sous sa ligne et a un bouton « Masquer le détail »."
+    ]
   },
   "releases": [
     {

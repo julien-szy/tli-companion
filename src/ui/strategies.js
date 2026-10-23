@@ -102,10 +102,16 @@ const Strategies = (() => {
         <div class="st-mods">${b.mechanics.map((m) => `<span class="chip" title="${esc(t('st.modShare', { p: pct(m.share) }))}">${esc(m.desc)} <b>${nf1.format(m.perMap)}×</b></span>`).join('')}</div>
         ${b.mechanicsKnown < b.sessions ? `<p class="muted small" style="margin-top:6px">${esc(t('st.modPartial', { n: b.mechanicsKnown, total: b.sessions }))}</p>` : ''}</div>
         <div class="card vce" data-vc></div>` : ''}
-      <button class="btn primary" data-routes>${esc(t('st.seeRoutes'))}</button>
+      <div class="st-acts"><button class="btn primary" data-routes>${esc(t('st.seeRoutes'))}</button><button class="btn" data-fold>▲ ${esc(t('st.hide'))}</button></div>
     </div>`;
     const vc = cell.querySelector('[data-vc]');
     if (vc) VoidChart.mount(vc, { strategy: { modifiers: b.mechanics.map((m) => ({ desc: m.desc, perMap: m.perMap })) }, voidChart: null }, { readOnly: true }).catch(() => vc.remove());
+    cell.querySelector('[data-fold]').onclick = () => {
+      const row = cell.parentElement;
+      row.hidden = true;
+      const head = row.previousElementSibling;
+      if (head) { head.classList.remove('open'); head.scrollIntoView({ block: 'nearest' }); }
+    };
     cell.querySelector('[data-routes]').onclick = () => {
       f.region = b.region || ''; f.tier = b.timemark != null ? String(b.timemark) : ''; f.tag = b.tag || '';
       routeId = null;
@@ -122,19 +128,53 @@ const Strategies = (() => {
     try { await init(); res = await tli.siteGet('/api/reports?' + qs(true)); } catch (e) { root.innerHTML = errBox(e); return; }
     root.innerHTML = `${filtersHtml(true)}
       <table><thead><tr><th>${esc(t('st.colStrategy'))}</th><th>${esc(t('col.class'))}</th><th>${esc(t('st.colPlayer'))}</th><th class="r">${esc(t('k.maps'))}</th>
-        <th class="r">${esc(t('st.colDuration'))}</th><th class="r">${esc(t('st.colProfit'))}</th><th class="r">FE/h</th><th class="r">♥</th><th class="r">${esc(t('st.colPublished'))}</th></tr></thead><tbody>
+        <th class="r">${esc(t('st.colDuration'))}</th><th class="r">${esc(t('st.colProfit'))}</th><th class="r">FE/h</th><th class="r">${esc(t('st.colVotes'))}</th><th class="r">${esc(t('st.colPublished'))}</th></tr></thead><tbody>
       ${res.reports.map((r) => `<tr class="click" data-id="${esc(r.id)}">
           <td><b>${esc(r.title || r.main_map || t('st.session'))}</b><br><span class="muted">${esc(place(r.region, r.timemark))}${r.strategy_tag ? ' · ' + esc(tagName(r.strategy_tag)) : ''}</span></td>
           <td>${heroOfGame(r.hero_id) ? portrait(heroOfGame(r.hero_id).key, 24) + ' ' : ''}${esc(r.hero_id != null ? heroName(r.hero_id, r.hero_display) : '–')}</td>
           <td class="muted">${esc(r.author)}${r.server_region ? `<br><span class="small">${esc(r.server_region)}</span>` : ''}</td>
           <td class="r">${r.runs}</td><td class="r">${dur(r.real_ms)}</td>
           <td class="r ${cls(r.profit)}">${fe(r.profit, true)}${r.big_removed > 0 ? `<br><span class="muted small">−${fe(r.big_removed)} ${esc(t('st.bigShort'))}</span>` : ''}</td>
-          <td class="r"><b>${fe(r.per_hour_real)}</b></td><td class="r muted">${r.likes || ''}</td>
+          <td class="r"><b>${fe(r.per_hour_real)}</b></td><td class="r nowrap" data-sort="${(r.likes || 0) - (r.dislikes || 0)}">${voteCell(r)}</td>
           <td class="r muted nowrap" data-sort="${r.created_at}" title="${esc(new Date(r.created_at).toLocaleString(LOCALE))}">${esc(new Date(r.created_at).toLocaleDateString(LOCALE))}</td></tr>`).join('')
         || `<tr><td colspan="9" class="muted">${esc(t('st.emptyRoutes'))}</td></tr>`}
       </tbody></table>`;
     bindFilters(root, showRoutes);
     root.querySelectorAll('tr.click[data-id]').forEach((tr) => (tr.onclick = () => openRoute(tr.dataset.id)));
+    bindVotes(root, res.reports);
+  }
+
+  // Votes directement dans la liste : un vote par compte, re-cliquer retire le vote, pas sur ses propres routes.
+  const UP = '<svg viewBox="0 0 24 24"><path d="M7 11v9H4v-9zM7 11l4-8c1.5 0 2.5 1 2.5 2.5V9h5.2a2 2 0 0 1 2 2.3l-1.2 7A2 2 0 0 1 17.5 20H7"/></svg>';
+  const DOWN = '<svg viewBox="0 0 24 24"><path d="M17 13V4h3v9zM17 13l-4 8c-1.5 0-2.5-1-2.5-2.5V15H5.3a2 2 0 0 1-2-2.3l1.2-7A2 2 0 0 1 6.5 4H17"/></svg>';
+  function voteCell(r) {
+    const off = r.mine ? `disabled title="${esc(t('soc.ownContent'))}"` : '';
+    return `<span class="st-votes" data-vote="${esc(r.id)}">
+      <button class="st-v up${r.my_vote === 1 ? ' on' : ''}" data-v="1" ${off}>${UP}<b>${r.likes || 0}</b></button>
+      <button class="st-v down${r.my_vote === -1 ? ' on' : ''}" data-v="-1" ${off}>${DOWN}<b>${r.dislikes || 0}</b></button></span>`;
+  }
+  function bindVotes(root, reports) {
+    root.querySelectorAll('[data-vote]').forEach((box) => {
+      const r = reports.find((x) => x.id === box.dataset.vote);
+      box.onclick = (e) => e.stopPropagation(); // voter n'ouvre pas la fiche
+      box.querySelectorAll('[data-v]').forEach((b) => (b.onclick = async (e) => {
+        e.stopPropagation();
+        const v = +b.dataset.v;
+        try {
+          const out = await tli.vote('report', r.id, r.my_vote === v ? 0 : v);
+          Object.assign(r, { likes: out.likes, dislikes: out.dislikes, my_vote: out.mine });
+          box.outerHTML = voteCell(r);
+          bindVotes(root, reports);
+        } catch (err) {
+          const m = errMsg(err);
+          const msg = /login required|unknown token|no username/i.test(m) ? t('st.voteSignIn') : /own content/.test(m) ? t('soc.ownContent') : m;
+          box.title = msg;
+          box.classList.add('st-err');
+          setTimeout(() => box.classList.remove('st-err'), 1500);
+          if (/login required|unknown token|no username/i.test(m) && confirm(msg)) showTab('settings');
+        }
+      }));
+    });
   }
 
   // Fiche d'une route : chiffres, code du jeu, notes, cartes, achats, Void Chart, butin, votes et commentaires.
