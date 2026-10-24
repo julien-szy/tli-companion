@@ -485,13 +485,37 @@ async function whatsNewModal() {
   $('wnOk').onclick = () => { modal(''); whatsNewDone = true; tli.action('seenVersion'); };
 }
 
+// Tutoriel « astuces » : 5 écrans courts sur ce qu'on ne trouve pas seul. Une fois pour tout le monde
+// (après « Nouveautés »), puis depuis Réglages › Revoir les astuces. TIPS_V : à augmenter pour le remontrer.
+const TIPS_V = 1;
+let tipsOpen = false;
+const TIPS = [
+  { icon: '👋', k: 1 }, { icon: '🧩', k: 2 }, { icon: '⚙️', k: 3 }, { icon: '⌨️', k: 4 }, { icon: '🌍', k: 5 },
+];
+function tipsModal(step = 0) {
+  tipsOpen = true;
+  const s = TIPS[step];
+  const lines = t('tour.b' + s.k).split('\n');
+  modal(`<div class="tour"><div class="steps">${TIPS.map((_, i) => `<i class="${i <= step ? 'on' : ''}"></i>`).join('')}</div>
+    <div class="tour-ico">${s.icon}</div><h1>${esc(t('tour.t' + s.k))}</h1>
+    <ul class="tour-list">${lines.map((l) => `<li>${esc(l)}</li>`).join('')}</ul>
+    <div class="foot"><button class="btn" id="tourSkip">${esc(t(step ? 'tour.back' : 'tour.skip'))}</button>
+      <span class="muted">${step + 1} / ${TIPS.length}</span>
+      <button class="btn primary big" id="tourNext">${esc(t(step === TIPS.length - 1 ? 'tour.done' : 'tour.next'))}</button></div></div>`);
+  const close = () => { modal(''); tipsOpen = false; tli.action('tipsSeen', TIPS_V); };
+  $('tourNext').onclick = () => (step === TIPS.length - 1 ? close() : tipsModal(step + 1));
+  $('tourSkip').onclick = () => (step ? tipsModal(step - 1) : close());
+}
+if ($('sTips')) $('sTips').onclick = () => tipsModal(0);
+
 tli.onState((s) => {
   last = s;
   // Après ce passage (la langue choisie est appliquée plus bas) : sinon les fenêtres s'affichent en anglais.
   if (!whatsNewChecked && s.settings.onboarded) { whatsNewChecked = true; setTimeout(whatsNewModal, 0); }
   // Session de farm qui démarre sans réponse : on demande (la question disparaît si le widget a répondu).
   // Information unique : dès que l'app est prête (toutes les cartes jouées comptent, pas seulement les sessions).
-  if (s.settings.onboarded && whatsNewDone && !s.settings.farmStatsNotice && !$('wnOk')) setTimeout(farmStatsNotice, 0);
+  if (s.settings.onboarded && whatsNewDone && !tipsOpen && (s.settings.tipsSeen || 0) < TIPS_V && !$('wnOk') && !$('fnOk')) setTimeout(() => { if (!tipsOpen && !$('wnOk')) tipsModal(0); }, 0);
+  if (s.settings.onboarded && whatsNewDone && !tipsOpen && (s.settings.tipsSeen || 0) >= TIPS_V && !s.settings.farmStatsNotice && !$('wnOk')) setTimeout(farmStatsNotice, 0);
   if (setLang(s.settings.lang)) {
     // Langue changée : on redessine ce qui est généré en JS.
     $('feed').dataset.h = '';

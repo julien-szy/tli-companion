@@ -7,6 +7,26 @@ $('btnDash').onclick = () => tli.action('dashboardToggle');
 $('btnPause').onclick = () => tli.action('pause');
 $('btnHide').onclick = () => tli.action('hideOverlay');
 $('updBtn').onclick = () => tli.action('installUpdate');
+// Menu ⋯ (pendant une session) : arrêter et relancer, ou réinitialiser avec un 2e clic dans les 3 secondes.
+let resetTimer = null;
+const disarm = () => {
+  clearTimeout(resetTimer); resetTimer = null;
+  $('btnReset').classList.remove('armed');
+  $('resetLbl').textContent = t('ov.reset'); $('resetHelp').textContent = t('ov.resetHelp');
+};
+const closeMenu = () => { $('sMenu').hidden = true; disarm(); };
+$('btnMore').onclick = (e) => { e.stopPropagation(); if ($('sMenu').hidden) $('sMenu').hidden = false; else closeMenu(); };
+$('btnRestart').onclick = () => { closeMenu(); tli.action('restartFarm'); };
+$('btnReset').onclick = () => {
+  if (!resetTimer) {
+    $('btnReset').classList.add('armed');
+    $('resetLbl').textContent = t('ov.resetConfirm'); $('resetHelp').textContent = t('ov.resetConfirmHelp');
+    resetTimer = setTimeout(disarm, 3000);
+    return;
+  }
+  closeMenu(); tli.action('resetFarm');
+};
+document.addEventListener('click', (e) => { if (!$('sMenu').hidden && !e.target.closest('#sMenu') && !e.target.closest('#btnMore')) closeMenu(); });
 // Bouton du bas : derniers drops → plus rentables de la session → plus rentables de la carte.
 const DROP_MODES = ['recent', 'value', 'map'];
 let dropsSort = 'recent';
@@ -82,6 +102,8 @@ tli.onState((s) => {
   $('btnRec').classList.toggle('paused', paused);
   $('recLbl').textContent = recording ? dur(s.session.realTimeMs) : '';
   $('btnPause').hidden = !recording;
+  $('btnMore').hidden = !recording;
+  if (!recording && !$('sMenu').hidden) closeMenu();
   $('btnPause').innerHTML = paused ? '<svg viewBox="0 0 24 24"><path d="M7 4l13 8-13 8z"/></svg>' : '<svg viewBox="0 0 24 24"><rect x="5" y="4" width="5" height="16" rx="1"/><rect x="14" y="4" width="5" height="16" rx="1"/></svg>';
   $('btnPause').title = paused ? t(s.session.pauseAuto ? 'ov.resumeAuto' : 'ov.resume') : t('ov.pause');
   $('btnRec').title = t(recording ? 'ov.recStop' : 'ov.recStart');

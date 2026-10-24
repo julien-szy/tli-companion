@@ -5,6 +5,18 @@
   },
   "releases": [
     {
+      "version": "1.0.31",
+      "date": "2026-10-24",
+      "en": [
+        "New: a short tips tour (5 screens) shown once after this update: the widget buttons, settings, shortcuts and everything beyond the tracker. You can open it again from Settings › Show the tips again.",
+        "Widget: new ⋯ button during a session. \"Stop & restart\" saves the session and starts a new one without opening the main window; \"Reset\" deletes the session and starts again (click twice to confirm)."
+      ],
+      "fr": [
+        "Nouveau : un petit tutoriel (5 écrans) affiché une fois après cette mise à jour : les boutons du widget, les réglages, les raccourcis et tout ce que l'app fait en plus du tracker. Tu peux le revoir depuis Réglages › Revoir les astuces.",
+        "Widget : nouveau bouton ⋯ pendant une session. « Arrêter et relancer » enregistre la session et en démarre une nouvelle sans ouvrir la fenêtre principale ; « Réinitialiser » efface la session et repart de zéro (deux clics pour confirmer)."
+      ]
+    },
+    {
       "version": "1.0.30",
       "date": "2026-10-24",
       "en": [

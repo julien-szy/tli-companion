@@ -64,6 +64,7 @@ const DEFAULTS = {
   keepItems: [],         // objets du sac marqués « à garder » : jamais suggérés à la vente
   autoPause: true, // pause automatique de la session de farm après 3 min sans activité au repaire // information « stats anonymes » déjà montrée
   onboarded: false,      // guide du premier lancement terminé
+  tipsSeen: 0,           // version du tutoriel « astuces » déjà vue (montré une fois à tout le monde)
 };
 const COLLAPSED = { w: 420, h: 48 };
 const ULTRA = { w: 210, h: 96 }; // mode ultra minimal : quelques chiffres, sans fond
@@ -226,7 +227,8 @@ function farmContext() {
   return { server: cs ? cs.server : null, season: Number.isFinite(season) ? season : null };
 }
 
-function stopFarm(title) {
+// open = false : la session est enregistrée sans ouvrir la fenêtre principale (bouton « Arrêter et relancer » du widget).
+function stopFarm(title, open = true) {
   const ended = tracker.stopFarm();
   saveLiveSession();
   if (!ended.runs.length) return null;
@@ -236,7 +238,7 @@ function stopFarm(title) {
   sendFarmStats(report);
   refreshFarmRate();
   // La fenêtre principale demande alors : enregistrer ? publier ?
-  openDashboard(`endsession:${report.id}`);
+  if (open) openDashboard(`endsession:${report.id}`);
   return report.id;
 }
 
@@ -1526,9 +1528,13 @@ ipcMain.handle('action', async (_e, name, arg) => {
     case 'seenVersion': settings.lastSeenVersion = app.getVersion(); saveSettings(); break;
     case 'shareFarmStats': settings.shareFarmStats = !!arg; saveSettings(); break;
     case 'farmStatsNotice': settings.farmStatsNotice = true; saveSettings(); break;
+    case 'tipsSeen': settings.tipsSeen = Math.max(settings.tipsSeen || 0, +arg || 1); saveSettings(); break;
     case 'newSession': tracker.newSession(); break;
     case 'startFarm': beginFarm(); break;
     case 'stopFarm': { const id = stopFarm(arg || ''); broadcast(); return id; }
+    // Widget : enregistrer la session et en relancer une tout de suite, ou l'effacer et repartir de zéro.
+    case 'restartFarm': if (tracker.session.recording) { stopFarm('', false); beginFarm(); broadcast(); } break;
+    case 'resetFarm': if (tracker.session.recording) { tracker.stopFarm(); saveLiveSession(); beginFarm(); broadcast(); } break;
     case 'mode': settings.mode = arg; saveSettings(); break;
     case 'timeMode': settings.timeMode = arg; saveSettings(); break;
     case 'shareMeta': settings.shareMeta = !!arg; saveSettings(); if (arg) uploadRankings(); break;
@@ -1619,6 +1625,8 @@ async function debugScreenshots(dir) {
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   fs.mkdirSync(dir, { recursive: true });
   await wait(1500);
+  // TLI_OVERLAY_EVAL : expression évaluée dans le widget avant sa capture (test d'un menu ouvert…).
+  if (process.env.TLI_OVERLAY_EVAL) { console.log('OVERLAY_EVAL', JSON.stringify(await overlay.webContents.executeJavaScript(process.env.TLI_OVERLAY_EVAL))); await wait(400); }
   fs.writeFileSync(path.join(dir, 'overlay-expanded.png'), (await overlay.webContents.capturePage()).toPNG());
   setCollapsed(true); await wait(800);
   fs.writeFileSync(path.join(dir, 'overlay-collapsed.png'), (await overlay.webContents.capturePage()).toPNG());

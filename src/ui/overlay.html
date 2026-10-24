@@ -66,6 +66,19 @@
   .uwrap .ufe { color: #ffa31a; font-size: 16px; }
   .uwrap .urec { color: #3dff7a; } .uwrap .upause { color: #ffd23d; } .uwrap .uoff { color: #b0b0b0; }
   .uwrap .urec i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: currentColor; margin-right: 4px; vertical-align: 1px; animation: blink 1.2s ease-in-out infinite; box-shadow: 0 0 0 1px #000; }
+  /* Menu de session du widget (⋯) : arrêter et relancer, réinitialiser (2e clic pour confirmer). */
+  .smenu { position: absolute; top: 44px; left: 8px; right: 8px; z-index: 8; display: flex; flex-direction: column; gap: 4px; padding: 6px;
+    background: rgb(20, 23, 30); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,.55); -webkit-app-region: no-drag; }
+  .smenu[hidden] { display: none; }
+  .smenu button { position: relative; overflow: hidden; display: flex; flex-direction: column; align-items: flex-start; gap: 1px; padding: 7px 10px; border-radius: 7px; text-align: left; color: var(--text); }
+  .smenu button:hover { background: rgba(255,255,255,.07); }
+  .smenu b { font-size: 12.5px; } .smenu small { color: var(--muted); font-size: 11px; }
+  .smenu .danger b { color: var(--neg); }
+  .smenu .danger.armed { background: rgba(255,90,90,.22); }
+  .smenu .danger.armed b, .smenu .danger.armed small { color: #fff; }
+  .smenu .cd { position: absolute; left: 0; bottom: 0; height: 3px; width: 0; background: var(--neg); }
+  .smenu .danger.armed .cd { animation: cdown 3s linear forwards; }
+  @keyframes cdown { from { width: 100%; } to { width: 0; } }
   .k { color: var(--muted); font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em; }
 
   /* Carte en cours */
@@ -160,6 +173,7 @@
   <div class="bar">
     <button class="rec" id="btnRec"><span class="ic"></span><span id="recLbl"></span></button>
     <button class="pausebtn" id="btnPause" hidden></button>
+    <button class="pausebtn" id="btnMore" hidden data-i18n-title="ov.more"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button>
     <span class="lockmark" id="lockMark"><svg viewBox="0 0 24 24"><path d="M12 17v4M8 3h8l-1 7 3 3H6l3-3z"/></svg></span>
     <div class="mini">
       <span data-w="barPerHour"><b id="perHour">–</b> <small data-i18n="fe.h"></small></span>
@@ -171,6 +185,10 @@
       <button id="btnCollapse"><svg viewBox="0 0 24 24" id="icCollapse"></svg></button>
       <button id="btnHide" data-i18n-title="ov.hide.title"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
     </div>
+  </div>
+  <div class="smenu" id="sMenu" hidden>
+    <button id="btnRestart"><b data-i18n="ov.restart"></b><small data-i18n="ov.restartHelp"></small></button>
+    <button id="btnReset" class="danger"><b id="resetLbl" data-i18n="ov.reset"></b><small id="resetHelp" data-i18n="ov.resetHelp"></small><i class="cd"></i></button>
   </div>
   <div class="body">
     <div id="warn" class="warn" hidden></div>
