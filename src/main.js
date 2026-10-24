@@ -42,6 +42,7 @@ function gameNamed(cat, id) {
 const DEFAULTS = {
   logPath: null,
   lang: 'en',            // langue de l'interface : 'en' (défaut) ou 'fr'
+  theme: 'dark',         // thème de la fenêtre principale : 'dark' (défaut) ou 'light' (le widget reste sombre)
   mode: 'farm',          // 'farm' = loot en carte - coût des cartes ; 'all' = tout ce qui entre/sort du sac
   timeMode: 'real',      // 'real' = temps réel de session ; 'map' = temps passé en carte
   communityPrices: true,
@@ -1560,6 +1561,7 @@ ipcMain.handle('action', async (_e, name, arg) => {
       if (ovShown) overlay.webContents.send('stockAlert', { ...a, sound: true });
       if (dashboard && !dashboard.isDestroyed()) dashboard.webContents.send('stockAlert', { ...a, sound: !ovShown }); break; }
     case 'opacity': settings.overlay.opacity = arg; saveSettings(); applyOpacity(); break;
+    case 'theme': settings.theme = arg === 'light' ? 'light' : 'dark'; saveSettings(); broadcast(); break;
     case 'lang':
       settings.lang = I18N.LANGS[arg] ? arg : 'en'; saveSettings(); buildTrayMenu();
       if (dashboard && !dashboard.isDestroyed()) dashboard.setTitle(tr()('dash.windowTitle'));

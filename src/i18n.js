@@ -101,6 +101,7 @@
       'share.nameShort': 'Pick a username of at least 2 characters.', 'share.sending': 'Sending…', 'share.error': 'Error: {msg}',
       // Réglages
       'set.language': 'Language',
+      'set.theme': 'Theme', 'h.curveTotal': 'session', 'set.themeDark': 'Dark', 'set.themeLight': 'Light', 'set.themeHelp': 'The in-game widget stays dark so it is readable over the game.',
       'set.hero': "Your class", 'set.heroPh': 'e.g. Gemma - Frostbitten Heart',
       'set.heroHelp': "The game only gives a number ({id}). Pick your class once: it is used in your sessions and builds.",
       'set.heroNotSeen': 'not seen yet',
@@ -1055,6 +1056,7 @@
       'share.as': 'Partager en tant que {name}', 'share.create': 'Créer mon pseudo et partager',
       'share.nameShort': "Choisis un pseudo d'au moins 2 caractères.", 'share.sending': 'Envoi…', 'share.error': 'Erreur : {msg}',
       'set.language': 'Langue',
+      'set.theme': 'Thème', 'h.curveTotal': 'session', 'set.themeDark': 'Sombre', 'set.themeLight': 'Clair', 'set.themeHelp': 'Le widget en jeu reste sombre pour rester lisible par-dessus le jeu.',
       'set.hero': "Ta classe", 'set.heroPh': 'ex. Gemma - Frostbitten Heart',
       'set.heroHelp': "Le jeu ne donne qu'un numéro ({id}). Choisis ta classe une fois : elle sera reprise dans tes sessions et tes builds.",
       'set.heroNotSeen': 'pas encore vu',

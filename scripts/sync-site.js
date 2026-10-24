@@ -18,3 +18,5 @@ const b = css.indexOf('/* Menu Builds (bêta)');
 if (a < 0 || b < 0) throw new Error('repères introuvables dans app.css');
 fs.writeFileSync(path.join(out, 'planner.css'), head('src/ui/app.css') + css.slice(a, b));
 console.log('site : planificateur copié dans server/public/p/');
+// Thème clair de l'app et du site (généré à partir des feuilles de style sombres).
+require('./lighttheme');

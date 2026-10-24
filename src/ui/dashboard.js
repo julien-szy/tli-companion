@@ -170,6 +170,7 @@ $('saveHero').onclick = async () => {
   $('heroMsg').textContent = '✓';
 };
 $('sLang').onchange = (e) => tli.action('lang', e.target.value);
+$('sTheme').onchange = (e) => tli.action('theme', e.target.value);
 
 // Filtre rapide : Timemark, carte (région de la balise) et type de stratégie.
 const parseMap = (name) => {
@@ -510,6 +511,9 @@ if ($('sTips')) $('sTips').onclick = () => tipsModal(0);
 
 tli.onState((s) => {
   last = s;
+  // Thème clair (Réglages) : feuille de style claire générée à partir de app.css.
+  const light = s.settings.theme === 'light';
+  if ($('lightCss').disabled === light) $('lightCss').disabled = !light;
   // Après ce passage (la langue choisie est appliquée plus bas) : sinon les fenêtres s'affichent en anglais.
   if (!whatsNewChecked && s.settings.onboarded) { whatsNewChecked = true; setTimeout(whatsNewModal, 0); }
   // Session de farm qui démarre sans réponse : on demande (la question disparaît si le widget a répondu).
@@ -550,6 +554,7 @@ tli.onState((s) => {
     $('sMode').value = s.mode;
     $('sTime').value = s.timeMode;
     $('sLang').value = LANG;
+    $('sTheme').value = s.settings.theme === 'light' ? 'light' : 'dark';
     $('sCommunity').checked = s.settings.communityPrices;
     $('sShareMeta').checked = s.settings.shareMeta !== false;
     $('sStock').checked = s.settings.stockAlerts !== false;

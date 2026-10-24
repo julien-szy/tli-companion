@@ -238,3 +238,28 @@ header.site nav .ver { font-size: 11px; padding: 1px 6px; border-radius: 999px; 
 .gcode-row input { flex: 1; min-width: 0; font-family: Consolas, monospace; font-size: 13px; }
 
 .nowrap { white-space: nowrap; }
+
+/* Page Prix */
+.pr-layout { display: grid; grid-template-columns: 210px 1fr; gap: 16px; align-items: start; }
+.pr-cats { display: flex; flex-direction: column; gap: 2px; position: sticky; top: 76px; }
+.pr-cats button { display: flex; justify-content: space-between; align-items: center; gap: 8px; text-align: left; padding: 7px 10px; border-radius: 8px; border: 0; background: transparent; color: var(--muted); cursor: pointer; font: inherit; font-size: 13.5px; }
+.pr-cats button:hover { background: rgba(255,255,255,.04); color: var(--text); }
+.pr-cats button.on { background: rgba(255,138,61,.12); color: var(--text); }
+.pr-cats b { font-weight: 600; font-size: 12px; color: var(--muted); }
+.pr-tools { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; flex-wrap: wrap; }
+.pr-tools input { flex: 1; min-width: 180px; max-width: 360px; }
+.pr-catsel { display: none; }
+.pr-card { padding: 0; overflow: hidden; }
+.pr-table { width: 100%; }
+.pr-table th[data-sort] { cursor: pointer; user-select: none; }
+.pr-table th[data-sort]:hover, .pr-table th.sorted { color: var(--text); }
+.pr-table td { vertical-align: middle; }
+.pr-name { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.pr-name img, .pr-noimg { width: 26px; height: 26px; object-fit: contain; flex: none; }
+.pr-spark polyline { fill: none; stroke-width: 1.8; stroke-linejoin: round; stroke-linecap: round; }
+.pr-spark.up polyline { stroke: var(--pos, #5fd38d); } .pr-spark.down polyline { stroke: var(--neg, #ff6b6b); }
+@media (max-width: 760px) {
+  .pr-layout { grid-template-columns: 1fr; }
+  .pr-cats { display: none; }
+  .pr-catsel { display: block; }
+}

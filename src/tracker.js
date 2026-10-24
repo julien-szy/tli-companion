@@ -446,6 +446,26 @@ class Tracker extends EventEmitter {
     return v;
   }
 
+  // Mini-graphique de la session : profit cumulé après chaque carte (et la carte en cours).
+  // Les cartes terminées sont mises en cache (recalculées seulement quand une carte se termine).
+  sessionCurve(now = Date.now()) {
+    const s = this.session;
+    if (!s.recording) return null;
+    if (!this._curve || this._curve.session !== s || this._curve.n !== s.runs.length) {
+      let cum = 0;
+      const pts = [{ t: s.startedAt, v: 0 }];
+      for (const r of s.runs.slice().reverse()) {
+        const p = this.runSummary(r).profit;
+        cum += p;
+        pts.push({ t: r.endedAt || r.startedAt, v: cum, p, name: r.name });
+      }
+      this._curve = { session: s, n: s.runs.length, pts, cum };
+    }
+    const pts = this._curve.pts.slice();
+    if (s.currentRun) { const p = this.runSummary(s.currentRun, now).profit; pts.push({ t: now, v: this._curve.cum + p, p, name: s.currentRun.name, live: true }); }
+    return pts;
+  }
+
   // Zone de la carte où l'on est (0 = la carte elle-même, ensuite les sous-cartes).
   _seg(run) {
     if (!run.segs) { run.segs = [{ zone: run.zones[0], path: run.path, loot: { ...run.loot } }]; run.seg = 0; }
@@ -555,6 +575,7 @@ class Tracker extends EventEmitter {
       recent,
       topDrops,
       mapDrops,
+      curve: this.sessionCurve(now),
     };
   }
 

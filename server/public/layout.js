@@ -146,6 +146,22 @@ window.SITE_STR = {
 
 const SUPPORT_URL = 'https://buymeacoffee.com/snoopiisz';
 
+// Thème clair (bouton ☀/🌙 de l'en-tête, gardé dans ce navigateur) : feuilles de style claires générées
+// par scripts/lighttheme.js, ajoutées après les sombres.
+function setTheme(light) {
+  document.querySelectorAll('link[data-light]').forEach((l) => l.remove());
+  if (light) {
+    const add = (href) => { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href; l.dataset.light = '1'; document.head.appendChild(l); };
+    add('/style.light.css');
+    if (document.querySelector('link[href="/p/planner.css"]')) add('/p/planner.light.css');
+  }
+  try { localStorage.setItem('tlicTheme', light ? 'light' : 'dark'); } catch { /* navigation privée */ }
+  const b = document.getElementById('themeSwitch');
+  if (b) { b.textContent = light ? '🌙' : '☀️'; b.title = light ? (LANG === 'fr' ? 'Thème sombre' : 'Dark theme') : (LANG === 'fr' ? 'Thème clair' : 'Light theme'); }
+}
+const isLight = () => { try { return localStorage.getItem('tlicTheme') === 'light'; } catch { return false; } };
+if (isLight()) setTheme(true);
+
 // Construit l'en-tête (menu commun) et le pied de page. data-page sur <header class="site"> = page active.
 function renderLayout() {
   const header = document.querySelector('header.site');
@@ -154,8 +170,10 @@ function renderLayout() {
     const link = (href, key, id) => `<a href="${href}" class="${page === id ? 'on' : ''}">${esc(t(key))}</a>`;
     header.innerHTML = `
       <a class="brand" href="/"><img class="logo" src="/logo.svg" alt="">TLI Companion</a>
-      <nav>${link('/', 'navHome', 'home')}${link('/meta', 'navMeta', 'meta')}${link('/builds', 'navBuilds', 'builds')}${link('/strategies', 'navStrategies', 'strategies')}${link('/download', 'navDownload', 'download')}</nav>
-      <div class="right"><a class="btn coffee" href="${SUPPORT_URL}" target="_blank" rel="noopener">☕ ${esc(t('supButton'))}</a><button class="lang" id="langSwitch"></button><a class="btn" id="accBtn" href="/account">${esc(t('navAccount'))}</a></div>`;
+      <nav>${link('/', 'navHome', 'home')}${link('/meta', 'navMeta', 'meta')}${link('/builds', 'navBuilds', 'builds')}${link('/strategies', 'navStrategies', 'strategies')}${link('/prices', 'navPrices', 'prices')}${link('/download', 'navDownload', 'download')}</nav>
+      <div class="right"><a class="btn coffee" href="${SUPPORT_URL}" target="_blank" rel="noopener">☕ ${esc(t('supButton'))}</a><button class="lang" id="themeSwitch"></button><button class="lang" id="langSwitch"></button><a class="btn" id="accBtn" href="/account">${esc(t('navAccount'))}</a></div>`;
+    document.getElementById('themeSwitch').onclick = () => setTheme(!isLight());
+    setTheme(isLight());
     // Connecté (bêta) : le bouton Compte affiche le pseudo.
     fetch('/api/me', { credentials: 'same-origin' }).then((r) => (r.ok ? r.json() : null)).then((me) => {
       const b = document.getElementById('accBtn');

@@ -756,6 +756,43 @@ setInterval(() => { try { db.prepare('DELETE FROM price_hist WHERE ts < ?').run(
 // Médiane des derniers prix de chaque joueur sur 7 jours.
 let pricesCache = { at: 0, body: null };
 route('GET', /^\/api\/prices$/, () => currentPrices());
+// Page Prix du site : prix médian actuel de chaque objet (joueurs TLI Companion), courbe des 7 derniers jours
+// (médiane par jour), variation sur 24 h et 7 jours, nombre de joueurs. Données à nous seulement. Cache 10 min.
+let ITEM_CATS = {};
+try { ITEM_CATS = JSON.parse(fs.readFileSync(path.join(__dirname, 'item_cats.json'), 'utf8')); } catch { /* facultatif */ }
+let priceTableCache = { at: 0, body: null };
+route('GET', /^\/api\/prices\/table$/, () => {
+  if (Date.now() - priceTableCache.at < 10 * 60000 && priceTableCache.body) return priceTableCache.body;
+  const now = Date.now(), DAY = 86400000;
+  const cur = currentPrices().prices;
+  const today = Math.floor(now / DAY);
+  const days = {}; // id -> { jour -> [prix] }
+  const users = {}; // id -> Set(joueurs) sur 7 jours
+  for (const r of db.prepare('SELECT item_id, user_id, price, ts FROM price_hist WHERE ts > ?').all(now - 8 * DAY)) {
+    const d = today - Math.floor(r.ts / DAY);
+    if (d < 0 || d > 7) continue;
+    ((days[r.item_id] = days[r.item_id] || {})[d] = days[r.item_id][d] || []).push(r.price);
+    (users[r.item_id] = users[r.item_id] || new Set()).add(r.user_id);
+  }
+  const med = (a) => { if (!a || !a.length) return null; const s = a.slice().sort((x, y) => x - y), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
+  const nameStmt = db.prepare('SELECT name, img FROM item_names WHERE id = ?');
+  const items = [];
+  for (const id in cur) {
+    const n = ITEM_NAMES[id] ? { name: ITEM_NAMES[id][0], img: ITEM_NAMES[id][1] } : nameStmt.get(+id);
+    if (!n || !n.name) continue;
+    const d = days[id] || {};
+    const trend = [7, 6, 5, 4, 3, 2, 1, 0].map((k) => med(d[k])); // du plus ancien à aujourd'hui
+    const price = cur[id].price;
+    const pct = (old) => (old ? (price - old) / old : null);
+    const firstOld = trend.find((v) => v != null);
+    items.push({ id: +id, name: n.name, img: n.img || null, cat: ITEM_CATS[id] || 'other', price,
+      players: users[id] ? users[id].size : 0, ts: cur[id].ts, trend,
+      d1: pct(trend[6] ?? null), d7: pct(trend[0] ?? (firstOld !== trend[7] ? firstOld : null)) });
+  }
+  items.sort((a, b) => b.price - a.price);
+  priceTableCache = { at: now, body: { updatedAt: now, items } };
+  return priceTableCache.body;
+});
 // Copie des prix communautaires TITrack (rafraîchie toutes les 15 min).
 route('GET', /^\/api\/prices\/community$/, () => TITrack.get());
 function currentPrices() {
@@ -842,7 +879,7 @@ function serveDownload(req, res, name) {
 
 const PAGES = {
   '/': '/home.html', '/strategies': '/strategies.html', '/builds': '/builds.html', '/meta': '/meta.html',
-  '/download': '/download.html', '/account': '/account.html', '/planner': '/planner.html', '/privacy': '/privacy.html', '/terms': '/terms.html',
+  '/download': '/download.html', '/prices': '/prices.html', '/account': '/account.html', '/planner': '/planner.html', '/privacy': '/privacy.html', '/terms': '/terms.html',
 };
 function serveStatic(req, res, pathname) {
   const dl = /^\/download\/([^/]+)$/.exec(pathname);

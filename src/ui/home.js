@@ -1,5 +1,19 @@
 // Page d'accueil (résumé de tout) et guide du premier lancement.
 const Home = (() => {
+  // Mini-graphique de la session (profit cumulé, un point par carte : vert si elle a rapporté, rouge sinon).
+  function curveSvg(pts) {
+    if (!pts || pts.length < 2) return '';
+    const W = 520, H = 70, P = 6;
+    // Axe horizontal : numéro de carte (0 = début de la session).
+    const n = pts.length - 1;
+    const vs = pts.map((p) => p.v), lo = Math.min(0, ...vs), hi = Math.max(0, ...vs), span = hi - lo || 1;
+    const x = (i) => P + (i / n) * (W - 2 * P), y = (v) => H - P - ((v - lo) / span) * (H - 2 * P);
+    const line = pts.map((p, i) => `${x(i).toFixed(1)},${y(p.v).toFixed(1)}`).join(' ');
+    const area = `${x(0).toFixed(1)},${y(0).toFixed(1)} ${line} ${x(n).toFixed(1)},${y(0).toFixed(1)}`;
+    const dots = pts.slice(1).map((p, i) => `<circle cx="${x(i + 1).toFixed(1)}" cy="${y(p.v).toFixed(1)}" r="${p.live ? 3.5 : 2.6}" class="${p.p >= 0 ? 'up' : 'down'}${p.live ? ' live' : ''}"><title>${esc(`${p.live ? t('ov.currentMap') : '#' + (i + 1)} · ${p.name || ''} · ${fe(p.p, true)} FE (${t('h.curveTotal')} ${fe(p.v, true)})`)}</title></circle>`).join('');
+    return `<svg class="sess-curve" viewBox="0 0 ${W} ${H}"><line x1="${P}" x2="${W - P}" y1="${y(0).toFixed(1)}" y2="${y(0).toFixed(1)}" class="zero"/>
+      <polygon points="${area}" class="area"/><polyline points="${line}" class="ln"/>${dots}</svg>`;
+  }
   let heroes = [];
   let metaCard = { at: 0, html: '' };
   let lastState = null;
@@ -161,6 +175,7 @@ const Home = (() => {
             <div><span>${esc(t('k.time'))}</span><b>${dur(timeMs)}</b></div>
             <div><span>${esc(t('k.avg'))}</span><b class="${cls(ss.avgPerRun)}">${ss.runs ? fe(ss.avgPerRun, true) : '–'}</b></div>
           </div>
+          ${curveSvg(s.curve)}
           <div class="sess-foot muted">
             <span>${esc(t('ov.bagValue'))} <b>${s.netWorth != null ? fe(s.netWorth) + ' FE' : '–'}</b></span>
             ${ss.efficiency != null ? `<span>${esc(t('k.eff'))} <b>${Math.round(ss.efficiency * 100)} %</b></span>` : ''}

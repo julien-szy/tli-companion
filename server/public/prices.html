@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TLI Companion — Prices</title>
+<link rel="icon" type="image/svg+xml" href="/logo.svg">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header class="site" data-page="prices"></header>
+<main>
+  <div class="pagehead"><h1 data-i18n="prTitle"></h1><p class="muted" data-i18n="prSub"></p></div>
+  <div class="pr-layout">
+    <aside class="pr-cats" id="cats"></aside>
+    <section>
+      <div class="pr-tools"><input id="q" type="search" autocomplete="off" data-i18n-placeholder="prSearch"><select id="catSel" class="pr-catsel"></select><span class="muted" id="count"></span></div>
+      <div class="card pr-card"><table class="pr-table">
+        <thead><tr><th class="r">#</th><th data-sort="name" data-i18n="prName"></th><th class="hide-sm" data-sort="cat" data-i18n="prCat"></th><th class="r" data-sort="price" data-i18n="prPrice"></th>
+          <th class="hide-sm" data-i18n="prTrend"></th><th class="r" data-sort="d1" data-i18n="prD1"></th><th class="r hide-sm" data-sort="d7" data-i18n="prD7"></th><th class="r hide-sm" data-sort="players" data-i18n="prPlayers"></th></tr></thead>
+        <tbody id="rows"></tbody></table></div>
+      <p class="muted small" id="how" style="margin-top:10px"></p>
+    </section>
+  </div>
+</main>
+<footer class="site"></footer>
+<script src="/layout.js"></script>
+<script src="/common.js"></script>
+<script src="/prices.js"></script>
+</body>
+</html>

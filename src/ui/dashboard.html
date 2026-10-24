@@ -5,6 +5,7 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' https://cdn.tlidb.com https://tlicompanion.com; style-src 'self' 'unsafe-inline'; script-src 'self'; media-src 'self' data:">
 <title>TLI Companion</title>
 <link rel="stylesheet" href="app.css">
+<link rel="stylesheet" href="app.light.css" id="lightCss" disabled>
 
 </head>
 <body>
@@ -126,6 +127,9 @@
     <div class="settings">
       <div data-i18n="set.language"></div>
       <div><select id="sLang"><option value="en">English</option><option value="fr">Français</option></select></div>
+
+      <div data-i18n="set.theme"></div>
+      <div><select id="sTheme"><option value="dark" data-i18n="set.themeDark"></option><option value="light" data-i18n="set.themeLight"></option></select> <span class="muted" data-i18n="set.themeHelp"></span></div>
 
       <div data-i18n="set.hero"></div>
       <div><select id="sHeroClass"></select> <button class="btn" id="saveHero" data-i18n="btn.save"></button> <span class="muted" id="heroMsg"></span></div>

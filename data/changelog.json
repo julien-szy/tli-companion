@@ -5,6 +5,20 @@
   },
   "releases": [
     {
+      "version": "1.0.32",
+      "date": "2026-10-24",
+      "en": [
+        "Light theme: choose Dark or Light in Settings (the in-game widget stays dark so it stays readable over the game). The website has a ☀/🌙 button too.",
+        "Home: a mini chart of your session shows the profit after each map (green dot: the map paid off, red: it cost more than it brought).",
+        "Website: new Prices page with every Auction House price seen by TLI Companion players, unchanged: categories, search, 7-day curve, 24h and 7d change, number of players."
+      ],
+      "fr": [
+        "Thème clair : choisis Sombre ou Clair dans les Réglages (le widget en jeu reste sombre pour rester lisible par-dessus le jeu). Le site a aussi un bouton ☀/🌙.",
+        "Accueil : un mini-graphique de la session montre le profit après chaque carte (point vert : la carte a rapporté, rouge : elle a coûté plus qu'elle n'a rapporté).",
+        "Site : nouvelle page Prix avec tous les prix de l'hôtel des ventes vus par les joueurs de TLI Companion, sans modification : catégories, recherche, courbe sur 7 jours, variation sur 24 h et 7 jours, nombre de joueurs."
+      ]
+    },
+    {
       "version": "1.0.31",
       "date": "2026-10-24",
       "en": [

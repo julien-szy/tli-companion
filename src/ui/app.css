@@ -858,3 +858,12 @@ tr.hdet > td { background: rgba(255,255,255,.02); padding: 8px 12px 12px; }
 .tour-list { margin: 0 0 4px 18px; line-height: 1.6; min-height: 150px; }
 .tour-list li { margin-bottom: 6px; }
 .tour .foot { align-items: center; }
+
+/* Accueil : mini-graphique de la session */
+.sess-curve { width: 100%; height: auto; max-height: 90px; margin: 10px 0 2px; display: block; overflow: visible; }
+.sess-curve .zero { stroke: var(--line); stroke-width: 1; stroke-dasharray: 3 4; vector-effect: non-scaling-stroke; }
+.sess-curve .ln { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.sess-curve .area { fill: rgba(255,138,61,.12); }
+.sess-curve circle { stroke: var(--panel); stroke-width: 1; }
+.sess-curve circle.up { fill: var(--pos); } .sess-curve circle.down { fill: var(--neg); }
+.sess-curve circle.live { stroke: var(--accent); stroke-width: 2; }
