@@ -1,6 +1,16 @@
 {
   "releases": [
     {
+      "version": "1.0.27",
+      "date": "2026-10-24",
+      "en": [
+        "Widget: new ultra minimal mode (Settings › Widget, off by default): no background, bright colors readable over the game, only the key numbers (recording and time, current map profit, FE/h, session profit and maps). Double-click it to open the app."
+      ],
+      "fr": [
+        "Widget : nouveau mode ultra minimal (Réglages › Widget, désactivé par défaut) : sans fond, couleurs vives lisibles sur le jeu, seulement les chiffres clés (enregistrement et temps, profit de la carte en cours, FE/h, profit et cartes de la session). Double-clic dessus pour ouvrir l'app."
+      ]
+    },
+    {
       "version": "1.0.26",
       "date": "2026-10-24",
       "en": [

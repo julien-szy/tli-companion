@@ -54,6 +54,18 @@
   .dsw { display: inline-flex; align-items: center; gap: 4px; padding: 2px 7px; border: 1px solid var(--line); border-radius: 999px; font-size: 10.5px; line-height: 1.4; }
   .dsw:hover { color: var(--text, #fff); border-color: var(--accent, #f08a3c); }
   .dsw svg { width: 11px; height: 11px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+  /* Mode ultra minimal : pas de fond, couleurs vives avec un contour sombre pour rester lisible sur le jeu. */
+  .uwrap { display: none; }
+  body.ultra .panel, body.ultra .grip { display: none; }
+  body.ultra .uwrap { display: flex; flex-direction: column; justify-content: center; position: absolute; inset: 0; padding: 2px 8px; gap: 1px;
+    -webkit-app-region: drag; font: 700 14px/1.2 "Segoe UI", system-ui, sans-serif; font-variant-numeric: tabular-nums; white-space: nowrap;
+    text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 0 4px rgba(0,0,0,.9); }
+  body.ultra.locked .uwrap { -webkit-app-region: no-drag; }
+  .uwrap small { font-size: 11px; font-weight: 600; color: #e6e6e6; }
+  .uwrap .up { color: #3dff7a; } .uwrap .un { color: #ff4040; } .uwrap .uz { color: #d0d0d0; }
+  .uwrap .ufe { color: #ffa31a; font-size: 16px; }
+  .uwrap .urec { color: #3dff7a; } .uwrap .upause { color: #ffd23d; } .uwrap .uoff { color: #b0b0b0; }
+  .uwrap .urec i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: currentColor; margin-right: 4px; vertical-align: 1px; animation: blink 1.2s ease-in-out infinite; box-shadow: 0 0 0 1px #000; }
   .k { color: var(--muted); font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em; }
 
   /* Carte en cours */
@@ -119,6 +131,12 @@
 </style>
 </head>
 <body>
+<div class="uwrap" id="ultra">
+  <div><span id="uRec"></span> <small id="uTime"></small></div>
+  <div><span id="uMap"></span> <small id="uMapLbl"></small></div>
+  <div><span id="uPh" class="ufe"></span> <small>FE/h</small></div>
+  <div><span id="uSess"></span> <small id="uRuns"></small></div>
+</div>
 <div class="panel">
   <div class="bar">
     <button class="rec" id="btnRec"><span class="ic"></span><span id="recLbl"></span></button>

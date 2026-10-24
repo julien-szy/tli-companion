@@ -16,6 +16,9 @@ let recording = false;
 $('btnRec').onclick = () => tli.action(recording ? 'stopFarm' : 'startFarm');
 // Double-clic sur la barre = réduire / agrandir
 document.querySelector('.mini').ondblclick = () => tli.action('collapse');
+// Mode ultra minimal : double-clic = ouvrir le tableau de bord.
+$('ultra').ondblclick = () => tli.action('dashboardToggle');
+const uVal = (el, v, signed = true) => { el.textContent = fe(v, signed); el.className = v > 0 ? 'up' : v < 0 ? 'un' : 'uz'; };
 
 // Icônes « agrandir » / « réduire » (coins vers l'extérieur ou vers l'intérieur).
 const IC_EXPAND = '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>';
@@ -40,6 +43,21 @@ tli.onState((s) => {
   $('icCollapse').innerHTML = collapsed ? IC_EXPAND : IC_COLLAPSE;
   $('btnCollapse').title = t(collapsed ? 'ov.expand' : 'ov.collapse.title');
   document.body.classList.toggle('solid', !!s.settings.overlay.solid);
+  // Mode ultra minimal (Réglages > Widget) : enregistrement, carte en cours, FE/h, session.
+  const ultra = !!s.settings.overlay.ultra;
+  document.body.classList.toggle('ultra', ultra);
+  if (ultra) {
+    const ss = s.session, c = s.current || s.lastRun;
+    const st = !s.recording ? 'off' : ss.paused ? 'pause' : 'rec';
+    $('uRec').className = 'u' + st;
+    $('uRec').innerHTML = st === 'rec' ? '<i></i>REC' : esc(t(st === 'pause' ? 'ov.u.pause' : 'ov.u.off'));
+    $('uTime').textContent = s.recording ? dur(ss.realTimeMs) : '';
+    if (c) { uVal($('uMap'), c.profit); $('uMapLbl').textContent = `${t(s.current ? 'ov.u.map' : 'ov.u.last')} · ${dur(c.durationMs)}`; }
+    else { $('uMap').textContent = '–'; $('uMap').className = 'uz'; $('uMapLbl').textContent = t('ov.u.map'); }
+    $('uPh').textContent = fe(ss.perHour);
+    uVal($('uSess'), ss.profit);
+    $('uRuns').textContent = t('ov.u.session', { n: ss.runs });
+  }
   // Verrouillé : rappel du raccourci quelques secondes juste après le verrouillage.
   const locked = !!s.settings.overlay.locked;
   if (locked && !document.body.classList.contains('locked')) {

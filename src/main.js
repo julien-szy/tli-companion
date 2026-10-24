@@ -43,7 +43,7 @@ const DEFAULTS = {
   timeMode: 'real',      // 'real' = temps réel de session ; 'map' = temps passé en carte
   communityPrices: true,
   hubPatterns: ['/XZ_'], // chemins de map considérés comme repaire / ville
-  overlay: { x: null, y: null, collapsed: false, opacity: 0.92, scale: 1, solid: false, locked: false, dropsSort: 'recent' },
+  overlay: { x: null, y: null, collapsed: false, opacity: 0.92, scale: 1, solid: false, locked: false, dropsSort: 'recent', ultra: false },
   server: { url: 'https://tlicompanion.com', token: null, userId: null, name: null },
   activeBuild: null,     // id du build suivi par le conseiller d'achat
   shareMeta: true,       // partage auto du Hero Ranking consulté (pseudos sauf profils masqués)
@@ -62,12 +62,14 @@ const DEFAULTS = {
   onboarded: false,      // guide du premier lancement terminé
 };
 const COLLAPSED = { w: 420, h: 48 };
+const ULTRA = { w: 210, h: 96 }; // mode ultra minimal : quelques chiffres, sans fond
 const EXPANDED = { w: 340, h: 520 };
 // Taille du widget choisie en tirant son coin (avant le zoom de « Taille du widget ») :
 // largeur et hauteur libres, le contenu ne change pas d'échelle, on voit juste plus ou moins de choses.
 const WIDGET_MIN = { w: 260, h: 110 }, WIDGET_MAX = { w: 900, h: 1400 }, COLLAPSED_MIN_W = 300;
 function widgetSize() {
   const o = settings.overlay;
+  if (o.ultra) return ULTRA;
   return o.collapsed ? { w: o.cw || COLLAPSED.w, h: COLLAPSED.h } : { w: o.w || EXPANDED.w, h: o.h || EXPANDED.h };
 }
 
@@ -1513,6 +1515,7 @@ ipcMain.handle('action', async (_e, name, arg) => {
     case 'resizeStart': startResize(); break;
     case 'resizeEnd': endResize(); break;
     case 'solid': settings.overlay.solid = !!arg; saveSettings(); applyOpacity(); break;
+    case 'ultra': settings.overlay.ultra = !!arg; setCollapsed(settings.overlay.collapsed); break;
     case 'pause': tracker.togglePause(); broadcast(); break;
     case 'autoPause': settings.autoPause = !!arg; saveSettings(); break;
     // Contenu du widget : arg = { key, show }.
