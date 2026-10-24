@@ -1,6 +1,20 @@
 {
   "releases": [
     {
+      "version": "1.0.30",
+      "date": "2026-10-24",
+      "en": [
+        "Sub-maps (Arcana's Fateful Contest, Vorax Operating Theater, Void Sea Terminal…): their loot is now shown on its own. While you are in one, the widget shows a line with its loot under the current map, and the \"Map\" drops list shows only the sub-map. The map total does not change. In History, click a map to see its loot split by zone.",
+        "Scan my bag: new \"Keep\" button on each item. Kept items are no longer suggested for sale and leave the \"Worth selling\" total; the \"Kept\" filter lists them.",
+        "Fix: the Tartarus bar came back in the widget even when unchecked in the widget content."
+      ],
+      "fr": [
+        "Sous-cartes (Arcana's Fateful Contest, Vorax Operating Theater, Void Sea Terminal…) : leur loot est maintenant affiché à part. Quand tu es dedans, le widget montre une ligne avec leur loot sous la carte en cours, et la liste des drops « Carte » ne montre que la sous-carte. Le total de la carte ne change pas. Dans l'Historique, clique sur une carte pour voir son loot séparé par zone.",
+        "Analyser mon sac : nouveau bouton « Garder » sur chaque objet. Les objets gardés ne sont plus suggérés à la vente et sortent du total « À vendre » ; le filtre « Gardés » les regroupe.",
+        "Correctif : la barre Tartarus revenait dans le widget même décochée dans le contenu du widget."
+      ]
+    },
+    {
       "version": "1.0.29",
       "date": "2026-10-24",
       "en": [

@@ -639,9 +639,14 @@ function histDetail(r) {
   const gains = (r.items || []).filter((i) => i.qty > 0 && i.value > 0).sort((a, b) => b.value - a.value);
   const costs = (r.items || []).filter((i) => i.qty < 0);
   const item = (i) => `<span class="hd-item">${icon(i.img)}<span>${esc(i.name)}</span><em>${qty(i.qty)}</em>${i.unit ? `<small class="muted">@${fe(i.unit)}</small>` : ''}<b class="${cls(i.value)}">${fe(i.value, true)}</b></span>`;
+  // Carte avec sous-cartes (Arcana, Vorax…) : loot séparé par zone.
+  const parts = (r.parts || []).length > 1
+    ? r.parts.map((p, i) => `<div class="hd-part"><div class="hd-ph">${i ? '→ ' : ''}<b>${esc(p.zone)}</b> <span class="${cls(p.loot)}">${fe(p.loot, true)}</span></div>
+        ${p.items.length ? p.items.map(item).join('') : `<span class="muted">${esc(t('hist.noLoot'))}</span>`}</div>`).join('')
+    : null;
   return `<tr class="hdet"><td colspan="5"><div class="hd">
-    ${gains.length ? gains.slice(0, 16).map(item).join('') : `<span class="muted">${esc(t('hist.noLoot'))}</span>`}
-    ${gains.length > 16 ? `<span class="muted">${esc(t('hist.more', { n: gains.length - 16 }))}</span>` : ''}
+    ${parts || (gains.length ? gains.slice(0, 16).map(item).join('') : `<span class="muted">${esc(t('hist.noLoot'))}</span>`)}
+    ${!parts && gains.length > 16 ? `<span class="muted">${esc(t('hist.more', { n: gains.length - 16 }))}</span>` : ''}
     ${costs.length ? `<div class="hd-cost"><span class="muted">${esc(t('hist.cost'))}</span> ${costs.map(item).join('')}</div>` : ''}
   </div></td></tr>`;
 }
@@ -883,7 +888,7 @@ const Bag = (() => {
     const h = (Date.now() - ts) / 3600000;
     return h < 1 ? t('bag.agoMin', { n: Math.max(1, Math.round(h * 60)) }) : h < 48 ? t('bag.agoH', { n: Math.round(h) }) : t('bag.agoD', { n: Math.round(h / 24) });
   };
-  const VERDICT = { sell: 'loot', low: '', noprice: 'cost', variable: 'var', bound: '' };
+  const VERDICT = { sell: 'loot', low: '', noprice: 'cost', variable: 'var', bound: '', keep: 'keep' };
   async function render() {
     const v = $('bagView');
     if (!v || tab !== 'bag') return;
@@ -908,20 +913,27 @@ const Bag = (() => {
         <div class="kpi"><div class="k">${esc(t('bag.k.noprice'))}</div><div class="v ${d.counts.noprice ? 'neg' : ''}">${d.counts.noprice}</div><div class="s muted">${esc(t('bag.checkAh'))}</div></div>
       </div>
       <div class="tools">
-        ${chip('all', d.counts.all)}${chip('sell', d.counts.sell)}${chip('low', d.counts.low)}${chip('noprice', d.counts.noprice)}${d.counts.variable ? chip('variable', d.counts.variable) : ''}${d.counts.bound ? chip('bound', d.counts.bound) : ''}
+        ${chip('all', d.counts.all)}${chip('sell', d.counts.sell)}${chip('low', d.counts.low)}${chip('noprice', d.counts.noprice)}${d.counts.variable ? chip('variable', d.counts.variable) : ''}${d.counts.bound ? chip('bound', d.counts.bound) : ''}${d.counts.keep ? chip('keep', d.counts.keep) : ''}
         <label class="muted bag-min">${esc(t('bag.minLabel'))} <input id="bagMin" type="number" min="0" step="0.5" value="${min}" style="width:76px"> FE</label>
       </div>
-      <table><thead><tr><th>${esc(t('col.item'))}</th><th class="r">${esc(t('col.quantity'))}</th><th class="r">${esc(t('col.unit'))}</th><th class="r">${esc(t('bag.col.stack'))}</th><th>${esc(t('bag.col.price'))}</th><th>${esc(t('bag.col.verdict'))}</th></tr></thead><tbody>
-      ${rows.map((r) => `<tr data-item="${r.id}" class="${r.verdict === 'low' || r.verdict === 'bound' ? 'dim' : ''}">
+      <table><thead><tr><th>${esc(t('col.item'))}</th><th class="r">${esc(t('col.quantity'))}</th><th class="r">${esc(t('col.unit'))}</th><th class="r">${esc(t('bag.col.stack'))}</th><th>${esc(t('bag.col.price'))}</th><th>${esc(t('bag.col.verdict'))}</th><th></th></tr></thead><tbody>
+      ${rows.map((r) => `<tr data-item="${r.id}" class="${r.verdict === 'low' || r.verdict === 'bound' || r.verdict === 'keep' ? 'dim' : ''}">
           <td>${icon(r.img)}${esc(r.name)}</td><td class="r">${nf0.format(r.qty)}</td><td class="r muted" title="${r.verdict === 'variable' ? esc(t('bag.varTip')) : ''}">${r.verdict === 'variable' ? (r.unit ? esc(t('bag.upTo', { p: unit(r.unit) })) : '–') : unit(r.unit)}</td>
           <td class="r"><b class="${r.verdict === 'sell' ? 'pos' : ''}">${r.unit && r.verdict !== 'variable' ? fe(r.value) : '–'}</b></td>
           <td class="muted" style="font-size:12px">${r.unit ? `${esc(srcLabel(r.source))}${r.players ? ' · ' + esc(t('prices.players', { n: r.players })) : ''}${r.ts ? ` · <span class="${r.stale ? 'neg' : ''}">${esc(ago(r.ts))}</span>` : ''}` : ''}</td>
-          <td><span class="tag ${VERDICT[r.verdict]}">${esc(t('bag.v.' + r.verdict))}</span></td></tr>`).join('')
-        || `<tr><td colspan="6" class="muted">${esc(t('bag.none'))}</td></tr>`}
+          <td><span class="tag ${VERDICT[r.verdict]}">${esc(t('bag.v.' + r.verdict))}</span></td>
+          <td class="r"><button class="btn sm bag-keep${r.kept ? ' on' : ''}" data-keep="${r.id}" title="${esc(t(r.kept ? 'bag.unkeepTip' : 'bag.keepTip'))}">${esc(t(r.kept ? 'bag.unkeep' : 'bag.keep'))}</button></td></tr>`).join('')
+        || `<tr><td colspan="7" class="muted">${esc(t('bag.none'))}</td></tr>`}
       </tbody></table>
       ${d.counts.variable ? `<p class="muted" style="margin-top:10px;font-size:12px">${esc(t('bag.varNote', { n: d.counts.variable }))}</p>` : ''}
       ${d.hidden ? `<p class="muted" style="margin-top:6px;font-size:12px">${esc(t('bag.hidden', { n: d.hidden }))}</p>` : ''}`;
     v.querySelectorAll('[data-f]').forEach((b) => (b.onclick = () => { filter = b.dataset.f; render(); }));
+    // « Garder » : l'objet n'est plus suggéré à la vente (sans ouvrir la courbe de prix de la ligne).
+    v.querySelectorAll('[data-keep]').forEach((b) => (b.onclick = async (e) => {
+      e.stopPropagation();
+      await tli.action('keepItem', { id: +b.dataset.keep, keep: !b.classList.contains('on') });
+      render();
+    }));
     $('bagRefresh').onclick = () => render();
     $('bagMin').onchange = () => { min = Math.max(0, +$('bagMin').value || 0); try { localStorage.setItem('bagMin', String(min)); } catch {} render(); };
     if (focus) $('bagMin').focus();

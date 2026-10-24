@@ -118,7 +118,8 @@ tli.onState((s) => {
     $('tartVal').textContent = `${tt.value}/${tt.max}`;
     $('tartFill').style.width = `${Math.min(100, (tt.value / tt.max) * 100)}%`;
     $('tartMark').style.left = `${(tt.entry / tt.max) * 100}%`;
-    $('tart').className = 'tart' + (tt.value >= tt.max ? ' full' : tt.value >= tt.entry ? ' ready' : '');
+    $('tart').classList.toggle('full', tt.value >= tt.max);
+    $('tart').classList.toggle('ready', tt.value < tt.max && tt.value >= tt.entry);
     $('tart').title = t('tart.tip', { entry: tt.entry, max: tt.max });
   }
 
@@ -131,12 +132,15 @@ tli.onState((s) => {
     $('curName').textContent = place ? `${place} · ${c.name}` : c.name;
     $('curTime').textContent = dur(c.durationMs);
     $('curCost').textContent = c.cost ? t('ov.costOf', { fe: fe(c.cost, true) }) : '';
+    // Sous-carte (Arcana, Vorax…) : son loot à part, le total de la carte reste au-dessus.
+    $('curSub').hidden = !c.sub;
+    if (c.sub) $('curSub').innerHTML = `<span>→ ${esc(c.sub.zone)}</span><b class="${cls(c.sub.loot)}">${fe(c.sub.loot, true)}</b>`;
     setVal($('miniMap'), c.profit);
     $('miniMapLbl').textContent = s.current ? dur(c.durationMs) : t('ov.last');
   } else {
     $('curProfit').textContent = '–'; $('curProfit').className = '';
     $('curName').textContent = t(recording ? 'ov.waiting' : 'ov.pressStart');
-    $('curTime').textContent = ''; $('curCost').textContent = '';
+    $('curTime').textContent = ''; $('curCost').textContent = ''; $('curSub').hidden = true;
     $('miniMap').textContent = '–'; $('miniMapLbl').textContent = t('ov.map');
   }
 
@@ -152,6 +156,10 @@ tli.onState((s) => {
     $('dropsTitle').textContent = t(titleKey);
     firstRender = true;
   }
+  // Liste « Carte » dans une sous-carte : son nom à la place du titre.
+  const subZone = sort === 'map' && s.current && s.current.sub ? s.current.sub.zone : null;
+  const want = subZone ? `→ ${subZone}` : t(titleKey);
+  if ($('dropsTitle').textContent !== want) { $('dropsTitle').textContent = want; firstRender = true; }
   const list = byValue
     ? ((sort === 'map' ? s.mapDrops : s.topDrops) || []).map((e) => ({ key: `${e.id}|${e.qty}`, img: e.img, name: e.name, tip: e.name, delta: e.qty, value: e.value, unit: e.unit }))
     : s.recent.slice(0, 40).map((e) => ({ key: `${e.ts}|${e.id}|${e.delta}`, img: e.img, name: e.name, tip: `${e.name} — ${zoneLabel(e.zone)}`, delta: e.delta, value: e.value, unit: e.unit }));

@@ -61,6 +61,7 @@ const DEFAULTS = {
   taxRate: 12.5,         // taxe en % (les 200 premiers FE de la saison, sans taxe, ne sont pas comptés)
   shareFarmStats: true,  // stats de farm ANONYMES envoyées à chaque session (désactivable)
   farmStatsNotice: false,
+  keepItems: [],         // objets du sac marqués « à garder » : jamais suggérés à la vente
   autoPause: true, // pause automatique de la session de farm après 3 min sans activité au repaire // information « stats anonymes » déjà montrée
   onboarded: false,      // guide du premier lancement terminé
 };
@@ -804,6 +805,7 @@ ipcMain.handle('bagScan', (_e, opts) => {
   for (const { id, num } of tracker.slots.values()) if (id !== FE_ID) qty.set(id, (qty.get(id) || 0) + num);
   let hidden = 0;
   const rows = [];
+  const keep = new Set(settings.keepItems || []);
   for (const [id, n] of qty) {
     if (n <= 0) continue;
     if (!tracker.visible(id)) { hidden++; continue; }
@@ -812,9 +814,9 @@ ipcMain.handle('bagScan', (_e, opts) => {
     const bound = /^Bound /i.test(it.name);
     const unit = (p.price || 0) * (1 - tracker.taxRate());
     const value = unit * n;
-    const verdict = bound ? 'bound' : isVariablePrice(it) ? 'variable' : (!unit || p.source === 'inconnu' || p.source === 'nonconfirme') ? 'noprice' : value >= min ? 'sell' : 'low';
+    const verdict = keep.has(id) ? 'keep' : bound ? 'bound' : isVariablePrice(it) ? 'variable' : (!unit || p.source === 'inconnu' || p.source === 'nonconfirme') ? 'noprice' : value >= min ? 'sell' : 'low';
     rows.push({ id, name: it.name, img: it.img, qty: n, unit, value: verdict === 'variable' ? 0 : value, source: p.source, ts: p.ts || null, players: p.players || null,
-      stale: !!(p.ts && Date.now() - p.ts > STALE), verdict });
+      stale: !!(p.ts && Date.now() - p.ts > STALE), verdict, kept: keep.has(id) });
   }
   rows.sort((a, b) => b.value - a.value || a.name.localeCompare(b.name));
   const sum = (v) => rows.filter((r) => r.verdict === v);
@@ -823,7 +825,7 @@ ipcMain.handle('bagScan', (_e, opts) => {
     ready: tracker.snapshotReady, fe: tracker.bagQty(FE_ID), hidden, min, rows, taxRate: tracker.taxRate(),
     totals: { all: total(rows), sell: total(sum('sell')), low: total(sum('low')) },
     staleSell: rows.filter((r) => r.verdict === 'sell' && (r.stale || !r.ts)).length,
-    counts: { all: rows.length, sell: sum('sell').length, low: sum('low').length, noprice: sum('noprice').length, variable: sum('variable').length, bound: sum('bound').length },
+    counts: { all: rows.length, sell: sum('sell').length, low: sum('low').length, noprice: sum('noprice').length, variable: sum('variable').length, bound: sum('bound').length, keep: sum('keep').length },
   };
 });
 
@@ -1560,6 +1562,15 @@ ipcMain.handle('action', async (_e, name, arg) => {
     case 'resizeStart': startResize(); break;
     case 'resizeEnd': endResize(); break;
     case 'solid': settings.overlay.solid = !!arg; saveSettings(); applyOpacity(); break;
+    case 'keepItem': {
+      const id = Math.trunc(+(arg && arg.id));
+      if (!(id > 0)) break;
+      const set = new Set(settings.keepItems || []);
+      if (arg.keep) set.add(id); else set.delete(id);
+      settings.keepItems = [...set].slice(0, 2000);
+      saveSettings();
+      break;
+    }
     case 'unitPrice': case 'noFlash': case 'compact': settings.overlay[name] = !!arg; saveSettings(); broadcast(); break;
     case 'ultra': settings.overlay.ultra = !!arg; setCollapsed(settings.overlay.collapsed); break;
     case 'pause': tracker.togglePause(); broadcast(); break;

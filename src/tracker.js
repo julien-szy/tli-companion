@@ -322,8 +322,10 @@ class Tracker extends EventEmitter {
       else addQty(s.pendingCost, id, delta);
     } else if (this.proto && LOOT_PROTOS.has(this.proto) && !this.zone.hub && run) {
       cat = 'loot';
+      const seg = this._seg(run);
       addQty(s.loot, id, delta);
       addQty(run.loot, id, delta);
+      addQty(seg.loot, id, delta);
     } else {
       cat = 'other';
       addQty(s.other, id, delta);
@@ -347,7 +349,14 @@ class Tracker extends EventEmitter {
       // Une carte n'est comptée que pendant une session de farm (bouton Démarrer).
       if (!this.replay && this.session.recording) this._startRun(path, ev.ts, ev.levelId);
     } else {
-      this.session.currentRun.zones.push(shortName(path, ev.levelId));
+      const run = this.session.currentRun;
+      const name = shortName(path, ev.levelId);
+      run.zones.push(name);
+      // Sous-carte (Arcana, Vorax, Void Sea Terminal…) : son loot est noté à part, en plus du total de la carte.
+      this._seg(run);
+      let i = run.segs.findIndex((sg) => sg.path === path);
+      if (i < 0) { run.segs.push({ zone: name, path, loot: {} }); i = run.segs.length - 1; }
+      run.seg = i;
     }
     this.zone = { path, hub, since: ev.ts, levelId: ev.levelId };
     if (!this.replay) this.emit('changed');
@@ -359,6 +368,7 @@ class Tracker extends EventEmitter {
       name: shortName(path, levelId), path, startedAt: ts, endedAt: null,
       zones: [shortName(path, levelId)], loot: {}, cost: s.pendingCost,
       heroId: this.heroId, node: this.pendingNode, modifiers: {},
+      segs: [{ zone: shortName(path, levelId), path, loot: {} }], seg: 0,
     };
     s.pendingCost = {};
     this.pendingNode = null;
@@ -436,11 +446,23 @@ class Tracker extends EventEmitter {
     return v;
   }
 
+  // Zone de la carte où l'on est (0 = la carte elle-même, ensuite les sous-cartes).
+  _seg(run) {
+    if (!run.segs) { run.segs = [{ zone: run.zones[0], path: run.path, loot: { ...run.loot } }]; run.seg = 0; }
+    return run.segs[run.seg || 0];
+  }
+
   runSummary(run, now = Date.now()) {
     const lootV = this.lootValueOf(run.loot);
     const costV = this.valueOf(run.cost);
     const end = run.endedAt || now;
+    const segs = run.segs || [];
+    const cur = segs[run.seg || 0];
     return {
+      // Sous-carte en cours (pendant la carte) et loot par zone (cartes avec au moins une sous-carte).
+      sub: !run.endedAt && run.seg > 0 && cur ? { zone: cur.zone, loot: this.lootValueOf(cur.loot) } : null,
+      parts: segs.length > 1 ? segs.map((sg) => ({ zone: sg.zone, loot: this.lootValueOf(sg.loot),
+        items: this.itemList(sg.loot).filter((i) => i.qty > 0 && i.value > 0).slice(0, 12) })) : null,
       name: run.name, zones: run.zones, startedAt: run.startedAt, endedAt: run.endedAt,
       node: run.node || null, heroId: run.heroId ?? null,
       modifierCount: Object.values(run.modifiers || {}).reduce((a, b) => a + b, 0),
@@ -501,7 +523,10 @@ class Tracker extends EventEmitter {
     const topDrops = this.itemList(gains).filter((i) => i.value > 0).slice(0, 15);
     // Même chose pour la carte en cours (ou la dernière carte au repaire).
     const mapRun = s.currentRun || s.runs[0];
-    const mapDrops = mapRun ? this.itemList(mapRun.loot).filter((i) => i.qty > 0 && i.value > 0).slice(0, 15) : [];
+    // Dans une sous-carte : seulement son loot (le total de la carte revient à la sortie).
+    const inSub = s.currentRun && s.currentRun.seg > 0 && s.currentRun.segs;
+    const mapDrops = mapRun ? this.itemList(inSub ? s.currentRun.segs[s.currentRun.seg].loot : mapRun.loot)
+      .filter((i) => i.qty > 0 && i.value > 0).slice(0, 15) : [];
 
     return {
       mode, timeMode: this.settings.timeMode,
