@@ -20,6 +20,32 @@ function setLang(lang) {
 }
 setLang('en');
 
+// Fenêtre de confirmation au style de l'app (remplace confirm()). Au-dessus des autres fenêtres.
+// opts : title, ok, cancel (textes), danger (bouton rouge). Renvoie une promesse : true si confirmé.
+function askConfirm(msg, opts = {}) {
+  return new Promise((resolve) => {
+    const e = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const bg = document.createElement('div');
+    bg.className = 'cfm-bg';
+    bg.innerHTML = `<div class="cfm" role="dialog" aria-modal="true">
+      ${opts.title ? `<h2>${e(opts.title)}</h2>` : ''}
+      ${String(msg).split(/\n+/).filter(Boolean).map((p) => `<p>${e(p)}</p>`).join('')}
+      <div class="cfm-foot"><button class="btn" data-no>${e(opts.cancel || t('cf.cancel'))}</button>
+        <button class="btn ${opts.danger ? 'danger' : 'primary'}" data-yes>${e(opts.ok || t('cf.ok'))}</button></div></div>`;
+    const done = (v) => { document.removeEventListener('keydown', key, true); bg.remove(); resolve(v); };
+    const key = (ev) => {
+      if (ev.key === 'Escape') { ev.stopPropagation(); ev.preventDefault(); done(false); }
+      else if (ev.key === 'Enter') { ev.stopPropagation(); ev.preventDefault(); done(true); }
+    };
+    bg.querySelector('[data-no]').onclick = () => done(false);
+    bg.querySelector('[data-yes]').onclick = () => done(true);
+    bg.onclick = (ev) => { if (ev.target === bg) done(false); };
+    document.addEventListener('keydown', key, true);
+    document.body.appendChild(bg);
+    bg.querySelector('[data-yes]').focus();
+  });
+}
+
 function fe(v, signed = false) {
   if (v == null || isNaN(v)) return '–';
   const s = Math.abs(v) >= 100 ? nf0.format(v) : nf1.format(v);

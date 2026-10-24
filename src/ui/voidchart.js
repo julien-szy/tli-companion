@@ -138,7 +138,7 @@ const VoidChart = (() => {
         render();
       }));
       $('vceAuto').onclick = () => { picks = guess(r.strategy.modifiers || []); save(); render(); };
-      $('vceClear').onclick = () => { if (!confirm(t('vce.confirmClear'))) return; picks = {}; save(); render(); };
+      $('vceClear').onclick = async () => { if (!(await askConfirm(t('vce.confirmClear'), { danger: true }))) return; picks = {}; save(); render(); };
     };
     render();
     return { save };

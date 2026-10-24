@@ -131,7 +131,7 @@ async function endSessionModal(id) {
     $('endMsg').hidden = !$('endPub').checked;
   };
   $('endDrop').onclick = async () => {
-    if (!confirm(t('sess.confirmDelete'))) return;
+    if (!(await askConfirm(t('sess.confirmDelete'), { ok: t('cf.delete'), danger: true }))) return;
     await tli.deleteReport(id); modal(''); closeSession(); loadSessions();
   };
   $('endSave').onclick = async () => {
@@ -274,7 +274,7 @@ async function openSession(id) {
   $('dCode').onchange = () => tli.updateReport(id, { gameCode: $('dCode').value });
   $('dTag').onchange = () => tli.updateReport(id, { strategyTag: $('dTag').value });
   $('dDelete').onclick = async () => {
-    if (!confirm(t('sess.confirmDelete') + (r.shared ? '\n' + t('sess.confirmDeleteShared') : ''))) return;
+    if (!(await askConfirm(t('sess.confirmDelete') + (r.shared ? '\n' + t('sess.confirmDeleteShared') : ''), { ok: t('cf.delete'), danger: true }))) return;
     await tli.deleteReport(id); closeSession(); loadSessions();
   };
   renderShare(r);
@@ -315,7 +315,7 @@ function renderShare(r) {
     $('shOpen').onclick = (e) => { e.preventDefault(); tli.openSite(new URL(r.shared.url).pathname); };
     $('shUpdate').onclick = () => doShare(r.id);
     $('shRemove').onclick = async () => {
-      if (!confirm(t('share.confirmRemove'))) return;
+      if (!(await askConfirm(t('share.confirmRemove'), { ok: t('share.remove'), danger: true }))) return;
       try { await tli.unshareReport(r.id); openSession(r.id); } catch (e) { $('shMsg').textContent = t('share.error', { msg: errMsg(e) }); }
     };
     return;
@@ -351,7 +351,7 @@ async function checkVoidChart(id) {
     VoidChart.mount($('vcmBox'), r).then((x) => { ed = x; }).catch(() => { if ($('vcmBox')) $('vcmBox').textContent = ''; });
     $('vcmCancel').onclick = () => { modal(''); resolve(false); };
     $('vcmOk').onclick = async () => {
-      if (!confirm(t('vcm.confirm'))) return;
+      if (!(await askConfirm(t('vcm.confirm'), { title: t('vcm.confirmTitle'), ok: t('vcm.confirmOk'), cancel: t('vcm.confirmBack') }))) return;
       if (ed) ed.save(); // l'arbre affiché (deviné ou corrigé) devient celui de la route
       await tli.updateReport(id, { voidChartChecked: true });
       modal('');
@@ -455,7 +455,7 @@ function renderAccount(srv) {
     ? `<span class="chip ok">${esc(t('acc.connected', { name: srv.name || '?' }))}</span> <a href="#" id="accSite">${esc(t('acc.openSite'))}</a> · <a href="#" id="accOut">${esc(t('acc.logout'))}</a>`
     : `<button class="btn primary" id="accIn" ${accBusy ? 'disabled' : ''}>${esc(t(accBusy ? 'acc.waiting' : 'acc.signIn'))}</button> <span class="muted">${esc(t(srv.registered ? 'acc.helpLink' : 'acc.help'))}</span> <span id="accMsg"></span>`;
   if ($('accSite')) $('accSite').onclick = (e) => { e.preventDefault(); tli.openSite('/account'); };
-  if ($('accOut')) $('accOut').onclick = async (e) => { e.preventDefault(); if (confirm(t('acc.confirmLogout'))) await tli.accountLogout(); };
+  if ($('accOut')) $('accOut').onclick = async (e) => { e.preventDefault(); if (await askConfirm(t('acc.confirmLogout'), { ok: t('cf.logout') })) await tli.accountLogout(); };
   if ($('accIn')) $('accIn').onclick = async () => {
     accBusy = true; renderAccount(srv);
     try { const r = await tli.googleLogin(); if (!r.named) $('sPseudo').focus(); }

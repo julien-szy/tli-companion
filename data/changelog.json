@@ -5,6 +5,18 @@
   },
   "releases": [
     {
+      "version": "1.0.24",
+      "date": "2026-10-24",
+      "en": [
+        "Confirmation windows (Void Chart check before publishing, deleting a session or a build, signing out…) now match the app design instead of the Windows popup; Enter confirms, Escape cancels.",
+        "Clearer Void Chart warning before publishing a route: votes on shared routes are already live."
+      ],
+      "fr": [
+        "Les fenêtres de confirmation (vérification du Void Chart avant publication, suppression d'une session ou d'un build, déconnexion…) suivent maintenant le style de l'app au lieu de la popup Windows ; Entrée confirme, Échap annule.",
+        "Avertissement du Void Chart plus clair avant de publier une route : les votes sur les routes partagées sont déjà en place."
+      ]
+    },
+    {
       "version": "1.0.23",
       "date": "2026-10-23",
       "en": [

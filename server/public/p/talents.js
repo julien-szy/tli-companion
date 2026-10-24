@@ -162,10 +162,10 @@ const Talents = (() => {
       const bt = box.querySelector('[data-bonus]');
       if (bt) bt.onclick = () => { showBonus = !showBonus; render(); };
       if (ro) return;
-      box.querySelectorAll('[data-pick]').forEach((x) => (x.onclick = () => {
+      box.querySelectorAll('[data-pick]').forEach((x) => (x.onclick = async () => {
         const old = b.talents.trees[slot];
         if (old && old !== x.dataset.pick) {
-          if (treePts(b, old) && !confirm(t('tal.confirmSwap'))) return;
+          if (treePts(b, old) && !(await (typeof askConfirm === 'function' ? askConfirm : (m) => Promise.resolve(confirm(m)))(t('tal.confirmSwap')))) return;
           delete b.talents.nodes[old]; delete b.talents.core[old];
         }
         b.talents.trees[slot] = x.dataset.pick;

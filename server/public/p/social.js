@@ -99,7 +99,7 @@ const Social = (() => {
       });
       box.querySelectorAll('[data-del]').forEach((x) => (x.onclick = async (ev) => {
         ev.preventDefault();
-        if (!confirm(t('soc.confirmDelete'))) return;
+        if (!(await (typeof askConfirm === 'function' ? askConfirm : (m) => Promise.resolve(confirm(m)))(t('soc.confirmDelete')))) return;
         try { await tli.commentDelete(x.dataset.del); await load(); } catch (e) { alert(String(e.message || e)); }
       }));
     };

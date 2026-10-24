@@ -131,6 +131,17 @@ th { background: var(--bg); }
 .modal .body { min-height: 170px; line-height: 1.6; }
 .modal .body ol { margin: 8px 0 0 20px; line-height: 1.9; }
 .modal .foot { display: flex; justify-content: space-between; margin-top: 20px; }
+/* Fenêtre de confirmation (askConfirm) */
+.cfm-bg { position: fixed; inset: 0; background: rgba(5,6,9,.7); display: flex; align-items: center; justify-content: center; z-index: 300; animation: cfmFade .12s ease-out; }
+.cfm { width: min(460px, 90vw); background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 22px 24px 18px; box-shadow: 0 24px 70px rgba(0,0,0,.6); animation: cfmPop .14s ease-out; }
+.cfm h2 { font-size: 17px; margin: 0 0 10px; }
+.cfm p { margin: 0 0 10px; line-height: 1.55; color: var(--muted); }
+.cfm p:first-of-type { color: var(--text); }
+.cfm-foot { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+.btn.danger { background: rgba(255,107,107,.14); border-color: rgba(255,107,107,.55); color: var(--neg); font-weight: 600; }
+.btn.danger:hover { background: rgba(255,107,107,.24); border-color: var(--neg); }
+@keyframes cfmFade { from { opacity: 0; } }
+@keyframes cfmPop { from { opacity: 0; transform: translateY(6px) scale(.98); } }
 .langpick { display: flex; gap: 10px; margin-top: 12px; }
 .langpick button { flex: 1; padding: 16px; font-size: 15px; }
 .langpick button.on { border-color: var(--accent); background: rgba(255,138,61,.12); }

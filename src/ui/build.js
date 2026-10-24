@@ -282,7 +282,7 @@ const Build = (() => {
       }));
       renderEdit();
     };
-    $('bDelete').onclick = async () => { if (confirm(t('b.confirmDelete'))) { await tli.deleteBuild(id); backToList(); } };
+    $('bDelete').onclick = async () => { if (await askConfirm(t('b.confirmDelete'), { ok: t('cf.delete'), danger: true })) { await tli.deleteBuild(id); backToList(); } };
     $('bShare').onclick = () => shareBuild(id);
     $('bCopyCode').onclick = async () => {
       try { await navigator.clipboard.writeText(await Planner.encode({ ...b, loadout: lo, gear: res.gear || {} })); $('bShareMsg').textContent = t('code.copied'); }
@@ -292,7 +292,7 @@ const Build = (() => {
       $('bOpen').onclick = (e) => { e.preventDefault(); tli.openSite(new URL(b.shared.url).pathname); };
       $('bUnshare').onclick = async (e) => {
         e.preventDefault();
-        if (!confirm(t('b.confirmUnshare'))) return;
+        if (!(await askConfirm(t('b.confirmUnshare'), { danger: true }))) return;
         try { await tli.unshareBuild(id); openDetail(id); } catch (err) { $('bShareMsg').textContent = t('share.error', { msg: errMsg(err) }); }
       };
     }
@@ -420,10 +420,10 @@ const Build = (() => {
       card.querySelector('[data-f="notes"]').oninput = (e) => { s.notes = e.target.value; };
       card.querySelectorAll('[data-act]').forEach((btn) => {
         if (btn.dataset.act === 'rmItem') return;
-        btn.onclick = () => {
+        btn.onclick = async () => {
           if (btn.dataset.act === 'up') [d.steps[si - 1], d.steps[si]] = [d.steps[si], d.steps[si - 1]];
           if (btn.dataset.act === 'down') [d.steps[si + 1], d.steps[si]] = [d.steps[si], d.steps[si + 1]];
-          if (btn.dataset.act === 'del' && (s.items.length === 0 || confirm(t('b.confirmDelStep')))) d.steps.splice(si, 1);
+          if (btn.dataset.act === 'del' && (s.items.length === 0 || (await askConfirm(t('b.confirmDelStep'), { ok: t('cf.delete'), danger: true })))) d.steps.splice(si, 1);
           if (btn.dataset.act === 'fill') fillFromPlanner(d, s);
           renderEdit();
         };

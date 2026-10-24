@@ -171,7 +171,7 @@ const Strategies = (() => {
           box.title = msg;
           box.classList.add('st-err');
           setTimeout(() => box.classList.remove('st-err'), 1500);
-          if (/login required|unknown token|no username/i.test(m) && confirm(msg)) showTab('settings');
+          if (/login required|unknown token|no username/i.test(m) && (await askConfirm(msg, { ok: t('cf.signIn') }))) showTab('settings');
         }
       }));
     });
