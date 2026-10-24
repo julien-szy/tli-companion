@@ -92,6 +92,22 @@
   .row .n { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .row .q { color: var(--muted); font-variant-numeric: tabular-nums; }
   .row .val { font-variant-numeric: tabular-nums; min-width: 46px; text-align: right; }
+  /* Prix à l'unité (option) : colonne en plus, discrète. */
+  body.unitp .row { grid-template-columns: 18px 1fr auto auto auto; }
+  .row .up1 { color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; text-align: right; min-width: 40px; }
+  body:not(.unitp) .row .up1 { display: none; }
+  body.noflash .row.new { animation: none; }
+  /* Widget compact (option) : blocs plus petits, même contenu. */
+  body.compact .body { gap: 5px; padding: 6px 8px 8px; }
+  body.compact .now { padding: 4px 8px; }
+  body.compact .now .big { margin-top: 0; }
+  body.compact .now .big b { font-size: 18px; }
+  body.compact .now .sub { margin-top: 0; font-size: 11px; }
+  body.compact .grid { gap: 4px; }
+  body.compact .stat { padding: 3px 7px; }
+  body.compact .stat .v { font-size: 13.5px; }
+  body.compact .k { font-size: 9.5px; }
+  body.compact .row { font-size: 11.5px; padding: 1px 0; }
   .row.new { animation: flash 1.2s ease-out; }
   @keyframes flash { from { background: rgba(255,138,61,0.25); } to { background: transparent; } }
   .ico { width: 18px; height: 18px; object-fit: contain; display: inline-block; }

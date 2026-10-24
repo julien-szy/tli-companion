@@ -5,6 +5,20 @@
   },
   "releases": [
     {
+      "version": "1.0.29",
+      "date": "2026-10-24",
+      "en": [
+        "Fix: a running farm session is no longer lost when the app restarts (update, closing the app, crash). It is saved every 30 seconds and resumes at launch; the time the app was closed counts as a pause.",
+        "Widget: new options in Settings › Widget › Display (all off by default): price per item in the drops list, no highlight on new drops, and a compact widget with a smaller current map block.",
+        "History: click a map to see its loot (with price per item) and its cost."
+      ],
+      "fr": [
+        "Correctif : une session de farm en cours n'est plus perdue quand l'app redémarre (mise à jour, fermeture, plantage). Elle est sauvegardée toutes les 30 secondes et reprend au lancement ; le temps où l'app était fermée compte comme une pause.",
+        "Widget : nouvelles options dans Réglages › Widget › Affichage (toutes désactivées par défaut) : prix à l'unité dans la liste des drops, pas de surlignage des nouveaux drops, et widget compact avec un bloc de carte plus petit.",
+        "Historique : clique sur une carte pour voir son loot (avec le prix à l'unité) et son coût."
+      ]
+    },
+    {
       "version": "1.0.28",
       "date": "2026-10-24",
       "en": [

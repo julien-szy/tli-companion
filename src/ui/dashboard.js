@@ -421,6 +421,7 @@ $('sOpacity').onchange = (e) => tli.action('opacity', +e.target.value);
 $('sScale').onchange = (e) => tli.action('scale', +e.target.value);
 $('sSolid').onchange = (e) => tli.action('solid', e.target.checked);
 $('sUltra').onchange = (e) => tli.action('ultra', e.target.checked);
+for (const [id, act] of [['sUnitPrice', 'unitPrice'], ['sNoFlash', 'noFlash'], ['sCompact', 'compact']]) $(id).onchange = (e) => tli.action(act, e.target.checked);
 $('sAutoPause').onchange = (e) => tli.action('autoPause', e.target.checked);
 // Réglages > Contenu du widget : une case par info, regroupées comme dans le widget.
 const WIDGET_GROUPS = [
@@ -540,6 +541,9 @@ tli.onState((s) => {
     $('sScale').value = s.settings.overlay.scale;
     $('sSolid').checked = !!s.settings.overlay.solid;
     $('sUltra').checked = !!s.settings.overlay.ultra;
+    $('sUnitPrice').checked = !!s.settings.overlay.unitPrice;
+    $('sNoFlash').checked = !!s.settings.overlay.noFlash;
+    $('sCompact').checked = !!s.settings.overlay.compact;
     $('sStar').checked = s.settings.starAlerts !== false;
     $('sAutoPause').checked = s.settings.autoPause !== false;
     $('sLock').checked = !!s.settings.overlay.locked;
@@ -629,6 +633,18 @@ function renderItems(list) {
 }
 
 let histCache = [];
+// Carte ouverte dans l'historique (clic sur la ligne) : objets les plus rentables et coût.
+let histOpen = null;
+function histDetail(r) {
+  const gains = (r.items || []).filter((i) => i.qty > 0 && i.value > 0).sort((a, b) => b.value - a.value);
+  const costs = (r.items || []).filter((i) => i.qty < 0);
+  const item = (i) => `<span class="hd-item">${icon(i.img)}<span>${esc(i.name)}</span><em>${qty(i.qty)}</em>${i.unit ? `<small class="muted">@${fe(i.unit)}</small>` : ''}<b class="${cls(i.value)}">${fe(i.value, true)}</b></span>`;
+  return `<tr class="hdet"><td colspan="5"><div class="hd">
+    ${gains.length ? gains.slice(0, 16).map(item).join('') : `<span class="muted">${esc(t('hist.noLoot'))}</span>`}
+    ${gains.length > 16 ? `<span class="muted">${esc(t('hist.more', { n: gains.length - 16 }))}</span>` : ''}
+    ${costs.length ? `<div class="hd-cost"><span class="muted">${esc(t('hist.cost'))}</span> ${costs.map(item).join('')}</div>` : ''}
+  </div></td></tr>`;
+}
 function renderHistory(hist) {
   if (hist) {
     histCache = hist;
@@ -647,9 +663,11 @@ function renderHistory(hist) {
     return `<tr class="day"><td colspan="5"><b>${esc(dayLabel(rs[0].startedAt))}</b> · ${esc(t(rs.length === 1 ? 'day.map1' : 'day.maps', { n: rs.length }))} · <span class="${cls(total)}">${fe(total, true)} FE</span></td></tr>`
       + rs.map((r) => {
         const perH = r.durationMs > 30000 ? r.profit / (r.durationMs / 3600000) : 0;
-        return `<tr><td class="muted">${timeOnly(r.startedAt)}</td><td>${mapLabel(r.name)}${mapPlace(r.name, r.zones) ? ` <span class="place">${esc(mapPlace(r.name, r.zones))}</span>` : ''}</td><td class="r muted">${dur(r.durationMs)}</td><td class="r ${cls(r.profit)}">${fe(r.profit, true)}</td><td class="r">${fe(perH)}</td></tr>`;
+        const k = String(r.startedAt), open = histOpen === k;
+        return `<tr class="click${open ? ' open' : ''}" data-hk="${k}"><td class="muted">${timeOnly(r.startedAt)}</td><td>${mapLabel(r.name)}${mapPlace(r.name, r.zones) ? ` <span class="place">${esc(mapPlace(r.name, r.zones))}</span>` : ''}</td><td class="r muted">${dur(r.durationMs)}</td><td class="r ${cls(r.profit)}">${fe(r.profit, true)}</td><td class="r">${fe(perH)}</td></tr>${open ? histDetail(r) : ''}`;
       }).join('');
   }).join('') || `<tr><td colspan="5" class="muted">${esc(t('history.empty'))}</td></tr>`;
+  $('histList').querySelectorAll('tr[data-hk]').forEach((tr) => (tr.onclick = () => { histOpen = histOpen === tr.dataset.hk ? null : tr.dataset.hk; renderHistory(); }));
 }
 
 // Source du prix + fiabilité : nombre de joueurs derrière un prix communautaire, prix ignoré s'il n'est pas confirmé.

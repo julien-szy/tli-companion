@@ -81,6 +81,26 @@ class Tracker extends EventEmitter {
 
   startFarm() { this.newSession({ recording: true }); }
 
+  // Reprise d'une session de farm sauvegardée (app redémarrée : mise à jour, fermeture, plantage).
+  // Le temps où l'app était fermée compte comme une pause. Si on n'est plus dans la carte en cours,
+  // elle se termine à l'heure de la sauvegarde.
+  restoreSession(saved, savedAt, now = Date.now()) {
+    if (!saved || !saved.recording) return false;
+    const s = { ...saved, feed: saved.feed || [], pendingCost: saved.pendingCost || {} };
+    if (!s.pausedAt) s.pausedMs = (s.pausedMs || 0) + Math.max(0, now - savedAt);
+    else if (s.pauseAuto) { s.pausedMs = (s.pausedMs || 0) + Math.max(0, now - s.pausedAt); s.pausedAt = null; s.pauseAuto = false; }
+    s.lastActivity = now;
+    this.session = s;
+    const run = s.currentRun;
+    if (run && (!this.zone || this.zone.hub || this.zone.path !== run.path)) {
+      this._endRun(Math.max(run.startedAt, savedAt));
+      // Dans une autre carte maintenant : elle compte comme une nouvelle carte.
+      if (this.zone && !this.zone.hub) this._startRun(this.zone.path, now);
+    }
+    this.emit('changed');
+    return true;
+  }
+
   // ---------- Pause de la session de farm ----------
   // Pause manuelle (bouton, Ctrl+Maj+P) : reprend au bouton ou à l'entrée dans une carte.
   // Pause auto (3 min sans activité au repaire) : commence au dernier signe d'activité et reprend dès la suivante.

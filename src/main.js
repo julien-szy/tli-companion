@@ -26,6 +26,9 @@ const userDir = app.getPath('userData');
 const SETTINGS_FILE = path.join(userDir, 'settings.json');
 const HISTORY_FILE = path.join(userDir, 'history.json');
 const SESSIONS_DIR = path.join(userDir, 'sessions');
+// Session de farm en cours, sauvegardée régulièrement pour survivre à un redémarrage (mise à jour, plantage).
+const LIVE_FILE = path.join(userDir, 'live-session.json');
+const LIVE_MAX_AGE = 12 * 3600000;
 const HEROES = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'data', 'heroes.json'), 'utf8')).heroes;
 const FE_ID = 100300;
 // Noms des arbres de talents, talents principaux, pactes et traits (ids du jeu), avec leurs icônes.
@@ -43,7 +46,7 @@ const DEFAULTS = {
   timeMode: 'real',      // 'real' = temps réel de session ; 'map' = temps passé en carte
   communityPrices: true,
   hubPatterns: ['/XZ_'], // chemins de map considérés comme repaire / ville
-  overlay: { x: null, y: null, collapsed: false, opacity: 0.92, scale: 1, solid: false, locked: false, dropsSort: 'recent', ultra: false },
+  overlay: { x: null, y: null, collapsed: false, opacity: 0.92, scale: 1, solid: false, locked: false, dropsSort: 'recent', ultra: false, unitPrice: false, noFlash: false, compact: false },
   server: { url: 'https://tlicompanion.com', token: null, userId: null, name: null },
   activeBuild: null,     // id du build suivi par le conseiller d'achat
   shareMeta: true,       // partage auto du Hero Ranking consulté (pseudos sauf profils masqués)
@@ -179,6 +182,7 @@ function reportPath(id) {
 function beginFarm() {
   autoStatsFlush();
   tracker.startFarm();
+  saveLiveSession();
 }
 
 // Identifiant aléatoire de l'installation, seulement pour compter les joueurs distincts dans les stats anonymes
@@ -223,6 +227,7 @@ function farmContext() {
 
 function stopFarm(title) {
   const ended = tracker.stopFarm();
+  saveLiveSession();
   if (!ended.runs.length) return null;
   const report = buildReport(ended, tracker, { appVersion: app.getVersion(), title });
   report.context = farmContext();
@@ -258,7 +263,7 @@ async function startWatching() {
     status.error = e.message;
   }
   tracker.endReplay(parser.lastTs);
-  tracker.session.startedAt = Date.now();
+  if (!restoreLiveSession()) tracker.session.startedAt = Date.now();
   if (status.state !== 'error') status.state = 'live';
   if (process.env.TLI_SIMULATE_MB && process.env.TLI_SHOT) tracker.startFarm();
   watcher.start();
@@ -545,6 +550,35 @@ function autoStatsFlush() {
 }
 // Fermeture de l'app : on envoie le dernier lot (3 s maximum) avant de quitter.
 let quittingAfterFlush = false;
+// ---------------- Session en cours sauvegardée ----------------
+// Écrite toutes les 30 s pendant une session, à la fermeture et avant une mise à jour ; effacée à la fin
+// de la session. Reprise une seule fois, au premier chargement du log.
+let liveRestoreTried = false;
+function saveLiveSession() {
+  if (!liveRestoreTried) return; // pas avant d'avoir essayé de reprendre l'ancienne
+  const s = tracker.session;
+  try {
+    if (!s || !s.recording) { if (fs.existsSync(LIVE_FILE)) fs.unlinkSync(LIVE_FILE); return; }
+    const data = { savedAt: Date.now(), appVersion: app.getVersion(), session: { ...s, feed: s.feed.slice(-300) } };
+    const tmp = LIVE_FILE + '.tmp';
+    fs.writeFileSync(tmp, JSON.stringify(data));
+    fs.renameSync(tmp, LIVE_FILE);
+  } catch (e) { console.error('Sauvegarde de la session en cours :', e.message); }
+}
+function restoreLiveSession() {
+  if (liveRestoreTried) return false;
+  liveRestoreTried = true;
+  const d = loadJson(LIVE_FILE, null);
+  if (!d || !d.session || !d.session.recording || !(Date.now() - d.savedAt < LIVE_MAX_AGE)) return false;
+  try {
+    const ok = tracker.restoreSession(d.session, d.savedAt);
+    if (ok) console.log(`Session de farm reprise (${d.session.runs.length} cartes, sauvegardée il y a ${Math.round((Date.now() - d.savedAt) / 1000)} s)`);
+    return ok;
+  } catch (e) { console.error('Reprise de la session :', e.message); return false; }
+}
+setInterval(saveLiveSession, 30000).unref();
+app.on('before-quit', () => saveLiveSession());
+
 app.on('before-quit', (e) => {
   if (quittingAfterFlush || autoRuns.length < 3) return;
   const p = autoStatsFlush();
@@ -1263,6 +1297,7 @@ function installUpdateNow() {
     overlay: !!(overlay && !overlay.isDestroyed() && overlay.isVisible()),
   };
   saveSettings();
+  saveLiveSession(); // la session de farm en cours reprend après la mise à jour
   autoUpdater.quitAndInstall(true, true);
 }
 function safeToInstall() {
@@ -1525,6 +1560,7 @@ ipcMain.handle('action', async (_e, name, arg) => {
     case 'resizeStart': startResize(); break;
     case 'resizeEnd': endResize(); break;
     case 'solid': settings.overlay.solid = !!arg; saveSettings(); applyOpacity(); break;
+    case 'unitPrice': case 'noFlash': case 'compact': settings.overlay[name] = !!arg; saveSettings(); broadcast(); break;
     case 'ultra': settings.overlay.ultra = !!arg; setCollapsed(settings.overlay.collapsed); break;
     case 'pause': tracker.togglePause(); broadcast(); break;
     case 'autoPause': settings.autoPause = !!arg; saveSettings(); break;

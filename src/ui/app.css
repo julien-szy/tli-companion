@@ -836,3 +836,11 @@ tr.click.open > td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
 .st-v.down.on { border-color: rgba(255,107,107,.55); background: rgba(255,107,107,.1); color: var(--neg); }
 .st-v[disabled] { opacity: .5; cursor: default; }
 .st-votes.st-err .st-v { border-color: var(--neg); }
+
+/* Historique : loot d'une carte (clic sur la ligne) */
+tr.hdet > td { background: rgba(255,255,255,.02); padding: 8px 12px 12px; }
+.hd { display: flex; flex-wrap: wrap; gap: 6px; }
+.hd-item { display: inline-flex; align-items: center; gap: 6px; background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 4px 9px; font-size: 12.5px; }
+.hd-item em { font-style: normal; color: var(--muted); font-variant-numeric: tabular-nums; }
+.hd-item b { font-variant-numeric: tabular-nums; }
+.hd-cost { flex-basis: 100%; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 4px; }

@@ -43,6 +43,9 @@ tli.onState((s) => {
   $('icCollapse').innerHTML = collapsed ? IC_EXPAND : IC_COLLAPSE;
   $('btnCollapse').title = t(collapsed ? 'ov.expand' : 'ov.collapse.title');
   document.body.classList.toggle('solid', !!s.settings.overlay.solid);
+  document.body.classList.toggle('unitp', !!s.settings.overlay.unitPrice);
+  document.body.classList.toggle('noflash', !!s.settings.overlay.noFlash);
+  document.body.classList.toggle('compact', !!s.settings.overlay.compact);
   // Mode ultra minimal (Réglages > Widget) : enregistrement, carte en cours, FE/h, session.
   const ultra = !!s.settings.overlay.ultra;
   document.body.classList.toggle('ultra', ultra);
@@ -150,11 +153,11 @@ tli.onState((s) => {
     firstRender = true;
   }
   const list = byValue
-    ? ((sort === 'map' ? s.mapDrops : s.topDrops) || []).map((e) => ({ key: `${e.id}|${e.qty}`, img: e.img, name: e.name, tip: e.name, delta: e.qty, value: e.value }))
-    : s.recent.slice(0, 40).map((e) => ({ key: `${e.ts}|${e.id}|${e.delta}`, img: e.img, name: e.name, tip: `${e.name} — ${zoneLabel(e.zone)}`, delta: e.delta, value: e.value }));
+    ? ((sort === 'map' ? s.mapDrops : s.topDrops) || []).map((e) => ({ key: `${e.id}|${e.qty}`, img: e.img, name: e.name, tip: e.name, delta: e.qty, value: e.value, unit: e.unit }))
+    : s.recent.slice(0, 40).map((e) => ({ key: `${e.ts}|${e.id}|${e.delta}`, img: e.img, name: e.name, tip: `${e.name} — ${zoneLabel(e.zone)}`, delta: e.delta, value: e.value, unit: e.unit }));
   const html = list.map((e) => {
     const isNew = !firstRender && !seen.has(e.key);
-    return `<div class="row${isNew ? ' new' : ''}" data-k="${esc(e.key)}">${icon(e.img)}<span class="n" title="${esc(e.tip)}">${esc(e.name)}</span><span class="q">${qty(e.delta)}</span><span class="val ${cls(e.value)}">${fe(e.value, true)}</span></div>`;
+    return `<div class="row${isNew ? ' new' : ''}" data-k="${esc(e.key)}">${icon(e.img)}<span class="n" title="${esc(e.tip)}">${esc(e.name)}</span><span class="q">${qty(e.delta)}</span><span class="up1" title="${esc(t('ov.unitTip'))}">${e.unit ? '@' + fe(e.unit) : ''}</span><span class="val ${cls(e.value)}">${fe(e.value, true)}</span></div>`;
   }).join('');
   const box = $('recent');
   if (box.dataset.html !== html) { box.innerHTML = html; box.dataset.html = html; }
