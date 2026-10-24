@@ -166,6 +166,17 @@ function openDb(dataDir) {
     );
     CREATE INDEX IF NOT EXISTS price_obs_item ON price_obs(item_id, ts);
 
+    -- Même chose pour les apps sans compte : prix lus dans le log seulement (jamais les prix saisis à la main).
+    -- contributor = empreinte de l'identifiant anonyme de l'app.
+    CREATE TABLE IF NOT EXISTS price_obs_anon (
+      contributor TEXT NOT NULL,
+      item_id     INTEGER NOT NULL,
+      price       REAL NOT NULL,
+      ts          INTEGER NOT NULL,
+      PRIMARY KEY (contributor, item_id)
+    );
+    CREATE INDEX IF NOT EXISTS price_obs_anon_item ON price_obs_anon(item_id, ts);
+
     -- Noms de héros proposés par les joueurs (le jeu ne donne qu'un numéro).
     CREATE TABLE IF NOT EXISTS hero_names (
       hero_id INTEGER NOT NULL,

@@ -275,7 +275,7 @@ route('GET', /^\/api\/stats$/, () => {
   const totals = db.prepare('SELECT COUNT(*) reports, COUNT(DISTINCT user_id) players FROM reports').get();
   // Chiffres de la page d'accueil : cartes des stats anonymes et objets dont le prix vient de nos joueurs.
   Object.assign(totals, db.prepare('SELECT COUNT(*) farmSessions, COALESCE(SUM(runs), 0) farmMaps FROM farm_stats').get());
-  totals.pricedItems = db.prepare('SELECT COUNT(DISTINCT item_id) n FROM price_obs').get().n;
+  totals.pricedItems = db.prepare('SELECT COUNT(*) n FROM (SELECT item_id FROM price_obs UNION SELECT item_id FROM price_obs_anon)').get().n;
   const regions = db.prepare('SELECT region, COUNT(*) n FROM reports WHERE region IS NOT NULL GROUP BY region ORDER BY n DESC LIMIT 60').all();
   const tiers = db.prepare('SELECT timemark, COUNT(*) n FROM reports WHERE timemark IS NOT NULL GROUP BY timemark ORDER BY timemark DESC').all();
   const tags = db.prepare('SELECT strategy_tag tag, COUNT(*) n FROM reports WHERE strategy_tag IS NOT NULL GROUP BY strategy_tag ORDER BY n DESC').all();
@@ -694,24 +694,40 @@ route('GET', /^\/api\/meta\/players$/, (req, url) => {
 
 // ---------------- Prix partagés ----------------
 
+// Enregistre les prix observés d'un contributeur (compte ou app anonyme).
+function savePrices(table, who, observations) {
+  const obs = Array.isArray(observations) ? observations.slice(0, 500) : [];
+  const now = Date.now();
+  const col = table === 'price_obs' ? 'user_id' : 'contributor';
+  const stmt = db.prepare(`INSERT INTO ${table} (${col}, item_id, price, ts) VALUES (?, ?, ?, ?)
+    ON CONFLICT(${col}, item_id) DO UPDATE SET price = excluded.price, ts = excluded.ts WHERE excluded.ts > ${table}.ts`);
+  const hist = db.prepare('INSERT OR IGNORE INTO price_hist (item_id, user_id, price, ts) VALUES (?, ?, ?, ?)');
+  let n = 0;
+  for (const o of obs) {
+    const id = Math.trunc(+(o && o.id)), price = +(o && o.price), ts = Math.min(now, Math.trunc(+(o && o.ts)));
+    if (!(id > 0) || !(price > 0 && price < 1e7) || !(ts > now - 7 * 86400000)) continue;
+    stmt.run(who, id, price, ts);
+    hist.run(id, who, price, ts);
+    n++;
+  }
+  pricesCache.at = 0;
+  return n;
+}
 route('POST', /^\/api\/prices$/, async (req) => {
   const u = auth(req);
   rateLimit('prices:' + u.id, 60, 3600000);
   const body = await readJson(req);
-  const obs = Array.isArray(body.observations) ? body.observations.slice(0, 500) : [];
-  const now = Date.now();
-  const stmt = db.prepare(`INSERT INTO price_obs (user_id, item_id, price, ts) VALUES (?, ?, ?, ?)
-    ON CONFLICT(user_id, item_id) DO UPDATE SET price = excluded.price, ts = excluded.ts WHERE excluded.ts > price_obs.ts`);
-  const hist = db.prepare('INSERT OR IGNORE INTO price_hist (item_id, user_id, price, ts) VALUES (?, ?, ?, ?)');
-  let n = 0;
-  for (const o of obs) {
-    const id = Math.trunc(+o.id), price = +o.price, ts = Math.min(now, Math.trunc(+o.ts));
-    if (!(id > 0) || !(price > 0 && price < 1e7) || !(ts > now - 7 * 86400000)) continue;
-    stmt.run(u.id, id, price, ts);
-    hist.run(id, u.id, price, ts);
-    n++;
-  }
-  return { accepted: n };
+  return { accepted: savePrices('price_obs', u.id, body.observations) };
+});
+// Apps sans compte : prix lus dans le log du jeu (l'app n'envoie jamais les prix saisis à la main).
+// Identifiant anonyme de l'app (jamais gardé tel quel), limites par app et par adresse.
+route('POST', /^\/api\/prices\/anon$/, async (req) => {
+  const body = await readJson(req);
+  if (typeof body.anonId !== 'string' || !/^[0-9a-f-]{36}$/.test(body.anonId)) throw new HttpError(400, 'invalid anonymous id');
+  const who = 'a:' + sha256('prices:' + body.anonId).slice(0, 32);
+  rateLimit('prices-anon:' + who, 60, 3600000);
+  rateLimit('prices-ip:' + clientIp(req), 120, 3600000);
+  return { accepted: savePrices('price_obs_anon', who, body.observations) };
 });
 
 // Courbe de prix d'un objet : par jour, prix médian, plus bas, nombre de relevés et de joueurs.
@@ -744,7 +760,9 @@ route('GET', /^\/api\/prices$/, () => currentPrices());
 route('GET', /^\/api\/prices\/community$/, () => TITrack.get());
 function currentPrices() {
   if (Date.now() - pricesCache.at < 60000) return pricesCache.body;
-  const rows = db.prepare('SELECT item_id, price, ts FROM price_obs WHERE ts > ? ORDER BY item_id, price').all(Date.now() - 7 * 86400000);
+  const since = Date.now() - 7 * 86400000;
+  const rows = db.prepare(`SELECT item_id, price, ts FROM (SELECT item_id, price, ts FROM price_obs WHERE ts > ?
+    UNION ALL SELECT item_id, price, ts FROM price_obs_anon WHERE ts > ?) ORDER BY item_id, price`).all(since, since);
   const out = {};
   let i = 0;
   while (i < rows.length) {

@@ -95,12 +95,17 @@ class CommunityClient {
 
   queuePrice(id, price, ts) { this.queue.set(id, { id, price, ts }); }
 
+  // Prix vus à l'hôtel des ventes (lus dans le log). Avec un compte : envoyés avec le compte.
+  // Sans compte : envoyés anonymement si les stats anonymes sont activées.
   async flushPrices() {
-    if (!this.registered || !this.queue.size) return 0;
+    const anon = !this.registered;
+    if (!this.queue.size || (anon && !(this.settings.shareFarmStats && this.settings.anonId))) return 0;
     const observations = [...this.queue.values()];
     this.queue.clear();
     try {
-      const r = await this._req('POST', '/api/prices', { observations });
+      const r = anon
+        ? await this._req('POST', '/api/prices/anon', { anonId: this.settings.anonId, observations }, false)
+        : await this._req('POST', '/api/prices', { observations });
       return r.accepted;
     } catch (e) {
       for (const o of observations) if (!this.queue.has(o.id)) this.queue.set(o.id, o); // on réessaiera

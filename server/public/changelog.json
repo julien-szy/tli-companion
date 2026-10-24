@@ -1,6 +1,16 @@
 {
   "releases": [
     {
+      "version": "1.0.26",
+      "date": "2026-10-24",
+      "en": [
+        "Community prices: the auction house prices the game writes in its log are now shared anonymously even without an account (with the \"Anonymous farm stats\" option, on by default). Prices you type yourself are never sent. More players = more accurate prices for everyone."
+      ],
+      "fr": [
+        "Prix communautaires : les prix de l'hôtel des ventes que le jeu écrit dans son log sont maintenant partagés anonymement même sans compte (avec l'option « Stats de farm anonymes », activée par défaut). Les prix que tu saisis toi-même ne sont jamais envoyés. Plus de joueurs = des prix plus justes pour tout le monde."
+      ]
+    },
+    {
       "version": "1.0.25",
       "date": "2026-10-24",
       "en": [
