@@ -180,6 +180,11 @@ function openDb(dataDir) {
     if (!cols.has(c)) db.exec(`ALTER TABLE reports ADD COLUMN ${c} ${type}`);
   }
   db.exec('CREATE INDEX IF NOT EXISTS reports_region ON reports(region, timemark)');
+  // Niveau de la carte (T8-0 / T8-1 / T8-2 / Profound / Deep Space), calculé par le serveur ('' si aucun).
+  for (const tbl of ['reports', 'farm_stats']) {
+    const c = new Set(db.prepare(`PRAGMA table_info(${tbl})`).all().map((x) => x.name));
+    if (!c.has('depth')) db.exec(`ALTER TABLE ${tbl} ADD COLUMN depth TEXT`);
+  }
   // Comptes (bêta) : connexion Google (seul l'identifiant Google est gardé), profil et sessions.
   const ucols = new Set(db.prepare('PRAGMA table_info(users)').all().map((c) => c.name));
   for (const [c, type] of [['google_sub', 'TEXT'], ['avatar', 'TEXT'], ['bio', 'TEXT'], ['named', 'INTEGER NOT NULL DEFAULT 1']]) {

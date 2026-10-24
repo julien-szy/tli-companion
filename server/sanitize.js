@@ -56,7 +56,27 @@ const STRATEGY_TAGS = ['mapping', 'boss', 'netherrealm', 'dream', 'vorax', 'over
 // « Thunder Wastes Beacon (Timemark 7) » -> région + Timemark.
 function parseMapName(name) {
   const m = /^(.*?)\s*Beacon\s*\(Timemark\s*(\d+)\)/i.exec(name || '');
-  return m ? { region: m[1].trim(), timemark: +m[2] } : { region: name || null, timemark: null };
+  if (m) return { region: m[1].trim(), timemark: +m[2] };
+  const b = /^(.*?)\s*Beacon\s*$/i.exec(name || ''); // « Deep Space Beacon » -> Deep Space
+  return b ? { region: b[1].trim(), timemark: null } : { region: name || null, timemark: null };
+}
+
+// Niveau de la carte : T8-0 / T8-1 / T8-2 / Profound (T8) ou Deep Space.
+// - T8 : les deux derniers chiffres de la zone (areaId) la plus jouée donnent la profondeur
+//   (09 = T8-0, 10 = T8-1, 11 = T8-2, 12 = Profound). Sans zone connue : sonde Profound consommée.
+// - Deep Space : carte « Deep Space Beacon », ou balise / résonance / sondes Deep Space consommées.
+const DEEP_IDS = new Set([400008, 5040, 6040, 12001, 12011, 12021, 12031, 12041, 12101, 12111, 12121, 12131]);
+const PROFOUND_IDS = new Set([12000, 12010, 12020, 12030, 12040, 12050]);
+const DEPTHS = ['8-0', '8-1', '8-2', 'profound', 'deep'];
+function depthOf({ mainMap, timemark, areaIds, consumables }) {
+  const ids = (consumables || []).map((c) => +(c && c.id));
+  if (/deep space/i.test(mainMap || '') || ids.some((id) => DEEP_IDS.has(id))) return 'deep';
+  if (timemark !== 8) return null;
+  let top = 0, n = 0;
+  for (const a in areaIds || {}) if (+areaIds[a] > n) { n = +areaIds[a]; top = +a; }
+  const d = top ? { 9: '8-0', 10: '8-1', 11: '8-2', 12: 'profound' }[top % 100] : null;
+  if (d) return d;
+  return ids.some((id) => PROFOUND_IDS.has(id)) ? 'profound' : null;
 }
 
 function sanitizeReport(r) {
@@ -272,6 +292,9 @@ function sanitizeFarmStats(b) {
       ...(i && i.name ? { name: str(i.name, 120), img: img(i.img) } : {}) })).filter((i) => i.id > 0),
     modifiers: arr(b.modifiers, 25).map((m) => ({ id: int(m && m.id), desc: str(m && m.desc, 200), perMap: num(m && m.perMap) })).filter((m) => m.desc),
     consumables: arr(b.consumables, 40).map((i) => ({ id: int(i && i.id), name: str(i && i.name, 120), img: img(i && i.img), qty: num(i && i.qty), unit: num(i && i.unit) })).filter((i) => i.id > 0),
+    // Zones de la carte principale (numéro -> nombre de cartes) : sert à trouver le niveau (T8-1, Profound…).
+    areaIds: Object.fromEntries(Object.entries(b.areaIds && typeof b.areaIds === 'object' && !Array.isArray(b.areaIds) ? b.areaIds : {})
+      .slice(0, 20).map(([k, v]) => [String(parseInt(k, 10) || 0), int(v)]).filter(([k, v]) => +k > 0 && v > 0)),
   };
   // Bornes de bon sens : au moins 3 cartes et 5 minutes, FE/h plausible.
   if (out.runs < 3 || out.realMs < 5 * 60000) throw bad('session too short');
@@ -301,4 +324,4 @@ function sanitizeFeedback(b) {
   };
 }
 
-module.exports = { parseMapName, STRATEGY_TAGS, sanitizeReport, sanitizeBuild, sanitizeMeta, sanitizeFarmStats, sanitizeFeedback };
+module.exports = { parseMapName, STRATEGY_TAGS, sanitizeReport, sanitizeBuild, sanitizeMeta, sanitizeFarmStats, sanitizeFeedback, depthOf, DEPTHS };

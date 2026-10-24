@@ -199,6 +199,8 @@ async function sendFarmStats(report) {
     // Mécanique de farm : modificateurs de carte (talents Netherrealm, compas, sondes…) et leur fréquence par carte.
     modifiers: (report.strategy.modifiers || []).filter((m) => m.desc).slice(0, 25).map((m) => ({ id: m.id, desc: m.desc, perMap: m.perMap })),
     consumables: report.strategy.consumables.map((c) => ({ id: c.id, name: c.name, img: c.img, qty: c.qty, unit: c.unit })),
+    // Zones de la carte principale : le serveur en déduit le niveau (T8-1, Profound…).
+    areaIds: report.strategy.maps[0] ? report.strategy.maps[0].areaIds || {} : {},
   };
   try {
     await community.sendFarmStats(body);
@@ -535,6 +537,7 @@ function autoStatsFlush() {
     loot: tracker.itemList(loot).filter((i) => i.qty > 0).slice(0, 150).map((i, k) => ({ id: i.id, qty: i.qty, unit: i.unit, ...(k < 40 ? { name: i.name, img: i.img } : {}) })),
     modifiers: autoModifiers(runs),
     consumables: tracker.itemList(cost).filter((i) => i.qty < 0).slice(0, 40).map((i) => ({ id: i.id, name: i.name, img: i.img, qty: i.qty, unit: i.unit })),
+    areaIds: runs.filter((r) => r.name === first.name && r.node).reduce((a, r) => { a[r.node.areaId] = (a[r.node.areaId] || 0) + 1; return a; }, {}),
   };
   return community.sendFarmStats(body).catch((e) => console.error('Stats anonymes (auto) :', e.message));
 }

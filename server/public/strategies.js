@@ -1,12 +1,15 @@
 // Stratégies de farm : les plus rentables au cours actuel + toutes les sessions partagées, avec filtres.
-const FILTERS = ['hero', 'region', 'tier', 'tag', 'item', 'server', 'big', 'sort'];
+const FILTERS = ['hero', 'region', 'tier', 'depth', 'tag', 'item', 'server', 'big', 'sort'];
+const DEPTHS = ['8-0', '8-1', '8-2', 'profound', 'deep'];
 const TAGS = ['mapping', 'boss', 'netherrealm', 'dream', 'vorax', 'overrealm', 'sandlord', 'clockwork', 'blacksail', 'deepspace', 'leveling', 'other'];
 const params = new URLSearchParams(location.search);
 FILTERS.forEach((k) => { if (params.get(k)) $(k).dataset.want = params.get(k); });
 document.title = `TLI Companion — ${t('pageTitle')}`;
 $('rows').innerHTML = `<tr><td colspan="9" class="empty">${esc(t('loading'))}</td></tr>`;
 const tagName = (k) => (k ? t('tag_' + k) : '');
-const mapLabel = (region, tier) => `${region || '?'}${tier ? ` · T${tier}` : ''}`;
+// « Thunder Wastes · T8-1 », « Thunder Wastes · T8 Profound », « Deep Space ».
+const mapLabel = (region, tier, depth) => (depth === 'deep' ? region || t('depth_deep')
+  : `${region || '?'}${tier ? ` · ${depth && depth !== 'profound' ? 'T' + depth : `T${tier}${depth === 'profound' ? ' ' + t('depth_profound') : ''}`}` : ''}`);
 
 // Classes : numéro du jeu -> « Héros — Trait » (même correspondance que la page Méta).
 let HERO_LIST = [], HERO_MAP = {};
@@ -23,6 +26,8 @@ async function loadFilters() {
   add('hero', s.heroes.map((h) => `<option value="${h.hero_id}">${esc(heroName(h))} (${h.n})</option>`).join(''));
   add('region', s.regions.map((r) => `<option value="${esc(r.region)}">${esc(r.region)} (${r.n})</option>`).join(''));
   add('tier', s.tiers.map((r) => `<option value="${r.timemark}">${esc(t('timemarkN', { n: r.timemark }))} (${r.n})</option>`).join(''));
+  const depthN = Object.fromEntries((s.depths || []).map((x) => [x.depth, x.n]));
+  add('depth', DEPTHS.map((d) => `<option value="${d}">${esc(t('depth_' + d))}${depthN[d] ? ` (${depthN[d]})` : ''}</option>`).join(''));
   const tagCount = Object.fromEntries(s.tags.map((x) => [x.tag, x.n]));
   add('tag', TAGS.map((k) => `<option value="${k}">${esc(tagName(k))}${tagCount[k] ? ` (${tagCount[k]})` : ''}</option>`).join(''));
   add('item', s.items.map((i) => `<option value="${i.id}">${esc(i.name)} (${i.n})</option>`).join(''));
@@ -66,12 +71,12 @@ async function load() {
         <div><h4>${esc(t('dLoot'))}</h4><ul class="lootl">${loot}</ul>
           <h4 style="margin-top:12px">${esc(t('dItems'))}</h4><ul class="lootl">${items}</ul></div>
       </div>
-      <button class="btn" data-routes="${esc(b.region || '')}|${b.timemark ?? ''}|${esc(b.tag || '')}">${esc(t('dRoutes'))}</button>
+      <button class="btn" data-routes="${esc(b.region || '')}|${b.timemark ?? ''}|${esc(b.tag || '')}|${esc(b.depth || '')}">${esc(t('dRoutes'))}</button>
     </div>`;
   };
   $('best').innerHTML = best.length ? best.slice(0, 12).map((b, i) => `<tr class="click" data-i="${i}">
       <td class="r muted">${i + 1}</td>
-      <td><b>${esc(mapLabel(b.region, b.timemark))}</b>${b.tag ? ` <span class="tag">${esc(tagName(b.tag))}</span>` : ''} <span class="muted chev">▾</span></td>
+      <td><b>${esc(mapLabel(b.region, b.timemark, b.depth))}</b>${b.tag ? ` <span class="tag">${esc(tagName(b.tag))}</span>` : ''} <span class="muted chev">▾</span></td>
       <td class="hide-sm">${b.items.map((it) => `<span title="${esc(it.name)}">${icon(it.img)}</span>`).join('') || '<span class="muted">–</span>'}</td>
       <td class="r hide-sm">${b.sessions} <span class="muted">/ ${b.players}</span></td>
       <td class="r hide-sm muted">${nf1.format(b.hours)} h</td>
@@ -87,13 +92,13 @@ async function load() {
   }));
   document.querySelectorAll('#best [data-routes]').forEach((btn) => (btn.onclick = (e) => {
     e.stopPropagation();
-    const [region, tier, tag] = btn.dataset.routes.split('|');
-    $('region').value = region; $('tier').value = tier; $('tag').value = tag;
+    const [region, tier, tag, depth] = btn.dataset.routes.split('|');
+    $('region').value = region; $('tier').value = tier; $('tag').value = tag; $('depth').value = depth || '';
     load().then(() => $('allTitle').scrollIntoView({ behavior: 'smooth' }));
   }));
 
   $('rows').innerHTML = reports.map((r) => `<tr class="click" data-id="${esc(r.id)}">
-      <td><b>${esc(r.title || r.main_map || t('farmSession'))}</b><br><span class="muted">${esc(mapLabel(r.region, r.timemark))}${r.strategy_tag ? ' · ' + esc(tagName(r.strategy_tag)) : ''}</span></td>
+      <td><b>${esc(r.title || r.main_map || t('farmSession'))}</b><br><span class="muted">${esc(mapLabel(r.region, r.timemark, r.depth))}${r.strategy_tag ? ' · ' + esc(tagName(r.strategy_tag)) : ''}</span></td>
       <td>${esc(r.hero_id != null ? heroName(r.hero_id, r.hero_display) : '–')}</td><td class="hide-sm muted">${esc(r.author)}${r.server_region ? `<br><span style="font-size:12px">${esc(r.server_region)}</span>` : ''}</td>
       <td class="r">${r.runs}</td><td class="r hide-sm">${dur(r.real_ms)}</td>
       <td class="r ${cls(r.profit)}">${fe(r.profit, true)}${r.big_removed > 0 ? `<br><span class="muted small" title="${esc(t('bigRemovedTip'))}">−${fe(r.big_removed)} ${esc(t('bigRemoved'))}</span>` : ''}</td><td class="r"><b>${fe(r.per_hour_real)}</b></td>

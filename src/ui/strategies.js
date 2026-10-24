@@ -3,9 +3,10 @@
 // - « Routes partagées » : les sessions publiées par les joueurs, et la fiche de chacune (votes, commentaires, code du jeu).
 // Filtres communs aux deux onglets, dont « Gros drops » (retire les jackpots rares du FE/h).
 const Strategies = (() => {
-  const FKEYS = ['hero', 'region', 'tier', 'tag', 'item', 'server', 'big'];
+  const FKEYS = ['hero', 'region', 'tier', 'depth', 'tag', 'item', 'server', 'big'];
+  const DEPTHS = ['8-0', '8-1', '8-2', 'profound', 'deep'];
   const BIGS = [50, 100, 250, 500, 1000];
-  const f = { hero: '', region: '', tier: '', tag: '', item: '', server: '', big: '', sort: 'perhour' };
+  const f = { hero: '', region: '', tier: '', depth: '', tag: '', item: '', server: '', big: '', sort: 'perhour' };
   let stats = null;
   let heroes = [];
   let routeId = null; // fiche ouverte dans l'onglet Routes
@@ -20,7 +21,9 @@ const Strategies = (() => {
     return h ? `<img class="portrait" style="width:${size}px;height:${size}px" src="${esc(h.portrait)}" alt="">` : '';
   };
   const heroName = (id, fallback) => { const h = heroOfGame(id); return h ? `${h.hero} — ${h.trait}` : fallback || t('st.unknownClass', { id }); };
-  const place = (region, tier) => `${region || '?'}${tier ? ` · T${tier}` : ''}`;
+  // « Thunder Wastes · T8-1 », « Thunder Wastes · T8 Profound », « Deep Space ».
+  const place = (region, tier, depth) => (depth === 'deep' ? region || t('st.depth_deep')
+    : `${region || '?'}${tier ? ` · ${depth && depth !== 'profound' ? 'T' + depth : `T${tier}${depth === 'profound' ? ' ' + t('st.depth_profound') : ''}`}` : ''}`);
   const tagName = (k) => (k ? t('tag.' + k) : '');
   const qs = (withSort) => {
     const p = new URLSearchParams();
@@ -37,6 +40,7 @@ const Strategies = (() => {
       ${sel('hero', t('st.allClasses'), stats.heroes.map((h) => opt(h.hero_id, `${heroName(h.hero_id, h.name)} (${h.n})`, f.hero)).join(''))}
       ${sel('region', t('st.allMaps'), stats.regions.map((r) => opt(r.region, `${r.region} (${r.n})`, f.region)).join(''))}
       ${sel('tier', t('st.allTiers'), stats.tiers.map((r) => opt(r.timemark, `T${r.timemark} (${r.n})`, f.tier)).join(''))}
+      ${sel('depth', t('st.allDepths'), DEPTHS.map((d) => { const n = ((stats.depths || []).find((x) => x.depth === d) || {}).n; return opt(d, t('st.depth_' + d) + (n ? ` (${n})` : ''), f.depth); }).join(''))}
       ${sel('tag', t('st.allTypes'), STRATEGY_TAGS.map((k) => opt(k, tagName(k), f.tag)).join(''))}
       ${sel('item', t('st.allItems'), stats.items.map((i) => opt(i.id, `${i.name} (${i.n})`, f.item)).join(''))}
       ${sel('server', t('st.allServers'), stats.servers.map((x) => opt(x.server, `${x.server} (${x.n})`, f.server)).join(''))}
@@ -64,7 +68,7 @@ const Strategies = (() => {
         <th class="r">${esc(t('st.colNow'))}</th><th class="r">${esc(t('st.colThen'))}</th></tr></thead><tbody>
       ${best.map((b, i) => `<tr class="click" data-i="${i}">
           <td class="r muted">${i + 1}</td>
-          <td><b>${esc(place(b.region, b.timemark))}</b>${b.tag ? ` <span class="tag">${esc(tagName(b.tag))}</span>` : ''} <span class="muted st-chev">▾</span></td>
+          <td><b>${esc(place(b.region, b.timemark, b.depth))}</b>${b.tag ? ` <span class="tag">${esc(tagName(b.tag))}</span>` : ''} <span class="muted st-chev">▾</span></td>
           <td>${b.items.map((it) => `<span title="${esc(it.name)}">${icon(it.img)}</span>`).join('') || '<span class="muted">–</span>'}</td>
           <td class="r">${b.sessions} <span class="muted">/ ${b.players}</span></td>
           <td class="r muted">${nf1.format(b.hours)} h</td>
@@ -113,7 +117,7 @@ const Strategies = (() => {
       if (head) { head.classList.remove('open'); head.scrollIntoView({ block: 'nearest' }); }
     };
     cell.querySelector('[data-routes]').onclick = () => {
-      f.region = b.region || ''; f.tier = b.timemark != null ? String(b.timemark) : ''; f.tag = b.tag || '';
+      f.region = b.region || ''; f.tier = b.timemark != null ? String(b.timemark) : ''; f.tag = b.tag || ''; f.depth = b.depth || '';
       routeId = null;
       showTab('stratRoutes');
     };
@@ -130,7 +134,7 @@ const Strategies = (() => {
       <table><thead><tr><th>${esc(t('st.colStrategy'))}</th><th>${esc(t('col.class'))}</th><th>${esc(t('st.colPlayer'))}</th><th class="r">${esc(t('k.maps'))}</th>
         <th class="r">${esc(t('st.colDuration'))}</th><th class="r">${esc(t('st.colProfit'))}</th><th class="r">FE/h</th><th class="r">${esc(t('st.colVotes'))}</th><th class="r">${esc(t('st.colPublished'))}</th></tr></thead><tbody>
       ${res.reports.map((r) => `<tr class="click" data-id="${esc(r.id)}">
-          <td><b>${esc(r.title || r.main_map || t('st.session'))}</b><br><span class="muted">${esc(place(r.region, r.timemark))}${r.strategy_tag ? ' · ' + esc(tagName(r.strategy_tag)) : ''}</span></td>
+          <td><b>${esc(r.title || r.main_map || t('st.session'))}</b><br><span class="muted">${esc(place(r.region, r.timemark, r.depth))}${r.strategy_tag ? ' · ' + esc(tagName(r.strategy_tag)) : ''}</span></td>
           <td>${heroOfGame(r.hero_id) ? portrait(heroOfGame(r.hero_id).key, 24) + ' ' : ''}${esc(r.hero_id != null ? heroName(r.hero_id, r.hero_display) : '–')}</td>
           <td class="muted">${esc(r.author)}${r.server_region ? `<br><span class="small">${esc(r.server_region)}</span>` : ''}</td>
           <td class="r">${r.runs}</td><td class="r">${dur(r.real_ms)}</td>

@@ -5,6 +5,18 @@
   },
   "releases": [
     {
+      "version": "1.0.25",
+      "date": "2026-10-24",
+      "en": [
+        "Strategies: routes now show their level (T8-0, T8-1, T8-2, Profound, Deep Space) and you can filter by level, in the app and on the website. In \"Best FE/h\", Profound is no longer mixed with normal T8.",
+        "Anonymous farm stats now include the map area, so the level is known for new sessions too."
+      ],
+      "fr": [
+        "Stratégies : les routes affichent leur niveau (T8-0, T8-1, T8-2, Profound, Deep Space) et un filtre par niveau, dans l'app et sur le site. Dans « Meilleur FE/h », Profound n'est plus mélangé avec le T8 normal.",
+        "Les stats de farm anonymes envoient maintenant la zone de la carte, pour que le niveau soit connu aussi pour les nouvelles sessions."
+      ]
+    },
+    {
       "version": "1.0.24",
       "date": "2026-10-24",
       "en": [

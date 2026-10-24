@@ -8,7 +8,7 @@ const zlib = require('zlib');
 const { openDb } = require('./db');
 const AI = require('./ai');
 const TITrack = require('./titrack');
-const { sanitizeReport, sanitizeBuild, sanitizeMeta, parseMapName, sanitizeFarmStats, sanitizeFeedback } = require('./sanitize');
+const { sanitizeReport, sanitizeBuild, sanitizeMeta, parseMapName, sanitizeFarmStats, sanitizeFeedback, depthOf, DEPTHS } = require('./sanitize');
 
 const PORT = +(process.env.PORT || 8080);
 const HOST = process.env.HOST || '127.0.0.1';
@@ -22,6 +22,23 @@ TITrack.start(DATA_DIR);
 for (const row of db.prepare('SELECT id, main_map FROM reports WHERE region IS NULL AND main_map IS NOT NULL').all()) {
   const { region, timemark } = parseMapName(row.main_map);
   db.prepare('UPDATE reports SET region = ?, timemark = ? WHERE id = ?').run(region, timemark, row.id);
+}
+// Niveau de la carte (T8-1, Profound, Deep Space…) des fiches et stats qui n'en ont pas encore.
+for (const row of db.prepare('SELECT id, main_map, json FROM reports WHERE depth IS NULL').all()) {
+  let d = null;
+  try {
+    const r = JSON.parse(row.json);
+    const main = r.strategy.maps[0] || {};
+    const { region, timemark } = parseMapName(row.main_map);
+    d = depthOf({ mainMap: row.main_map, timemark, areaIds: main.areaIds, consumables: r.strategy.consumables });
+    if (region) db.prepare('UPDATE reports SET region = ? WHERE id = ? AND region IS NOT ?').run(region, row.id, region);
+  } catch { /* fiche illisible : pas de niveau */ }
+  db.prepare('UPDATE reports SET depth = ? WHERE id = ?').run(d || '', row.id);
+}
+for (const row of db.prepare('SELECT id, main_map, timemark, json FROM farm_stats WHERE depth IS NULL').all()) {
+  let d = null;
+  try { const j = JSON.parse(row.json); d = depthOf({ mainMap: row.main_map, timemark: row.timemark, areaIds: j.areaIds, consumables: j.consumables }); } catch { /* rien */ }
+  db.prepare('UPDATE farm_stats SET depth = ? WHERE id = ?').run(d || '', row.id);
 }
 const sha256 = (s) => crypto.createHash('sha256').update(s).digest('hex');
 
@@ -122,17 +139,18 @@ route('POST', /^\/api\/reports$/, async (req) => {
   const { region, timemark } = parseMapName(mainMap);
   // Consommables (compas, sondes…) : « |id|id| » pour filtrer avec LIKE.
   const cons = r.strategy.consumables.length ? '|' + r.strategy.consumables.map((c) => c.id).join('|') + '|' : null;
+  const depth = depthOf({ mainMap, timemark, areaIds: r.strategy.maps[0] ? r.strategy.maps[0].areaIds : null, consumables: r.strategy.consumables }) || '';
   db.prepare(`INSERT INTO reports (id, user_id, hero_id, hero_name, title, main_map, profit, per_hour_real, per_hour_map, runs, real_ms, started_at, created_at, json,
-      region, timemark, strategy_tag, server_region, season, consumables)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      region, timemark, strategy_tag, server_region, season, consumables, depth)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET hero_id = excluded.hero_id, hero_name = excluded.hero_name, title = excluded.title,
       main_map = excluded.main_map, profit = excluded.profit, per_hour_real = excluded.per_hour_real,
       per_hour_map = excluded.per_hour_map, runs = excluded.runs, real_ms = excluded.real_ms, json = excluded.json,
       region = excluded.region, timemark = excluded.timemark, strategy_tag = excluded.strategy_tag,
-      server_region = excluded.server_region, season = excluded.season, consumables = excluded.consumables`)
+      server_region = excluded.server_region, season = excluded.season, consumables = excluded.consumables, depth = excluded.depth`)
     .run(r.id, u.id, r.hero ? r.hero.id : null, r.hero ? r.hero.name : null, r.title, mainMap,
       t.profit, t.perHourReal, t.perHourMap, t.runs, t.realMs, r.startedAt, Date.now(), JSON.stringify(r),
-      region, timemark, r.strategyTag, r.context ? r.context.server : null, r.context ? r.context.season : null, cons);
+      region, timemark, r.strategyTag, r.context ? r.context.server : null, r.context ? r.context.season : null, cons, depth);
   bestCache.clear();
   if (r.hero && r.hero.name && !/^(Hero|Héros) \d+$/.test(r.hero.name)) {
     db.prepare('INSERT INTO hero_names (hero_id, user_id, name) VALUES (?, ?, ?) ON CONFLICT DO UPDATE SET name = excluded.name')
@@ -166,6 +184,7 @@ function reportFilters(q) {
   if (q.get('map')) { where.push('r.main_map = ?'); args.push(q.get('map')); }
   if (q.get('region')) { where.push('r.region = ?'); args.push(q.get('region')); }
   if (q.get('tier')) { where.push('r.timemark = ?'); args.push(+q.get('tier')); }
+  if (DEPTHS.includes(q.get('depth'))) { where.push('r.depth = ?'); args.push(q.get('depth')); }
   if (q.get('tag')) { where.push('r.strategy_tag = ?'); args.push(q.get('tag')); }
   if (q.get('item')) { where.push('r.consumables LIKE ?'); args.push(`%|${+q.get('item')}|%`); }
   if (q.get('server')) { where.push('r.server_region = ?'); args.push(q.get('server')); }
@@ -187,7 +206,7 @@ route('GET', /^\/api\/reports$/, (req, url) => {
   const cut = bigCut(q);
   const cols = `r.id, r.user_id, u.name AS author, r.hero_id, r.hero_name, r.title, r.main_map, r.profit,
       r.per_hour_real, r.per_hour_map, r.runs, r.real_ms, r.started_at, r.created_at, r.likes, r.dislikes,
-      r.region, r.timemark, r.strategy_tag, r.server_region`;
+      r.region, r.timemark, r.strategy_tag, r.server_region, r.depth`;
   let rows;
   if (!cut) {
     rows = db.prepare(`SELECT ${cols} FROM reports r JOIN users u ON u.id = r.user_id WHERE ${where.join(' AND ')} ORDER BY ${sort} LIMIT ? OFFSET ?`)
@@ -261,6 +280,8 @@ route('GET', /^\/api\/stats$/, () => {
   const tiers = db.prepare('SELECT timemark, COUNT(*) n FROM reports WHERE timemark IS NOT NULL GROUP BY timemark ORDER BY timemark DESC').all();
   const tags = db.prepare('SELECT strategy_tag tag, COUNT(*) n FROM reports WHERE strategy_tag IS NOT NULL GROUP BY strategy_tag ORDER BY n DESC').all();
   const servers = db.prepare('SELECT server_region server, COUNT(*) n FROM reports WHERE server_region IS NOT NULL GROUP BY server_region ORDER BY n DESC').all();
+  const depthN = Object.fromEntries(db.prepare("SELECT depth, COUNT(*) n FROM reports WHERE depth IS NOT NULL AND depth != '' GROUP BY depth").all().map((x) => [x.depth, x.n]));
+  const depths = DEPTHS.map((depth) => ({ depth, n: depthN[depth] || 0 }));
   // Consommables les plus utilisés (compas, sondes…), avec leur nom et icône.
   const items = {};
   for (const row of db.prepare('SELECT json FROM reports ORDER BY created_at DESC LIMIT 2000').all()) {
@@ -269,7 +290,7 @@ route('GET', /^\/api\/stats$/, () => {
       it.n++;
     }
   }
-  return { heroes, maps, totals, regions, tiers, tags, servers, items: Object.values(items).sort((a, b) => b.n - a.n).slice(0, 60) };
+  return { heroes, maps, totals, regions, tiers, tags, servers, depths, items: Object.values(items).sort((a, b) => b.n - a.n).slice(0, 60) };
 });
 
 // ---------------- Avis des joueurs ----------------
@@ -297,11 +318,13 @@ route('POST', /^\/api\/stats\/farm$/, async (req) => {
   if (existing && existing.contributor !== contributor) throw new HttpError(403, 'not yours');
   const { region, timemark } = parseMapName(s.mainMap);
   const cons = s.consumables.length ? '|' + s.consumables.map((c) => c.id).join('|') + '|' : null;
+  const depth = depthOf({ mainMap: s.mainMap, timemark, areaIds: s.areaIds, consumables: s.consumables }) || '';
   db.prepare(`INSERT INTO farm_stats (id, contributor, created_at, hero_id, main_map, region, timemark, strategy_tag, server_region, season,
-      runs, real_ms, map_ms, afk_ms, profit, per_hour, consumables, json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ON CONFLICT(id) DO UPDATE SET strategy_tag = excluded.strategy_tag, json = excluded.json`)
+      runs, real_ms, map_ms, afk_ms, profit, per_hour, consumables, json, depth) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET strategy_tag = excluded.strategy_tag, json = excluded.json, depth = excluded.depth`)
     .run(s.id, contributor, Date.now(), s.heroId, s.mainMap, region, timemark, s.strategyTag, s.server, s.season,
-      s.runs, s.realMs, s.mapMs, s.afkMs, s.profit, s.perHour, cons, JSON.stringify({ loot: s.loot, consumables: s.consumables, modifiers: s.modifiers }));
+      s.runs, s.realMs, s.mapMs, s.afkMs, s.profit, s.perHour, cons,
+      JSON.stringify({ loot: s.loot, consumables: s.consumables, modifiers: s.modifiers, areaIds: s.areaIds }), depth);
   bestCache.clear();
   return { ok: true };
 });
@@ -312,6 +335,7 @@ function statsFilters(q) {
   if (q.get('hero')) { where.push('hero_id = ?'); args.push(+q.get('hero')); }
   if (q.get('region')) { where.push('region = ?'); args.push(q.get('region')); }
   if (q.get('tier')) { where.push('timemark = ?'); args.push(+q.get('tier')); }
+  if (DEPTHS.includes(q.get('depth'))) { where.push('depth = ?'); args.push(q.get('depth')); }
   if (q.get('tag')) { where.push('strategy_tag = ?'); args.push(q.get('tag')); }
   if (q.get('item')) { where.push('consumables LIKE ?'); args.push(`%|${+q.get('item')}|%`); }
   if (q.get('server')) { where.push('server_region = ?'); args.push(q.get('server')); }
@@ -370,7 +394,7 @@ route('GET', /^\/api\/strategies\/best$/, (req, url) => {
   if (hit && Date.now() - hit.at < 5 * 60000) return hit.body;
   const { where, args } = statsFilters(q);
   const cut = bigCut(q);
-  const rows = db.prepare(`SELECT contributor, region, timemark, strategy_tag, hero_id, runs, real_ms, map_ms, afk_ms, per_hour, json
+  const rows = db.prepare(`SELECT contributor, region, timemark, strategy_tag, depth, hero_id, runs, real_ms, map_ms, afk_ms, per_hour, json
     FROM farm_stats WHERE ${where.join(' AND ')} ORDER BY created_at DESC LIMIT 5000`).all(...args);
   const priceNow = reliablePrices();
   const nameStmt = db.prepare('SELECT name, img FROM item_names WHERE id = ?');
@@ -379,8 +403,8 @@ route('GET', /^\/api\/strategies\/best$/, (req, url) => {
   for (const row of rows) {
     const d = JSON.parse(row.json);
     let value = 0;
-    const k = `${row.region || '?'}|${row.timemark ?? ''}|${row.strategy_tag || ''}`;
-    const g = (groups[k] = groups[k] || { region: row.region, timemark: row.timemark, tag: row.strategy_tag, sessions: 0, players: new Set(),
+    const k = `${row.region || '?'}|${row.timemark ?? ''}|${row.strategy_tag || ''}|${row.depth || ''}`;
+    const g = (groups[k] = groups[k] || { region: row.region, timemark: row.timemark, tag: row.strategy_tag, depth: row.depth || null, sessions: 0, players: new Set(),
       hours: 0, mapHours: 0, runs: 0, valueNow: 0, valueThen: 0, cutValue: 0, heroes: {}, items: {}, loot: {}, mods: {}, modSessions: 0 });
     for (const i of d.loot) {
       const unitNow = priceNow(i.id, i.unit);
@@ -418,7 +442,7 @@ route('GET', /^\/api\/strategies\/best$/, (req, url) => {
       return { id: l.id, name: l.name || null, img: l.img || null, perMap: l.qty / g.runs, share: l.value / lootTotal, fePerHour: l.value / g.hours };
     });
     return {
-      region: g.region, timemark: g.timemark, tag: g.tag, sessions: g.sessions, players: g.players.size,
+      region: g.region, timemark: g.timemark, tag: g.tag, depth: g.depth, sessions: g.sessions, players: g.players.size,
       hours: Math.round(g.hours * 10) / 10, efficiency: g.hours ? g.mapHours / g.hours : null,
       mapsPerHour: g.runs / g.hours, avgMapMin: g.runs ? (g.mapHours * 60) / g.runs : null,
       perHourNow: g.valueNow / g.hours, perHourThen: (g.valueThen - g.cutValue) / g.hours, cutPerHour: g.cutValue / g.hours,
