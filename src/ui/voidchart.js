@@ -94,11 +94,24 @@ const VoidChart = (() => {
   async function mount(box, r, opts = {}) {
     await load();
     const ro = !!opts.readOnly;
-    let picks = r.voidChart && Object.keys(r.voidChart).length ? JSON.parse(JSON.stringify(r.voidChart)) : guess(r.strategy.modifiers || []);
-    const fromLog = !(r.voidChart && Object.keys(r.voidChart).length);
+    const hasOwn = !!(r.voidChart && Object.keys(r.voidChart).length);
+    let picks = hasOwn ? JSON.parse(JSON.stringify(r.voidChart)) : guess(r.strategy.modifiers || []);
+    const fromLog = !hasOwn;
+    // Void Charts corrigés dans les autres sessions : sans arbre à elle, la session reprend le plus récent
+    // (on farme souvent avec le même) ; la liste permet d'en charger un autre. Enregistré au premier changement.
+    let history = [];
+    let source = hasOwn ? 'own' : 'log';
+    let prefill = null;
+    if (!ro) {
+      try { history = (await tli.voidChartHistory()).filter((h) => h.id !== r.id); } catch { history = []; }
+      if (!hasOwn && history.length) { prefill = history[0]; picks = JSON.parse(JSON.stringify(prefill.voidChart)); source = 'last'; }
+    }
+    const when = (ts) => new Date(ts).toLocaleDateString(typeof LOCALE !== 'undefined' ? LOCALE : undefined, { day: 'numeric', month: 'short' });
+    const histLabel = (h) => `${when(h.startedAt)} · ${h.map.replace(/ Beacon/, '')}${h.title && h.title !== h.map ? ' · ' + h.title : ''} (${t('vce.points', { n: countPts(h.voidChart) })})`;
     const sets = () => Object.fromEntries(data.constellations.map((c) => [c.slug, new Set(picks[c.slug] || [])]));
     let cur = (Object.entries(picks).sort((a, b) => b[1].length - a[1].length)[0] || [data.constellations[0].slug])[0];
-    const points = () => Object.entries(picks).reduce((n, [slug, ids]) => { const c = bySlug(slug); return n + ids.filter((id) => !c || id !== c.start).length; }, 0);
+    function countPts(p) { return Object.entries(p || {}).reduce((n, [slug, ids]) => { const c = bySlug(slug); return n + ids.filter((id) => !c || id !== c.start).length; }, 0); }
+    const points = () => countPts(picks);
     const save = () => {
       if (ro) return;
       const clean = {};
@@ -106,6 +119,7 @@ const VoidChart = (() => {
       picks = clean;
       tli.updateReport(r.id, { voidChart: clean });
       r.voidChart = clean;
+      if (source !== 'last') prefill = null;
     };
     const render = () => {
       const s = sets();
@@ -119,8 +133,12 @@ const VoidChart = (() => {
         return `<g class="vce-n${on.has(n.id) ? ' on' : ''}${n.id === c.start ? ' start' : ''}${big ? ' big' : mid ? ' mid' : ''}" data-node="${n.id}"><title>${esc([n.name, ...n.effects].join('\n'))}</title>
           <circle class="hit" cx="${n.x}" cy="${n.y}" r="${n.r + 16}"/><circle class="dot" cx="${n.x}" cy="${n.y}" r="${Math.max(16, n.r * 0.7)}"/></g>`; }).join('');
       box.innerHTML = `<div class="vce-head"><h2>${esc(t('vce.title'))}</h2><span class="muted${points() > 92 ? " neg" : ""}">${esc(t("vce.points", { n: points() }))}</span>
-          ${ro ? '' : `<button class="btn" id="vceAuto">${esc(t('vce.auto'))}</button><button class="btn" id="vceClear">${esc(t('vce.clear'))}</button>`}</div>
-        <p class="muted vce-help">${esc(ro ? t(fromLog ? 'vce.roGuess' : 'vce.roExact') : t(fromLog && !r.voidChart ? 'vce.helpGuess' : 'vce.help'))}${!ro && r.shared ? ' ' + esc(t('vce.helpShared')) : ''}</p>
+          ${ro ? '' : `${history.length ? `<select id="vceLoad" title="${esc(t('vce.loadHelp'))}"><option value="">${esc(t('vce.load'))}</option>
+            ${history.map((h) => `<option value="${esc(h.id)}">${esc(histLabel(h))}</option>`).join('')}</select>` : ''}
+            <button class="btn" id="vceAuto">${esc(t('vce.auto'))}</button><button class="btn" id="vceClear">${esc(t('vce.clear'))}</button>`}</div>
+        <p class="muted vce-help">${esc(ro ? t(fromLog ? 'vce.roGuess' : 'vce.roExact')
+          : prefill ? t('vce.helpLast', { when: when(prefill.startedAt), map: prefill.map.replace(/ Beacon/, '') })
+          : t(source === 'log' && !r.voidChart ? 'vce.helpGuess' : 'vce.help'))}${!ro && r.shared ? ' ' + esc(t('vce.helpShared')) : ''}</p>
         <div class="vce-tabs">${data.constellations.filter((k) => !ro || (s[k.slug] && s[k.slug].size > 1)).map((k) => { const n = (s[k.slug] || new Set()).size; const cnt = n ? n - (s[k.slug].has(k.start) ? 1 : 0) : 0;
           return `<button class="vce-tab${k.slug === cur ? ' on' : ''}${cnt ? ' used' : ''}" data-slug="${esc(k.slug)}">${esc(k.name)}${cnt ? ` <b>${cnt}</b>` : ''}</button>`; }).join('')}</div>
         <svg class="vce-svg" viewBox="${vb.join(' ')}"><g class="vce-links">${lines}</g>${nodes}</svg>`;
@@ -134,10 +152,16 @@ const VoidChart = (() => {
         else if (taken.has(id)) { taken.delete(id); const keep = connected(c, taken); for (const x of [...taken]) if (!keep.has(x)) taken.delete(x); }
         else for (const x of pathTo(c, taken, id)) taken.add(x);
         picks[cur] = [...taken];
+        if (source === 'last') source = 'edited';
         save();
         render();
       }));
-      $('vceAuto').onclick = () => { picks = guess(r.strategy.modifiers || []); save(); render(); };
+      $('vceAuto').onclick = () => { source = 'log'; picks = guess(r.strategy.modifiers || []); save(); render(); };
+      if ($('vceLoad')) $('vceLoad').onchange = (e) => {
+        const h = history.find((x) => x.id === e.target.value);
+        if (!h) return;
+        source = 'loaded'; picks = JSON.parse(JSON.stringify(h.voidChart)); save(); render();
+      };
       $('vceClear').onclick = async () => { if (!(await askConfirm(t('vce.confirmClear'), { danger: true }))) return; picks = {}; save(); render(); };
     };
     render();

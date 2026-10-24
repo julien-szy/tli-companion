@@ -19,6 +19,7 @@ contextBridge.exposeInMainWorld('tli', {
   onStockAlert: (cb) => ipcRenderer.on('stockAlert', (_e, a) => cb(a)),
   listReports: () => ipcRenderer.invoke('listReports'),
   getReport: (id) => ipcRenderer.invoke('getReport', id),
+  voidChartHistory: () => ipcRenderer.invoke('voidChartHistory'),
   updateReport: (id, patch) => ipcRenderer.invoke('updateReport', id, patch),
   deleteReport: (id) => ipcRenderer.invoke('deleteReport', id),
   setHeroName: (heroId, name) => ipcRenderer.invoke('setHeroName', heroId, name),

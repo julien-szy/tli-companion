@@ -1013,6 +1013,16 @@ ipcMain.handle('whatsNew', () => {
   return { version: cur, releases };
 });
 ipcMain.handle('getReport', (_e, id) => loadJson(reportPath(id), null));
+// Void Charts déjà corrigés dans les sessions du joueur (le plus récent d'abord), pour préremplir une nouvelle route.
+ipcMain.handle('voidChartHistory', () => {
+  let files = [];
+  try { files = fs.readdirSync(SESSIONS_DIR).filter((f) => f.endsWith('.json')); } catch { return []; }
+  return files.map((f) => loadJson(path.join(SESSIONS_DIR, f), null))
+    .filter((r) => r && r.voidChart && Object.keys(r.voidChart).length)
+    .map((r) => ({ id: r.id, title: r.title || '', map: (r.strategy.maps[0] || {}).name || '', startedAt: r.startedAt,
+      at: r.voidChartAt || r.voidChartChecked || r.endedAt || r.startedAt, voidChart: r.voidChart }))
+    .sort((a, b) => b.at - a.at).slice(0, 40);
+});
 // Avis du joueur : on ne transmet que ces champs texte, bornés (la version part dans l'en-tête habituel).
 ipcMain.handle('sendFeedback', async (_e, f) => {
   if (!f || typeof f !== 'object') return { ok: false, error: 'invalid' };
@@ -1057,7 +1067,7 @@ ipcMain.handle('updateReport', (_e, id, patch) => {
   if (typeof patch.notes === 'string') r.notes = patch.notes.slice(0, 4000);
   // Code du jeu (facultatif) que les autres joueurs pourront copier : texte sur une ligne.
   if (typeof patch.gameCode === 'string') r.gameCode = ((v) => String(v || '').replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, 4000))(patch.gameCode);
-  if (patch.voidChart !== undefined) r.voidChart = cleanVoidChart(patch.voidChart);
+  if (patch.voidChart !== undefined) { r.voidChart = cleanVoidChart(patch.voidChart); r.voidChartAt = Date.now(); }
   if (patch.voidChartChecked === true) r.voidChartChecked = Date.now();
   if (typeof patch.strategyTag === 'string' && STRATEGY_TAGS.includes(patch.strategyTag)) r.strategyTag = patch.strategyTag;
   if (typeof patch.strategyTag === 'string' && r.statsSent) { r.statsSent = false; setImmediate(() => sendFarmStats(r)); }
