@@ -17,6 +17,7 @@ contextBridge.exposeInMainWorld('tli', {
   action: (name, arg) => ipcRenderer.invoke('action', name, arg),
   onNavigate: (cb) => ipcRenderer.on('navigate', (_e, nav) => cb(nav)),
   onStockAlert: (cb) => ipcRenderer.on('stockAlert', (_e, a) => cb(a)),
+  onGain: (cb) => ipcRenderer.on('gain', (_e, g) => cb(g)),
   listReports: () => ipcRenderer.invoke('listReports'),
   getReport: (id) => ipcRenderer.invoke('getReport', id),
   voidChartHistory: () => ipcRenderer.invoke('voidChartHistory'),

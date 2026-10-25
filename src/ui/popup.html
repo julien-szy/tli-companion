@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'">
+<title>TLI Companion — Gains</title>
+<style>
+  /* Popup des gains : fenêtre transparente qui laisse passer les clics. « +12,4 FE » doré au ramassage,
+     cumulé sur 5 secondes, qui monte un peu puis s'efface. Mode « Placer » : cadre à glisser + bouton OK. */
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; background: transparent; overflow: hidden; user-select: none; font-family: "Segoe UI", system-ui, sans-serif; }
+  .wrap { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+  /* --c : couleur choisie ; --c2 : plus claire (unité, gros drops) ; --dk : plus sombre (ombre) ; --halo ; --s : taille. */
+  :root { --c: #ffd447; --c2: #ffe9a3; --dk: #7a4a00; --ol: #2a1600; --halo: rgba(255,190,40,.55); --halo2: rgba(255,210,60,.9); --s: 1; }
+  .gain { position: relative; font-weight: 800; font-size: calc(46px * var(--s)); letter-spacing: .5px; font-variant-numeric: tabular-nums; white-space: nowrap;
+    color: var(--c); opacity: 0;
+    text-shadow: 0 2px 0 var(--dk), 0 0 2px #000, -2px -2px 0 var(--ol), 2px -2px 0 var(--ol), -2px 2px 0 var(--ol), 2px 2px 0 var(--ol), 0 0 18px var(--halo); }
+  .gain small { font-size: calc(26px * var(--s)); margin-left: 6px; color: var(--c2); }
+  .gain.show { opacity: 1; transform: translateY(0); transition: opacity .15s ease-out; }
+  .gain.bump { animation: bump .28s ease-out; }
+  .gain.big { color: var(--c2); font-size: calc(58px * var(--s)); text-shadow: 0 2px 0 var(--dk), -2px -2px 0 var(--ol), 2px -2px 0 var(--ol), -2px 2px 0 var(--ol), 2px 2px 0 var(--ol), 0 0 28px var(--halo2); }
+  .gain.out { opacity: 0; transform: translateY(-28px); transition: opacity 1s ease-in, transform 1s ease-in; }
+  @keyframes bump { 0% { transform: scale(1); } 40% { transform: scale(1.18); } 100% { transform: scale(1); } }
+  /* Mode Placer */
+  .place { display: none; position: absolute; inset: 0; border: 2px dashed #ff8a3d; border-radius: 12px; background: rgba(20,22,28,.55); -webkit-app-region: drag; }
+  body.placing .place { display: block; }
+  .place p { position: absolute; left: 0; right: 0; top: 10px; text-align: center; color: #fff; font-size: 13px; text-shadow: 0 1px 2px #000; }
+  .place button { position: absolute; right: 10px; bottom: 10px; -webkit-app-region: no-drag; background: #ff8a3d; color: #1a1006; font: 700 13px "Segoe UI", sans-serif; border: 0; border-radius: 8px; padding: 6px 14px; cursor: pointer; }
+</style>
+</head>
+<body>
+<div class="place"><p id="placeTxt"></p><button id="placeOk">OK</button></div>
+<div class="wrap"><div class="gain" id="gain"></div></div>
+<script src="../i18n.js"></script>
+<script src="common.js"></script>
+<script src="popup.js"></script>
+</body>
+</html>

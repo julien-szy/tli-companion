@@ -11,6 +11,10 @@
   },
   "patterns": [
     [
+      "BZ_JiangShengMuChao",
+      "Secret Realm - Abyssal Vault"
+    ],
+    [
       "DD_ShengTingZhuangYuan000",
       "Voidlands - Mundane Palace"
     ],
@@ -373,23 +377,27 @@
     [
       "JH_YWMD_00006",
       "Voidlands - Corridor of Disorder"
+    ],
+    [
+      "BZ_",
+      "Secret Realm"
     ]
   ],
   "levelIds": {
-    "3016": "Blistering Lava Sea - Hellfire Chasm",
     "3006": "Glacial Abyss - Throne of Winter",
-    "3036": "Thunder Wastes - Summit of Thunder",
+    "3016": "Blistering Lava Sea - Hellfire Chasm",
     "3026": "Steel Forge - Imaginary Monument",
+    "3036": "Thunder Wastes - Summit of Thunder",
     "3046": "Voidlands - Dreamless Abyss",
-    "234020": "Secret Realm - Sea of Rites",
     "212023": "Trial of Divinity",
+    "234020": "Secret Realm - Sea of Rites",
     "999901": "Path of the Brave",
     "999902": "Path of the Brave",
     "999903": "Path of the Brave",
     "999904": "Path of the Brave",
     "999905": "Path of the Brave",
-    "9999999": "Cloud Oasis (Sandlord)",
-    "9999997": "Quicksand Treasure Stash (Sandlord)"
+    "9999997": "Quicksand Treasure Stash (Sandlord)",
+    "9999999": "Cloud Oasis (Sandlord)"
   },
   "ambiguous": {
     "YL_BeiFengLinDi": {

@@ -66,6 +66,7 @@
         <select id="sfSort"><option value="recent" data-i18n="qf.sortRecent"></option><option value="perHour" data-i18n="qf.sortPerHour"></option><option value="profit" data-i18n="qf.sortProfit"></option></select>
         <span class="muted" id="sfCount"></span>
       </div>
+      <div class="card lootcats" id="sessCats" hidden></div>
       <table><thead><tr><th data-i18n="col.date"></th><th data-i18n="col.titleMaps"></th><th data-i18n="col.class"></th><th class="r" data-i18n="col.duration"></th><th class="r" data-i18n="col.maps"></th><th class="r" data-i18n="col.profit"></th><th class="r" data-i18n="col.perHour"></th></tr></thead><tbody id="sessRows"></tbody></table>
     </div>
     <div id="sessDetail" hidden></div>
@@ -112,6 +113,14 @@
       <div data-i18n="wc.display"></div>
       <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap"><label><input type="checkbox" id="sUnitPrice"> <span data-i18n="wc.unitPrice"></span></label> <label><input type="checkbox" id="sNoFlash"> <span data-i18n="wc.noFlash"></span></label> <label><input type="checkbox" id="sCompact"> <span data-i18n="wc.compact"></span></label></div>
       <div class="help" data-i18n="wc.displayHelp"></div>
+
+      <div data-i18n="pop.title"></div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><label><input type="checkbox" id="sPopup"> <span data-i18n="pop.enable"></span></label>
+        <button class="btn" id="popPlace" data-i18n="pop.place"></button><button class="btn" id="popTest" data-i18n="pop.test"></button></div>
+      <div></div>
+      <div class="pop-style"><label><span data-i18n="pop.size"></span> <input type="range" id="popSize" min="0.6" max="2" step="0.05"> <b id="popSizeV"></b></label>
+        <span class="pop-colors" id="popColors"></span><input type="color" id="popColor" data-i18n-title="pop.custom"></div>
+      <div class="help" data-i18n="pop.help"></div>
 
       <div data-i18n="set.opacity"></div>
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><input type="range" id="sOpacity" min="0.4" max="1" step="0.02"> <label><input type="checkbox" id="sSolid"> <span data-i18n="set.solid"></span></label> <label><input type="checkbox" id="sUltra"> <span data-i18n="set.ultra"></span></label> <label><input type="checkbox" id="sLock"> <span data-i18n="set.lock"></span></label></div>

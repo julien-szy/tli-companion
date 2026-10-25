@@ -867,3 +867,22 @@ tr.hdet > td { background: rgba(255,255,255,.02); padding: 8px 12px 12px; }
 .sess-curve circle { stroke: var(--panel); stroke-width: 1; }
 .sess-curve circle.up { fill: var(--pos); } .sess-curve circle.down { fill: var(--neg); }
 .sess-curve circle.live { stroke: var(--accent); stroke-width: 2; }
+
+/* Sessions de farm : loot par catégorie (suit les filtres) */
+.lootcats { margin: 0 0 12px; }
+.lootcats h2 { font-size: 14px; margin-bottom: 8px; }
+.lootcats h2 .muted { font-weight: 400; font-size: 12px; margin-left: 6px; }
+.lc-list { display: grid; gap: 5px; }
+.lc-row { display: grid; grid-template-columns: 170px 1fr 90px 44px 90px; gap: 10px; align-items: center; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.lc-row b, .lc-row .muted { text-align: right; }
+.lc-bar { height: 8px; border-radius: 4px; background: var(--panel2); overflow: hidden; }
+.lc-bar i { display: block; height: 100%; border-radius: 4px; background: var(--accent); opacity: .8; }
+.lootcats .small { font-size: 11.5px; margin-top: 8px; }
+
+/* Réglages : taille et couleur du popup des gains */
+.pop-style { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.pop-style label { display: inline-flex; align-items: center; gap: 8px; }
+.pop-colors { display: inline-flex; gap: 6px; }
+.pop-sw { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--line); cursor: pointer; padding: 0; }
+.pop-sw.on { border-color: var(--text); box-shadow: 0 0 0 2px var(--accent); }
+#popColor { width: 34px; height: 26px; padding: 0; border: 1px solid var(--line); border-radius: 6px; background: transparent; cursor: pointer; }

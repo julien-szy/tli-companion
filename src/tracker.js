@@ -8,6 +8,10 @@ const { EventEmitter } = require('events');
 const LOOT_PROTOS = new Set(['PickItems', 'PickItem', 'Push2', 'OpenRewardBox']);
 const COST_PROTOS = new Set(['Spv3Open']);
 const IGNORED_PROTOS = new Set(['ResetItemsLayout']); // tri du sac : déplacements seulement
+// Objets consommés au lancement d'une carte sans passer par l'ouverture de balise (Spv3Open) :
+// Shackles de Tartarus (Darkiron, Mercury, Redgold). Toute sortie du sac compte comme un coût de carte,
+// sauf une vente à l'hôtel des ventes (protocoles Xchg…).
+const MAP_COST_IDS = new Set([10330, 10331, 10332]);
 
 const BEACON_TYPE = '信标';
 // Star Shards : un compteur par région (max 80). Régions connues d'avance, les autres sont apprises en jouant.
@@ -315,7 +319,8 @@ class Tracker extends EventEmitter {
     const s = this.session;
     const run = s.currentRun;
     let cat;
-    if (this.proto && COST_PROTOS.has(this.proto)) {
+    const mapCostItem = delta < 0 && MAP_COST_IDS.has(+id) && !/^Xchg/.test(this.proto || '');
+    if ((this.proto && COST_PROTOS.has(this.proto)) || mapCostItem) {
       cat = 'cost';
       addQty(s.cost, id, delta);
       if (run) addQty(run.cost, id, delta);

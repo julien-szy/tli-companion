@@ -1,5 +1,5 @@
 // Catégorie de chaque objet pour la page Prix du site : déduite du type tlidb (en chinois) de data/items_seed_en.json.
-// Écrit server/item_cats.json ({ id: catégorie }). À relancer quand items_seed_en.json change : node scripts/itemcats.js
+// Écrit server/item_cats.json et data/item_cats.json ({ id: catégorie }) : page Prix du site et loot par catégorie de l'app. À relancer quand items_seed_en.json change : node scripts/itemcats.js
 const fs = require('fs');
 const path = require('path');
 
@@ -28,5 +28,7 @@ for (const it of items) {
   out[it.id] = cat;
   count[cat] = (count[cat] || 0) + 1;
 }
+out[100300] = 'fe'; // Flame Elementium (le FE ramassé)
 fs.writeFileSync(path.join(__dirname, '..', 'server', 'item_cats.json'), JSON.stringify(out));
-console.log('server/item_cats.json :', Object.keys(out).length, 'objets', count);
+fs.writeFileSync(path.join(__dirname, '..', 'data', 'item_cats.json'), JSON.stringify(out));
+console.log('item_cats.json :', Object.keys(out).length, 'objets', count);

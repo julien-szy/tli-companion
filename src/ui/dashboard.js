@@ -105,52 +105,67 @@ function farmStatsNotice() {
   $('fnOk').onclick = () => { modal(''); tli.action('farmStatsNotice'); };
   $('fnOff').onclick = () => { modal(''); tli.action('shareFarmStats', false); tli.action('farmStatsNotice'); };
 }
-// Fin de session : enregistrer (titre, type de stratégie, notes) et publier si le joueur l'accepte.
+// Fin de session : version simple (résumé, type de stratégie facultatif, Supprimer / Enregistrer / Partager).
+// « Partager à la communauté » ouvre le formulaire complet (nom, notes, code du jeu, pseudo), puis le Void Chart.
 async function endSessionModal(id) {
   const r = await tli.getReport(id);
   if (!r) return;
   const srv = last.settings.server;
-  const share = false;
-  modal(`<h1>${esc(t('end.title'))}</h1>
-    <p class="muted">${esc(t('end.summary', { maps: r.totals.runs, profit: fe(r.totals.profit, true), hour: fe(r.totals.perHourReal), time: dur(r.totals.realMs) }))}</p>
-    <div class="body end-form">
-      <label>${esc(t('end.name'))}<input id="endTitle" value="${esc(r.title || (r.strategy.maps[0] ? r.strategy.maps[0].name : ''))}"></label>
-      <label>${esc(t('end.tag'))}<select id="endTag">${tagOptions(r.strategyTag)}</select></label>
-      <label>${esc(t('end.notes'))}<textarea id="endNotes" rows="3" placeholder="${esc(t('end.notesPh'))}">${esc(r.notes || '')}</textarea></label>
-      <label>${esc(t('gc.label'))}<input id="endCode" maxlength="4000" placeholder="${esc(t('gc.ph'))}" value="${esc(r.gameCode || '')}"></label>
-      <p class="muted" style="font-size:12px">${esc(t(last.settings.shareFarmStats !== false ? 'end.statsOn' : 'end.statsOff'))}</p>
-      <label class="check"><input type="checkbox" id="endPub"> ${esc(t('end.publishSheet'))}</label>
-      ${srv.registered ? '' : `<label id="endNameRow" hidden>${esc(t('share.namePh'))}<input id="endName" maxlength="24"></label>`}
-      <p class="muted" id="endMsg" style="font-size:12px" hidden>${esc(t('share.what'))}</p>
-    </div>
-    <div class="foot"><button class="btn" id="endDrop">${esc(t('end.discard'))}</button>
-      <button class="btn primary big" id="endSave">${esc(t('end.save'))}</button></div>`);
-  $('endPub').onchange = () => {
-    $('endSave').textContent = t($('endPub').checked ? 'end.savePublish' : 'end.save');
-    if ($('endNameRow')) $('endNameRow').hidden = !$('endPub').checked;
-    $('endMsg').hidden = !$('endPub').checked;
+  const summary = `<p class="muted">${esc(t('end.summary', { maps: r.totals.runs, profit: fe(r.totals.profit, true), hour: fe(r.totals.perHourReal), time: dur(r.totals.realMs) }))}</p>`;
+  let tag = r.strategyTag || '';
+  const simple = () => {
+    modal(`<h1>${esc(t('end.title'))}</h1>${summary}
+      <div class="body end-form" style="min-height:0">
+        <label>${esc(t('end.tagOpt'))}<select id="endTag">${tagOptions(tag)}</select></label>
+        <p class="muted" style="font-size:12px">${esc(t('end.tagHelp'))}</p>
+      </div>
+      <div class="foot"><button class="btn" id="endDrop">${esc(t('end.discard'))}</button>
+        <span style="display:flex;gap:8px"><button class="btn" id="endShare">${esc(t('end.share'))}</button>
+        <button class="btn primary big" id="endSave">${esc(t('end.save'))}</button></span></div>`);
+    $('endTag').onchange = (e) => { tag = e.target.value; };
+    $('endDrop').onclick = async () => {
+      if (!(await askConfirm(t('sess.confirmDelete'), { ok: t('cf.delete'), danger: true }))) return;
+      await tli.deleteReport(id); modal(''); closeSession(); loadSessions();
+    };
+    $('endSave').onclick = async () => {
+      if (tag !== (r.strategyTag || '')) await tli.updateReport(id, { strategyTag: tag });
+      modal('');
+      openSession(id);
+    };
+    $('endShare').onclick = full;
   };
-  $('endDrop').onclick = async () => {
-    if (!(await askConfirm(t('sess.confirmDelete'), { ok: t('cf.delete'), danger: true }))) return;
-    await tli.deleteReport(id); modal(''); closeSession(); loadSessions();
-  };
-  $('endSave').onclick = async () => {
-    const patch = { title: $('endTitle').value, notes: $('endNotes').value, strategyTag: $('endTag').value, gameCode: $('endCode').value };
-    await tli.updateReport(id, patch);
-    if ($('endPub').checked) {
+  const full = () => {
+    modal(`<h1>${esc(t('end.shareTitle'))}</h1>${summary}
+      <div class="body end-form">
+        <label>${esc(t('end.name'))}<input id="endTitle" value="${esc(r.title || (r.strategy.maps[0] ? r.strategy.maps[0].name : ''))}"></label>
+        <label>${esc(t('end.tag'))}<select id="endTag">${tagOptions(tag)}</select></label>
+        <label>${esc(t('end.notes'))}<textarea id="endNotes" rows="3" placeholder="${esc(t('end.notesPh'))}">${esc(r.notes || '')}</textarea></label>
+        <label>${esc(t('gc.label'))}<input id="endCode" maxlength="4000" placeholder="${esc(t('gc.ph'))}" value="${esc(r.gameCode || '')}"></label>
+        ${srv.registered ? '' : `<label>${esc(t('share.namePh'))}<input id="endName" maxlength="24"></label>`}
+        <p class="muted" id="endMsg" style="font-size:12px">${esc(t('share.what'))}</p>
+      </div>
+      <div class="foot"><button class="btn" id="endBack">${esc(t('end.back'))}</button>
+        <button class="btn primary big" id="endPublish">${esc(t('end.shareGo'))}</button></div>`);
+    $('endTag').onchange = (e) => { tag = e.target.value; };
+    $('endBack').onclick = simple;
+    $('endPublish').onclick = async () => {
+      const patch = { title: $('endTitle').value, notes: $('endNotes').value, strategyTag: $('endTag').value, gameCode: $('endCode').value };
+      Object.assign(r, patch);
+      await tli.updateReport(id, patch);
       try {
         if (!srv.registered) {
           const name = $('endName').value.trim();
-          if (name.length < 2) { $('endMsg').hidden = false; $('endMsg').textContent = t('share.nameShort'); return; }
+          if (name.length < 2) { $('endMsg').textContent = t('share.nameShort'); return; }
           await tli.register(name);
         }
         if (!(await checkVoidChart(id))) { openSession(id); return; }
         await tli.shareReport(id);
-      } catch (e) { $('endMsg').textContent = t('share.error', { msg: errMsg(e) }); return; }
-    }
-    modal('');
-    openSession(id);
+      } catch (e) { if ($('endMsg')) $('endMsg').textContent = t('share.error', { msg: errMsg(e) }); return; }
+      modal('');
+      openSession(id);
+    };
   };
+  simple();
 }
 
 // ---------- Sessions de farm ----------
@@ -201,6 +216,7 @@ function renderSessions() {
   const sorts = { perHour: (a, b) => b.totals.perHourReal - a.totals.perHourReal, profit: (a, b) => b.totals.profit - a.totals.profit };
   if (sorts[$('sfSort').value]) list.sort(sorts[$('sfSort').value]);
   $('sfCount').textContent = list.length === sessCache.length ? '' : t('qf.count', { n: list.length, total: sessCache.length });
+  renderLootCats(list);
   $('sessRows').innerHTML = list.map((r) => {
     const tot = r.totals;
     return `<tr class="click" data-id="${r.id}"><td class="muted">${dateTime(r.startedAt)}</td>
@@ -209,6 +225,35 @@ function renderSessions() {
       <td class="r ${cls(tot.profit)}"><b>${fe(tot.profit, true)}</b></td><td class="r">${fe(tot.perHourReal)}</td></tr>`;
   }).join('') || `<tr><td colspan="7" class="muted">${esc(t('sess.empty'))}</td></tr>`;
   $('sessRows').querySelectorAll('tr.click').forEach((tr) => (tr.onclick = () => openSession(tr.dataset.id)));
+}
+
+// Loot par catégorie des sessions affichées (suit les filtres : carte, Timemark, type de stratégie).
+// Ex. : filtre « Might » -> combien de FE viennent des braises, et en FE/h.
+function renderLootCats(list) {
+  const box = $('sessCats');
+  const tot = {};
+  let hours = 0, all = 0;
+  for (const r of list) {
+    hours += (r.totals.realMs || 0) / 3600000;
+    for (const [c, o] of Object.entries(r.cats || {})) {
+      const x = (tot[c] = tot[c] || { value: 0, items: {} });
+      x.value += o.value; all += o.value;
+      for (const [n, v] of Object.entries(o.items)) x.items[n] = (x.items[n] || 0) + v;
+    }
+  }
+  const rows = Object.entries(tot).sort((a, b) => b[1].value - a[1].value);
+  box.hidden = !rows.length;
+  if (!rows.length) return;
+  const max = rows[0][1].value;
+  box.innerHTML = `<h2>${esc(t('lc.title'))} <span class="muted">${esc(t('lc.sub', { n: list.length }))}</span></h2>
+    <div class="lc-list">${rows.map(([c, o]) => {
+      const top = Object.entries(o.items).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([n]) => n).join(', ');
+      return `<div class="lc-row" title="${esc(top)}"><span class="lc-name">${esc(t('lcat.' + c))}</span>
+        <span class="lc-bar"><i style="width:${Math.max(2, (o.value / max) * 100).toFixed(1)}%"></i></span>
+        <b>${fe(o.value)} FE</b><span class="muted">${Math.round((o.value / (all || 1)) * 100)} %</span>
+        <span class="muted">${hours > 0.02 ? fe(o.value / hours) : '–'} FE/h</span></div>`;
+    }).join('')}</div>
+    <p class="muted small">${esc(t('lc.help'))}</p>`;
 }
 
 function closeSession() { openReportId = null; $('sessDetail').hidden = true; $('sessList').hidden = false; }
@@ -423,6 +468,15 @@ $('sScale').onchange = (e) => tli.action('scale', +e.target.value);
 $('sSolid').onchange = (e) => tli.action('solid', e.target.checked);
 $('sUltra').onchange = (e) => tli.action('ultra', e.target.checked);
 for (const [id, act] of [['sUnitPrice', 'unitPrice'], ['sNoFlash', 'noFlash'], ['sCompact', 'compact']]) $(id).onchange = (e) => tli.action(act, e.target.checked);
+$('sPopup').onchange = (e) => tli.action('popup', e.target.checked);
+$('popPlace').onclick = () => tli.action('popupPlace');
+$('popTest').onclick = () => tli.action('popupTest');
+// Taille et couleur du popup (les effets suivent la couleur). Couleurs prêtes + n'importe quelle couleur.
+const POP_COLORS = ['#ffd447', '#ff9a3d', '#5fe38d', '#4fd8ff', '#ff6fb5', '#ffffff'];
+$('popColors').innerHTML = POP_COLORS.map((c) => `<button class="pop-sw" data-c="${c}" style="background:${c}" title="${c}"></button>`).join('');
+$('popColors').querySelectorAll('[data-c]').forEach((b) => (b.onclick = () => tli.action('popupColor', b.dataset.c)));
+$('popColor').oninput = (e) => tli.action('popupColor', e.target.value);
+$('popSize').oninput = (e) => { $('popSizeV').textContent = Math.round(e.target.value * 100) + ' %'; tli.action('popupSize', +e.target.value); };
 $('sAutoPause').onchange = (e) => tli.action('autoPause', e.target.checked);
 // Réglages > Contenu du widget : une case par info, regroupées comme dans le widget.
 const WIDGET_GROUPS = [
@@ -573,6 +627,11 @@ tli.onState((s) => {
     $('sUnitPrice').checked = !!s.settings.overlay.unitPrice;
     $('sNoFlash').checked = !!s.settings.overlay.noFlash;
     $('sCompact').checked = !!s.settings.overlay.compact;
+    $('sPopup').checked = !!(s.settings.popup && s.settings.popup.enabled);
+    const pp = s.settings.popup || {};
+    if (document.activeElement !== $('popSize')) { $('popSize').value = pp.size || 1; $('popSizeV').textContent = Math.round((pp.size || 1) * 100) + ' %'; }
+    if (document.activeElement !== $('popColor')) $('popColor').value = pp.color || '#ffd447';
+    $('popColors').querySelectorAll('[data-c]').forEach((b) => b.classList.toggle('on', b.dataset.c === (pp.color || '#ffd447')));
     $('sStar').checked = s.settings.starAlerts !== false;
     $('sAutoPause').checked = s.settings.autoPause !== false;
     $('sLock').checked = !!s.settings.overlay.locked;

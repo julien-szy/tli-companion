@@ -1,6 +1,24 @@
 {
   "releases": [
     {
+      "version": "1.0.33",
+      "date": "2026-10-25",
+      "en": [
+        "New gain popup (Settings › Widget, off by default): when you loot in a map, \"+X FE\" pops up in gold in the middle of the screen, added up over 5 seconds, bigger for drops worth 50 FE or more. Transparent and click-through; choose its place, size and color. Shortcut: Ctrl+Shift+G.",
+        "End of session is simpler: just Save, Delete or \"Share with the community\" (which opens the full form). Only the strategy type stays, optional.",
+        "Farm sessions: new \"Loot by category\" panel that follows the filters (map, Timemark, strategy type): value, share and FE/h of Flame Elementium, embers, compasses, memories…",
+        "Tartarus: Darkiron, Mercury and Redgold Shackles now count in the cost of the map you launch.",
+        "Secret Realm maps now show their name (Abyssal Vault, or \"Secret Realm\") instead of the game file name."
+      ],
+      "fr": [
+        "Nouveau popup des gains (Réglages › Widget, désactivé par défaut) : quand tu ramasses du loot en carte, « +X FE » s'affiche en doré au milieu de l'écran, additionné sur 5 secondes, plus gros pour les drops à 50 FE ou plus. Transparent et traversé par les clics ; tu choisis sa place, sa taille et sa couleur. Raccourci : Ctrl+Maj+G.",
+        "Fin de session plus simple : juste Enregistrer, Supprimer ou « Partager à la communauté » (qui ouvre le formulaire complet). Seul le type de stratégie reste, facultatif.",
+        "Sessions de farm : nouvel encart « Loot par catégorie » qui suit les filtres (carte, Timemark, type de stratégie) : valeur, part et FE/h de la Flame Elementium, des braises, compas, souvenirs…",
+        "Tartarus : les Darkiron, Mercury et Redgold Shackles comptent maintenant dans le coût de la carte que tu lances.",
+        "Les cartes Secret Realm affichent leur nom (Abyssal Vault, ou « Secret Realm ») au lieu du nom de fichier du jeu."
+      ]
+    },
+    {
       "version": "1.0.32",
       "date": "2026-10-24",
       "en": [

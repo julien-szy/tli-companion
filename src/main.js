@@ -47,6 +47,7 @@ const DEFAULTS = {
   timeMode: 'real',      // 'real' = temps réel de session ; 'map' = temps passé en carte
   communityPrices: true,
   hubPatterns: ['/XZ_'], // chemins de map considérés comme repaire / ville
+  popup: { enabled: false, x: null, y: null, size: 1, color: '#ffd447' }, // taille (0.6 à 2) et couleur du texte // popup des gains « +X FE » (fenêtre transparente, clics traversants)
   overlay: { x: null, y: null, collapsed: false, opacity: 0.92, scale: 1, solid: false, locked: false, dropsSort: 'recent', ultra: false, unitPrice: false, noFlash: false, compact: false },
   server: { url: 'https://tlicompanion.com', token: null, userId: null, name: null },
   activeBuild: null,     // id du build suivi par le conseiller d'achat
@@ -83,6 +84,7 @@ let settings = loadJson(SETTINGS_FILE, {});
 settings = {
   ...DEFAULTS, ...settings,
   overlay: { ...DEFAULTS.overlay, ...(settings.overlay || {}) },
+  popup: { ...DEFAULTS.popup, ...(settings.popup || {}) },
   server: { ...DEFAULTS.server, ...(settings.server || {}) },
   volumes: { ...DEFAULTS.volumes, ...(settings.volumes || {}) },
   sounds: Object.fromEntries(Object.entries({ ...DEFAULTS.sounds, ...(settings.sounds || {}) }).map(([k, v]) => [k, String(v).startsWith('file:') ? v : 'builtin'])),
@@ -165,6 +167,19 @@ function saveReport(report) {
   fs.mkdirSync(SESSIONS_DIR, { recursive: true });
   fs.writeFileSync(path.join(SESSIONS_DIR, `${report.id}.json`), JSON.stringify(report));
 }
+// Catégorie de chaque objet (braises, compas, souvenirs…) : loot par catégorie dans l'onglet Sessions de farm.
+const ITEM_CATS = (() => { try { return JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'data', 'item_cats.json'), 'utf8')); } catch { return {}; } })();
+function lootByCat(loot) {
+  const out = {};
+  for (const i of loot || []) {
+    if (!(i.qty > 0) || !(i.value > 0)) continue;
+    const c = ITEM_CATS[i.id] || 'other';
+    const o = (out[c] = out[c] || { value: 0, items: {} });
+    o.value += i.value;
+    o.items[i.name] = (o.items[i.name] || 0) + i.value;
+  }
+  return out;
+}
 function listReports() {
   let files = [];
   try { files = fs.readdirSync(SESSIONS_DIR).filter((f) => f.endsWith('.json')); } catch { return []; }
@@ -174,6 +189,7 @@ function listReports() {
     return {
       id: r.id, title: r.title, startedAt: r.startedAt, endedAt: r.endedAt, hero: r.hero,
       totals: r.totals, maps: r.strategy.maps.slice(0, 3).map((m) => m.name), shared: r.shared || null, strategyTag: r.strategyTag || null,
+      cats: lootByCat(r.loot),
     };
   }).filter(Boolean).sort((a, b) => b.startedAt - a.startedAt);
 }
@@ -385,6 +401,7 @@ function broadcast() {
   snap.buildRecap = buildRecap(snap);
   if (overlay && !overlay.isDestroyed()) overlay.webContents.send('state', snap);
   if (dashboard && !dashboard.isDestroyed()) dashboard.webContents.send('state', snap);
+  if (popupWin && !popupWin.isDestroyed()) popupWin.webContents.send('state', { settings: { lang: settings.lang, popup: settings.popup }, popupPlacing });
 }
 function broadcastThrottled() {
   if (pendingBroadcast) return;
@@ -394,6 +411,11 @@ function broadcastThrottled() {
 tracker.on('changed', () => { if (!tracker.replay) broadcastThrottled(); });
 tracker.on('delta', (e) => {
   if (dashboard && !dashboard.isDestroyed() && tracker.visible(e.id)) dashboard.webContents.send('delta', tracker._feedEntry(e));
+  // Popup des gains : objets ramassés en carte (pas au repaire, pas les coûts), valeur au prix actuel.
+  if (popupWin && !popupWin.isDestroyed() && e.delta > 0 && e.cat !== 'cost' && tracker.zone && !tracker.zone.hub && tracker.visible(e.id)) {
+    const f = tracker._feedEntry(e);
+    if (f.value >= 0.5) popupWin.webContents.send('gain', { value: f.value, name: f.name });
+  }
   if (e.cat === 'cost' && e.delta < 0) setImmediate(() => checkStock(e.id));
 });
 
@@ -594,6 +616,46 @@ app.on('before-quit', (e) => {
 setInterval(broadcast, 1000); // chronos
 
 // ---------------- Fenêtres ----------------
+
+// Popup des gains : fenêtre sans fond, toujours au-dessus, qui laisse passer les clics. « Placer » la rend
+// déplaçable (cadre + bouton OK) le temps de choisir sa position.
+let popupWin = null;
+let popupPlacing = false;
+const POPUP_SIZE = { w: 460, h: 150 };
+const popupDims = () => { const k = Math.min(2, Math.max(0.6, +settings.popup.size || 1)); return { w: Math.round(POPUP_SIZE.w * k), h: Math.round(POPUP_SIZE.h * k) }; };
+function createPopup() {
+  if (popupWin && !popupWin.isDestroyed()) return;
+  const wa = screen.getPrimaryDisplay().workArea;
+  const p = settings.popup;
+  const d = popupDims();
+  popupWin = new BrowserWindow({
+    width: d.w, height: d.h,
+    x: p.x ?? Math.round(wa.x + (wa.width - d.w) / 2), y: p.y ?? Math.round(wa.y + wa.height * 0.32),
+    frame: false, transparent: true, resizable: false, skipTaskbar: true, alwaysOnTop: true, hasShadow: false,
+    focusable: false, show: false, webPreferences: { preload: path.join(__dirname, 'preload.js') },
+  });
+  popupWin.setAlwaysOnTop(true, 'screen-saver');
+  popupWin.setVisibleOnAllWorkspaces(true);
+  popupWin.setIgnoreMouseEvents(true, { forward: true });
+  popupWin.loadFile(path.join(__dirname, 'ui', 'popup.html'));
+  popupWin.once('ready-to-show', () => { popupWin.showInactive(); broadcast(); });
+  popupWin.on('moved', () => { const [x, y] = popupWin.getPosition(); settings.popup.x = x; settings.popup.y = y; saveSettings(); });
+  popupWin.on('closed', () => { popupWin = null; popupPlacing = false; });
+}
+function setPopup(on) {
+  settings.popup.enabled = !!on; saveSettings();
+  if (on) createPopup(); else if (popupWin && !popupWin.isDestroyed()) popupWin.close();
+  broadcast();
+}
+function placePopup(on) {
+  if (on && !popupWin) { settings.popup.enabled = true; saveSettings(); createPopup(); }
+  if (!popupWin || popupWin.isDestroyed()) return;
+  popupPlacing = !!on;
+  popupWin.setIgnoreMouseEvents(!on, { forward: true });
+  popupWin.setFocusable(!!on);
+  if (on) popupWin.focus();
+  broadcast();
+}
 
 function createOverlay() {
   const o = settings.overlay;
@@ -1570,6 +1632,24 @@ ipcMain.handle('action', async (_e, name, arg) => {
     case 'resizeStart': startResize(); break;
     case 'resizeEnd': endResize(); break;
     case 'solid': settings.overlay.solid = !!arg; saveSettings(); applyOpacity(); break;
+    case 'popup': setPopup(arg); break;
+    case 'popupPlace': placePopup(true); break;
+    case 'popupSize': {
+      settings.popup.size = Math.min(2, Math.max(0.6, +arg || 1)); saveSettings();
+      if (popupWin && !popupWin.isDestroyed()) {
+        // Agrandi / réduit autour de son centre, pour qu'il reste au même endroit à l'écran.
+        const [x, y] = popupWin.getPosition(), [w, h] = popupWin.getSize(), d = popupDims();
+        popupWin.setBounds({ x: Math.round(x + (w - d.w) / 2), y: Math.round(y + (h - d.h) / 2), width: d.w, height: d.h });
+      }
+      broadcast(); break;
+    }
+    case 'popupColor': if (/^#[0-9a-f]{6}$/i.test(String(arg))) { settings.popup.color = String(arg).toLowerCase(); saveSettings(); broadcast(); } break;
+    case 'popupPlaced': placePopup(false); break;
+    case 'popupTest': {
+      if (!popupWin) { setPopup(true); await new Promise((r) => setTimeout(r, 800)); }
+      for (const [ms, v] of [[0, 2.4], [500, 6.1], [1100, 1.3], [1800, 64]]) setTimeout(() => popupWin && !popupWin.isDestroyed() && popupWin.webContents.send('gain', { value: v }), ms);
+      break;
+    }
     case 'keepItem': {
       const id = Math.trunc(+(arg && arg.id));
       if (!(id > 0)) break;
@@ -1750,6 +1830,8 @@ async function debugScreenshots(dir) {
     }
     if (process.env.TLI_EVAL) console.log('EVAL', JSON.stringify(await dashboard.webContents.executeJavaScript(process.env.TLI_EVAL)));
     if (process.env.TLI_EVAL) fs.writeFileSync(path.join(dir, 'after-eval.png'), (await dashboard.webContents.capturePage()).toPNG());
+    // Popup des gains (test) : capture de sa fenêtre après l'expression évaluée.
+    if (popupWin && !popupWin.isDestroyed()) fs.writeFileSync(path.join(dir, 'popup.png'), (await popupWin.webContents.capturePage()).toPNG());
   }
   if (process.env.TLI_FARM_TEST) {
     const shot = async (name) => fs.writeFileSync(path.join(dir, name), (await dashboard.webContents.capturePage()).toPNG());
@@ -1856,6 +1938,8 @@ if (!app.requestSingleInstanceLock()) {
     globalShortcut.register('CommandOrControl+Shift+P', () => { if (tracker.session.recording) { tracker.togglePause(); broadcast(); } });
     globalShortcut.register('CommandOrControl+Shift+H', toggleOverlay);
     globalShortcut.register('CommandOrControl+Shift+L', () => setLocked(!settings.overlay.locked));
+    globalShortcut.register('CommandOrControl+Shift+G', () => setPopup(!settings.popup.enabled));
+    if (settings.popup.enabled) createPopup();
     if (settings.communityPrices && Date.now() - prices.communityFetchedAt > 15 * 60000) refreshCommunity();
     setInterval(refreshCommunity, 15 * 60000);
     syncServerPrices();
