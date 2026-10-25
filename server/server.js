@@ -793,6 +793,50 @@ route('GET', /^\/api\/prices\/table$/, () => {
   priceTableCache = { at: now, body: { updatedAt: now, items } };
   return priceTableCache.body;
 });
+// Page d'un objet (/prices/<id>) : courbe du prix sur 24 h / 7 j / 30 j / tout (120 jours), par tranches de temps :
+// médiane, plus bas et plus haut de chaque tranche, nombre de relevés et de joueurs. Plus les stats de la page.
+const RANGES = { '24h': [86400000, 3600000], '7d': [7 * 86400000, 3 * 3600000], '30d': [30 * 86400000, 12 * 3600000], all: [120 * 86400000, 86400000] };
+const itemPageCache = new Map();
+route('GET', /^\/api\/prices\/item\/(\d+)$/, (req, url, m) => {
+  const id = +m[1];
+  const range = RANGES[url.searchParams.get('range')] ? url.searchParams.get('range') : '7d';
+  const key = `${id}|${range}`;
+  const hit = itemPageCache.get(key);
+  if (hit && Date.now() - hit.at < 5 * 60000) return hit.body;
+  const now = Date.now(), DAY = 86400000;
+  const rows = db.prepare('SELECT price, ts, user_id FROM price_hist WHERE item_id = ? AND ts > ? ORDER BY ts').all(id, now - 120 * DAY);
+  const med = (a) => { if (!a.length) return null; const s = a.slice().sort((x, y) => x - y), k = s.length >> 1; return s.length % 2 ? s[k] : (s[k - 1] + s[k]) / 2; };
+  const bucketize = (since, step) => {
+    const b = new Map();
+    for (const r of rows) {
+      if (r.ts <= since) continue;
+      const k = Math.floor(r.ts / step) * step;
+      if (!b.has(k)) b.set(k, { prices: [], users: new Set() });
+      b.get(k).prices.push(r.price); b.get(k).users.add(r.user_id);
+    }
+    return [...b.entries()].sort((a, c) => a[0] - c[0]).map(([t, v]) => ({ t: t + step / 2, median: med(v.prices), low: Math.min(...v.prices), high: Math.max(...v.prices), n: v.prices.length, players: v.users.size }));
+  };
+  const [span, step] = RANGES[range];
+  const points = bucketize(now - span, step);
+  // Plus haut / plus bas : sur les médianes (par heure sur 24 h, par jour au-delà), pour ne pas garder une erreur isolée.
+  const hours = bucketize(now - DAY, 3600000), days7 = bucketize(now - 7 * DAY, DAY), daysAll = bucketize(now - 120 * DAY, DAY);
+  const hiLo = (l) => (l.length ? { high: Math.max(...l.map((p) => p.median)), low: Math.min(...l.map((p) => p.median)) } : { high: null, low: null });
+  const cur = currentPrices().prices[id] || null;
+  const n = ITEM_NAMES[id] ? { name: ITEM_NAMES[id][0], img: ITEM_NAMES[id][1] } : db.prepare('SELECT name, img FROM item_names WHERE id = ?').get(id);
+  const pct = (old) => (cur && old ? (cur.price - old) / old : null);
+  const before = (ms) => { const l = daysAll.filter((p) => p.t <= now - ms + DAY / 2); return l.length ? l[l.length - 1].median : null; };
+  const body = {
+    id, name: n ? n.name : null, img: n ? n.img || null : null, cat: ITEM_CATS[id] || 'other', range,
+    price: cur ? cur.price : null, updatedAt: rows.length ? rows[rows.length - 1].ts : null,
+    d1: pct(before(DAY)), d7: pct(before(7 * DAY)),
+    stats: { h24: hiLo(hours), d7: hiLo(days7), all: hiLo(daysAll),
+      avgPlayers: days7.length ? Math.round((days7.reduce((a, p) => a + p.players, 0) / days7.length) * 10) / 10 : 0 },
+    points,
+  };
+  itemPageCache.set(key, { at: now, body });
+  if (itemPageCache.size > 2000) itemPageCache.clear();
+  return body;
+});
 // Copie des prix communautaires TITrack (rafraîchie toutes les 15 min).
 route('GET', /^\/api\/prices\/community$/, () => TITrack.get());
 function currentPrices() {
@@ -887,6 +931,7 @@ function serveStatic(req, res, pathname) {
   if (PAGES[pathname]) pathname = PAGES[pathname];
   else if (/^\/s\/[0-9a-f-]{36}$/.test(pathname)) pathname = '/strategy.html';
   else if (/^\/b\/[0-9a-f-]{36}$/.test(pathname)) pathname = '/build.html';
+  else if (/^\/prices\/\d+$/.test(pathname)) pathname = '/price.html';
   // Les noms d'icônes contiennent des caractères encodés (%27, %28…).
   try { pathname = decodeURIComponent(pathname); } catch { return send(res, 400, 'bad path'); }
   const file = path.normalize(path.join(PUBLIC_DIR, pathname));
