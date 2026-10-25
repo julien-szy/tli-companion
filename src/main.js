@@ -645,6 +645,7 @@ function createPopup() {
 function setPopup(on) {
   settings.popup.enabled = !!on; saveSettings();
   if (on) createPopup(); else if (popupWin && !popupWin.isDestroyed()) popupWin.close();
+  buildTrayMenu();
   broadcast();
 }
 function placePopup(on) {
@@ -807,12 +808,21 @@ function buildTrayMenu() {
     { label: t('tray.toggleOverlay'), click: toggleOverlay },
     { label: t('tray.collapse'), click: () => setCollapsed(!settings.overlay.collapsed) },
     { label: t('tray.lock'), type: 'checkbox', checked: !!settings.overlay.locked, click: (item) => setLocked(item.checked) },
+    { label: t('tray.ultra'), type: 'checkbox', checked: !!settings.overlay.ultra, click: (item) => setUltra(item.checked) },
+    { label: t('tray.popup'), type: 'checkbox', checked: !!settings.popup.enabled, click: (item) => setPopup(item.checked) },
     { type: 'separator' },
     { label: t('tray.farm'), click: () => (tracker.session.recording ? stopFarm('') : beginFarm()) },
     { label: t('tray.reset'), click: () => tracker.newSession() },
     { type: 'separator' },
     { label: t('tray.quit'), click: () => app.quit() },
   ]));
+}
+
+// Mode ultra minimal du widget (Réglages, menu de l'icône, Ctrl+Maj+U).
+function setUltra(on) {
+  settings.overlay.ultra = !!on;
+  setCollapsed(settings.overlay.collapsed); // enregistre et redimensionne le widget
+  buildTrayMenu();
 }
 
 function toggleOverlay() {
@@ -1660,7 +1670,7 @@ ipcMain.handle('action', async (_e, name, arg) => {
       break;
     }
     case 'unitPrice': case 'noFlash': case 'compact': settings.overlay[name] = !!arg; saveSettings(); broadcast(); break;
-    case 'ultra': settings.overlay.ultra = !!arg; setCollapsed(settings.overlay.collapsed); break;
+    case 'ultra': setUltra(arg); break;
     case 'pause': tracker.togglePause(); broadcast(); break;
     case 'autoPause': settings.autoPause = !!arg; saveSettings(); break;
     // Contenu du widget : arg = { key, show }.
@@ -1939,6 +1949,8 @@ if (!app.requestSingleInstanceLock()) {
     globalShortcut.register('CommandOrControl+Shift+H', toggleOverlay);
     globalShortcut.register('CommandOrControl+Shift+L', () => setLocked(!settings.overlay.locked));
     globalShortcut.register('CommandOrControl+Shift+G', () => setPopup(!settings.popup.enabled));
+    // Ctrl+Maj+U (« ultra ») : pas Ctrl+Maj+M, déjà pris par Discord pour couper le micro.
+    globalShortcut.register('CommandOrControl+Shift+U', () => { if (!overlay) createOverlay(); setUltra(!settings.overlay.ultra); });
     if (settings.popup.enabled) createPopup();
     if (settings.communityPrices && Date.now() - prices.communityFetchedAt > 15 * 60000) refreshCommunity();
     setInterval(refreshCommunity, 15 * 60000);

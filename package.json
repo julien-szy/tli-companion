@@ -1,6 +1,6 @@
 {
   "name": "tli-profit-tracker",
-  "version": "1.0.33",
+  "version": "1.0.34",
   "description": "TLI Companion - live profit tracker, farm sessions, strategies and class meta for Torchlight: Infinite",
   "main": "src/main.js",
   "scripts": {

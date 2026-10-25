@@ -5,6 +5,18 @@
   },
   "releases": [
     {
+      "version": "1.0.34",
+      "date": "2026-10-25",
+      "en": [
+        "Tray menu (icon near the clock): new \"Ultra minimal widget\" and \"Gain popup\" toggles.",
+        "New shortcut Ctrl+Shift+U to switch the widget to ultra minimal mode and back (not Ctrl+Shift+M, which Discord uses to mute your mic)."
+      ],
+      "fr": [
+        "Menu de l'icône près de l'horloge : nouvelles cases « Widget ultra minimal » et « Popup des gains ».",
+        "Nouveau raccourci Ctrl+Maj+U pour passer le widget en mode ultra minimal et revenir (pas Ctrl+Maj+M, que Discord utilise pour couper le micro)."
+      ]
+    },
+    {
       "version": "1.0.33",
       "date": "2026-10-25",
       "en": [
