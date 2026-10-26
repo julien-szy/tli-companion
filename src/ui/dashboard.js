@@ -1032,12 +1032,18 @@ const Bag = (() => {
           <td class="r"><b class="${r.verdict === 'sell' ? 'pos' : ''}">${r.unit && r.verdict !== 'variable' ? fe(r.value) : '–'}</b></td>
           <td class="muted" style="font-size:12px">${r.unit ? `${esc(srcLabel(r.source))}${r.players ? ' · ' + esc(t('prices.players', { n: r.players })) : ''}${r.ts ? ` · <span class="${r.stale ? 'neg' : ''}">${esc(ago(r.ts))}</span>` : ''}` : ''}</td>
           <td><span class="tag ${VERDICT[r.verdict]}">${esc(t('bag.v.' + r.verdict))}</span></td>
-          <td class="r"><button class="btn sm bag-keep${r.kept ? ' on' : ''}" data-keep="${r.id}" title="${esc(t(r.kept ? 'bag.unkeepTip' : 'bag.keepTip'))}">${esc(t(r.kept ? 'bag.unkeep' : 'bag.keep'))}</button></td></tr>`).join('')
+          <td class="r nowrap">${r.where.length ? `<button class="btn sm" data-where="${r.id}" title="${esc(t('bag.whereTip'))}">📍 ${esc(t('bag.where'))}</button> ` : ''}<button class="btn sm bag-keep${r.kept ? ' on' : ''}" data-keep="${r.id}" title="${esc(t(r.kept ? 'bag.unkeepTip' : 'bag.keepTip'))}">${esc(t(r.kept ? 'bag.unkeep' : 'bag.keep'))}</button></td></tr>`).join('')
         || `<tr><td colspan="7" class="muted">${esc(t('bag.none'))}</td></tr>`}
       </tbody></table>
       ${d.counts.variable ? `<p class="muted" style="margin-top:10px;font-size:12px">${esc(t('bag.varNote', { n: d.counts.variable }))}</p>` : ''}
       ${d.hidden ? `<p class="muted" style="margin-top:6px;font-size:12px">${esc(t('bag.hidden', { n: d.hidden }))}</p>` : ''}`;
     v.querySelectorAll('[data-f]').forEach((b) => (b.onclick = () => { filter = b.dataset.f; render(); }));
+    // « Où ? » : schéma de l'onglet du sac avec la ou les cases de l'objet en surbrillance.
+    v.querySelectorAll('[data-where]').forEach((b) => (b.onclick = (e) => {
+      e.stopPropagation();
+      const r = d.rows.find((x) => x.id === +b.dataset.where);
+      if (r) bagWhere(r, d.pages);
+    }));
     // « Garder » : l'objet n'est plus suggéré à la vente (sans ouvrir la courbe de prix de la ligne).
     v.querySelectorAll('[data-keep]').forEach((b) => (b.onclick = async (e) => {
       e.stopPropagation();
@@ -1047,6 +1053,46 @@ const Bag = (() => {
     $('bagRefresh').onclick = () => render();
     $('bagMin').onchange = () => { min = Math.max(0, +$('bagMin').value || 0); try { localStorage.setItem('bagMin', String(min)); } catch {} render(); };
     if (focus) $('bagMin').focus();
+  }
+  // Nom court pour une case sans icône (« Memory Thread - Epic » -> « Memory Thread »).
+  const shortName = (n) => {
+    if (/^Item #\d+$/.test(n || '')) return '?';
+    const w = String(n || '').replace(/^(Organ|Kismet|Dual Kismet|Tartarus|Origin Tartarus):\s*/i, '').split(/[\s:()-]+/)
+      .filter((x) => x && !/^(of|the|a|an|de|du|la|le)$/i.test(x));
+    const roman = /^[IVX]+$/.test(w[w.length - 1] || '') ? ' ' + w.pop() : ''; // garde « I », « V »… (niveaux)
+    return w.slice(0, 2).join(' ') + roman;
+  };
+  // Schéma de l'inventaire : l'onglet (2 à 4) en 9 colonnes, toutes ses lignes, les cases de l'objet surlignées.
+  function bagWhere(r, pages) {
+    const COLS = 9, VISIBLE_ROWS = 3;
+    const byPage = {};
+    for (const w of r.where) (byPage[w.page] = byPage[w.page] || []).push(w);
+    const tabs = Object.keys(byPage).map(Number).sort();
+    let cur = tabs[0];
+    const draw = () => {
+      const list = pages[cur] || [], hit = new Set(byPage[cur].map((w) => w.slot));
+      const rows = Math.max(VISIBLE_ROWS, Math.ceil((Math.max(...list.map((x) => x.slot), ...hit) + 1) / COLS));
+      const cells = [];
+      for (let s = 0; s < rows * COLS; s++) {
+        const it = list.find((x) => x.slot === s);
+        cells.push(`<div class="bw-cell${hit.has(s) ? ' hit' : ''}" title="${it ? esc(it.name) : ''}">${it ? `${it.img ? `<img src="${esc(it.img)}" alt="" data-short="${esc(shortName(it.name))}">` : `<i>${esc(shortName(it.name))}</i>`}<b>${it.n}</b>` : ''}</div>`);
+      }
+      const where = byPage[cur].map((w) => {
+        const row = Math.floor(w.slot / COLS) + 1, col = (w.slot % COLS) + 1;
+        return `<li>${esc(t('bag.whereAt', { row, col, n: w.n }))}${row > VISIBLE_ROWS ? ` <span class="muted">${esc(t('bag.whereScroll'))}</span>` : ''}</li>`;
+      }).join('');
+      modal(`<div class="bw"><h1>${icon(r.img)} ${esc(r.name)}</h1>
+        <div class="bw-tabs">${[101, 102, 103].map((p) => `<button class="${p === cur ? 'on' : ''}${byPage[p] ? ' has' : ''}" data-tab="${p}" ${byPage[p] ? '' : 'disabled'}>${esc(t('bag.whereTab', { n: p - 99 }))}</button>`).join('')}</div>
+        <ul class="bw-list">${where}</ul>
+        <div class="bw-grid">${cells.join('')}</div>
+        <p class="muted small">${esc(t('bag.whereHelp'))}</p>
+        <div class="foot"><span></span><button class="btn primary" id="bwOk">${esc(t('pc.close'))}</button></div></div>`);
+      document.querySelectorAll('.bw-tabs [data-tab]').forEach((b) => (b.onclick = () => { cur = +b.dataset.tab; draw(); }));
+      $('bwOk').onclick = () => modal('');
+      const first = document.querySelector('.bw-cell.hit');
+      if (first) first.scrollIntoView({ block: 'center' });
+    };
+    draw();
   }
   function show() {
     render();
@@ -1095,3 +1141,13 @@ document.addEventListener('click', (e) => {
   if (!tr || e.target.closest('input, button, select, a, summary')) return;
   openPriceChart(+tr.dataset.item);
 });
+
+// Icône introuvable (certaines images n'existent plus chez tlidb) : dans le schéma du sac, le nom court la remplace ;
+// ailleurs, l'image est masquée au lieu de laisser un cadre cassé.
+document.addEventListener('error', (e) => {
+  const img = e.target;
+  if (!(img instanceof HTMLImageElement) || img.dataset.broken) return;
+  img.dataset.broken = '1';
+  if (img.dataset.short != null) { const i = document.createElement('i'); i.textContent = img.dataset.short; img.replaceWith(i); }
+  else img.style.visibility = 'hidden';
+}, true);

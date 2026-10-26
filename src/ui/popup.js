@@ -58,6 +58,17 @@ function fly(value, isBig) {
   requestAnimationFrame(() => requestAnimationFrame(() => { p.style.left = `${W / 2}px`; p.style.top = `${H / 2}px`; p.classList.add('go'); }));
   setTimeout(() => { p.remove(); flying--; add(value, isBig); }, FLY_MS);
 }
+// Petits gains (< 0,5 FE) : pas d'animation à eux seuls. Si le total est affiché, ils s'y ajoutent directement ;
+// sinon ils s'accumulent et partent ensemble dès que le paquet atteint 0,5 FE.
+const SMALL_FE = 0.5;
+let smallBuf = 0;
+function onGain(value) {
+  const visible = flying > 0 || (el.classList.contains('show') && !el.classList.contains('out'));
+  if (value >= SMALL_FE) return show(value, value >= BIG_FE);
+  if (visible) { add(value, false); return; }
+  smallBuf += value;
+  if (smallBuf >= SMALL_FE) { const v = smallBuf; smallBuf = 0; show(v, false); }
+}
 function show(value, isBig) {
   if (!el.classList.contains('show') || el.classList.contains('out')) { if (!flying) { total = 0; shown = 0; big = false; } }
   if (flyOn && flying < MAX_FLYING) {
@@ -65,7 +76,7 @@ function show(value, isBig) {
   } else add(value, isBig);
 }
 
-tli.onGain((g) => { if (g && g.value > 0) show(g.value, g.value >= BIG_FE); });
+tli.onGain((g) => { if (g && g.value > 0) onGain(g.value); });
 // Couleur choisie -> variantes claire, sombre, contour et halo (mêmes effets quelle que soit la couleur).
 function mix(hex, to, k) { const n = parseInt(hex.slice(1), 16), c = [n >> 16, (n >> 8) & 255, n & 255]; return '#' + c.map((v) => Math.round(v + (to - v) * k).toString(16).padStart(2, '0')).join(''); }
 function rgba(hex, a) { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; }

@@ -892,4 +892,24 @@ tr.hdet > td { background: rgba(0,0,0,.02); padding: 8px 12px 12px; }
 .ul-lines { display: inline-flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 4px 10px; border-left: 2px solid var(--line); }
 .ul-lines[hidden] { display: none; }
 
+/* Mode vente : où se trouve l'objet dans le sac */
+.nowrap { white-space: nowrap; }
+.modal:has(.bw) { width: min(620px, 94vw); }
+.bw h1 { display: flex; align-items: center; gap: 8px; font-size: 20px; }
+.bw-tabs { display: flex; gap: 6px; margin: 6px 0 8px; }
+.bw-tabs button { padding: 4px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel2); color: var(--muted); font: inherit; font-size: 12.5px; cursor: pointer; }
+.bw-tabs button.has { color: var(--text); }
+.bw-tabs button.on { border-color: var(--accent); background: rgba(255,138,61,.14); }
+.bw-tabs button:disabled { opacity: .45; cursor: default; }
+.bw-list { margin: 0 0 10px 18px; line-height: 1.7; }
+.bw-grid { display: grid; grid-template-columns: repeat(9, 1fr); gap: 4px; max-height: 330px; overflow-y: auto; padding: 6px; border-radius: 10px; background: var(--bg); border: 1px solid var(--line); }
+.bw-cell { position: relative; aspect-ratio: 1; border-radius: 5px; display: flex; align-items: center; justify-content: center; overflow: hidden;
+  background: linear-gradient(180deg, #dddfe6 0%, #d4d2e2 70%, #c8c3de 100%); border: 1.5px solid #8f95aa; box-shadow: inset 0 0 0 1px rgba(0,0,0,.55), inset 0 -8px 12px rgba(0,0,0,.25); }
+.bw-cell:empty { background: #fdfdfe; border-color: #dcdfe5; box-shadow: inset 0 0 0 1px rgba(0,0,0,.4); }
+.bw-cell img { width: 72%; height: 72%; object-fit: contain; filter: drop-shadow(0 2px 2px rgba(0,0,0,.6)); }
+.bw-cell i { font-style: normal; font-size: 9.5px; line-height: 1.1; text-align: center; color: #6657a3; padding: 2px; }
+.bw-cell b { position: absolute; right: 3px; bottom: 1px; font-size: 10.5px; text-shadow: 0 1px 2px #000; color: #141414; }
+.bw-cell.hit { border: 2px solid var(--accent); background: rgba(255,138,61,.25); box-shadow: 0 0 0 3px rgba(255,138,61,.25), 0 0 14px rgba(255,138,61,.55); animation: bwPulse 1.2s ease-in-out infinite; }
+@keyframes bwPulse { 50% { box-shadow: 0 0 0 5px rgba(255,138,61,.15), 0 0 20px rgba(255,138,61,.7); } }
+
 html { color-scheme: light; }

@@ -417,7 +417,8 @@ tracker.on('delta', (e) => {
   // Popup des gains : objets ramassés en carte (pas au repaire, pas les coûts), valeur au prix actuel.
   if (popupWin && !popupWin.isDestroyed() && e.delta > 0 && e.cat !== 'cost' && tracker.zone && !tracker.zone.hub && tracker.visible(e.id)) {
     const f = tracker._feedEntry(e);
-    if (f.value >= 0.5) popupWin.webContents.send('gain', { value: f.value, name: f.name });
+    // Tous les gains, même minuscules : le popup regroupe les petits pour que son total suive le widget.
+    if (f.value > 0) popupWin.webContents.send('gain', { value: f.value, name: f.name });
   }
   if (e.cat === 'cost' && e.delta < 0) setImmediate(() => checkStock(e.id));
 });
@@ -884,6 +885,17 @@ ipcMain.handle('bagScan', (_e, opts) => {
   let hidden = 0;
   const rows = [];
   const keep = new Set(settings.keepItems || []);
+  // Position dans le sac (mode vente) : onglet (page 101 à 103 = onglets 2 à 4) et cases, 9 par ligne.
+  const where = new Map();
+  const pages = {};
+  for (const [key, { id, num }] of tracker.slots) {
+    const [page, slot] = key.split(':').map(Number);
+    if (page < 101 || page > 103 || !(num > 0)) continue;
+    if (!where.has(id)) where.set(id, []);
+    where.get(id).push({ page, slot, n: num });
+    const it = items.get(id);
+    (pages[page] = pages[page] || []).push({ slot, id, n: num, img: it.img || null, name: it.name });
+  }
   for (const [id, n] of qty) {
     if (n <= 0) continue;
     if (!tracker.visible(id)) { hidden++; continue; }
@@ -894,13 +906,14 @@ ipcMain.handle('bagScan', (_e, opts) => {
     const value = unit * n;
     const verdict = keep.has(id) ? 'keep' : bound ? 'bound' : isVariablePrice(it) ? 'variable' : (!unit || p.source === 'inconnu' || p.source === 'nonconfirme') ? 'noprice' : value >= min ? 'sell' : 'low';
     rows.push({ id, name: it.name, img: it.img, qty: n, unit, value: verdict === 'variable' ? 0 : value, source: p.source, ts: p.ts || null, players: p.players || null,
-      stale: !!(p.ts && Date.now() - p.ts > STALE), verdict, kept: keep.has(id) });
+      stale: !!(p.ts && Date.now() - p.ts > STALE), verdict, kept: keep.has(id),
+      where: (where.get(id) || []).sort((a, b) => a.page - b.page || a.slot - b.slot) });
   }
   rows.sort((a, b) => b.value - a.value || a.name.localeCompare(b.name));
   const sum = (v) => rows.filter((r) => r.verdict === v);
   const total = (l) => l.reduce((x, r) => x + r.value, 0);
   return {
-    ready: tracker.snapshotReady, fe: tracker.bagQty(FE_ID), hidden, min, rows, taxRate: tracker.taxRate(),
+    ready: tracker.snapshotReady, fe: tracker.bagQty(FE_ID), hidden, min, rows, taxRate: tracker.taxRate(), pages,
     totals: { all: total(rows), sell: total(sum('sell')), low: total(sum('low')) },
     staleSell: rows.filter((r) => r.verdict === 'sell' && (r.stale || !r.ts)).length,
     counts: { all: rows.length, sell: sum('sell').length, low: sum('low').length, noprice: sum('noprice').length, variable: sum('variable').length, bound: sum('bound').length, keep: sum('keep').length },
@@ -1664,7 +1677,7 @@ ipcMain.handle('action', async (_e, name, arg) => {
     case 'popupPlaced': placePopup(false); break;
     case 'popupTest': {
       if (!popupWin) { setPopup(true); await new Promise((r) => setTimeout(r, 800)); }
-      for (const [ms, v] of [[0, 2.4], [150, 1], [300, 1], [500, 6.1], [700, 3.2], [1100, 1.3], [1250, 0.8], [1800, 64], [2600, 48]]) setTimeout(() => popupWin && !popupWin.isDestroyed() && popupWin.webContents.send('gain', { value: v }), ms);
+      for (const [ms, v] of [[0, 0.2], [80, 0.15], [160, 0.3], [400, 2.4], [550, 0.1], [700, 1], [900, 6.1], [1100, 0.05], [1300, 3.2], [1800, 64], [2600, 48]]) setTimeout(() => popupWin && !popupWin.isDestroyed() && popupWin.webContents.send('gain', { value: v }), ms);
       break;
     }
     case 'keepItem': {

@@ -5,6 +5,22 @@
   },
   "releases": [
     {
+      "version": "1.0.37",
+      "date": "2026-10-26",
+      "en": [
+        "Scan my bag: new \"Where?\" button on each item. It shows a map of the bag tab with all its rows, the item highlighted, and its place (\"Tab 3, row 2, column 6\"), so you find it right away when selling.",
+        "Gain popup: small drops (under 0.5 FE) are now counted too, so its total matches the widget.",
+        "Items whose icon no longer exists on tlidb show their short name instead of an empty box.",
+        "The Secret Realm Unholy Pedestal now shows its name."
+      ],
+      "fr": [
+        "Analyser mon sac : nouveau bouton « Où ? » sur chaque objet. Il affiche un schéma de l'onglet du sac avec toutes ses lignes, l'objet en surbrillance et sa place (« Onglet 3, ligne 2, colonne 6 »), pour le retrouver tout de suite quand tu vends.",
+        "Popup des gains : les petits drops (moins de 0,5 FE) sont maintenant comptés aussi, son total suit le widget.",
+        "Les objets dont l'icône n'existe plus chez tlidb affichent leur nom court au lieu d'une case vide.",
+        "Le Secret Realm Unholy Pedestal affiche maintenant son nom."
+      ]
+    },
+    {
       "version": "1.0.36",
       "date": "2026-10-26",
       "en": [
