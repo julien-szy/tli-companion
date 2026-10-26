@@ -26,6 +26,7 @@ contextBridge.exposeInMainWorld('tli', {
   setHeroName: (heroId, name) => ipcRenderer.invoke('setHeroName', heroId, name),
   register: (name) => ipcRenderer.invoke('register', name),
   getHeroes: () => ipcRenderer.invoke('getHeroes'),
+  getStats: () => ipcRenderer.invoke('getStats'),
   advisorContext: () => ipcRenderer.invoke('advisorContext'),
   aiStatus: () => ipcRenderer.invoke('aiStatus'),
   whatsNew: () => ipcRenderer.invoke('whatsNew'),

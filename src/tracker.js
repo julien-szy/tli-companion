@@ -8,6 +8,9 @@ const { EventEmitter } = require('events');
 const LOOT_PROTOS = new Set(['PickItems', 'PickItem', 'Push2', 'OpenRewardBox']);
 const COST_PROTOS = new Set(['Spv3Open']);
 const IGNORED_PROTOS = new Set(['ResetItemsLayout']); // tri du sac : déplacements seulement
+// Ramassage au sol : le jeu ne fait qu'ajouter. Si un emplacement y baisse ou change d'objet, c'est que notre
+// image du sac était périmée (objet déplacé sans trace dans le log) : on ne compte pas de perte fantôme.
+const PICK_PROTOS = new Set(['PickItems', 'PickItem']);
 // Objets consommés au lancement d'une carte sans passer par l'ouverture de balise (Spv3Open) :
 // Shackles de Tartarus (Darkiron, Mercury, Redgold). Toute sortie du sac compte comme un coût de carte,
 // sauf une vente à l'hôtel des ventes (protocoles Xchg…).
@@ -286,6 +289,11 @@ class Tracker extends EventEmitter {
     this.slots.set(key, { id: ev.id, num: ev.num });
     // Sans instantané, on ne connaît pas l'ancienne valeur d'un emplacement inconnu.
     if (!old && !this.snapshotReady) return;
+    if (this.proto && PICK_PROTOS.has(this.proto)) {
+      if (old && old.id === ev.id) { if (ev.num > old.num) this._delta(ev.id, ev.num - old.num, ev.ts); }
+      else this._delta(ev.id, ev.num, ev.ts);
+      return;
+    }
     if (old && old.id === ev.id) {
       this._delta(ev.id, ev.num - old.num, ev.ts);
     } else {
@@ -636,4 +644,4 @@ function shortName(path, levelId) {
   return zoneLabel(parts[parts.length - 1] || path, levelId);
 }
 
-module.exports = { Tracker, zoneLabel, TARTARUS_ENTRY, TARTARUS_MAX, STAR_MAX };
+module.exports = { Tracker, zoneLabel, shortName, TARTARUS_ENTRY, TARTARUS_MAX, STAR_MAX };

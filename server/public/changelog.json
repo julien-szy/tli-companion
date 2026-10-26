@@ -1,6 +1,24 @@
 {
   "releases": [
     {
+      "version": "1.0.40",
+      "date": "2026-10-26",
+      "en": [
+        "New Stats tab (beta): XP gained and XP per hour, deaths by map with the XP they cost, and your DPS and defense as calculated by the game.",
+        "Character sheet: open the Attributes tab of your character in game and the full sheet (about 190 stats) is saved, with what changed since the last time.",
+        "Skills: each skill is shown with its own supports, active and passive, updated live when you change a support.",
+        "Equipped gear: every piece with its affixes and their values (tier, corrupted pieces, legendary names), read when you log in.",
+        "Fixed: a phantom loss (for example \"Precious Ember -10\") could show in the widget during a map when the app's view of a bag slot was out of date."
+      ],
+      "fr": [
+        "Nouvel onglet Stats (bêta) : XP gagnée et XP par heure, morts par carte avec l'XP qu'elles coûtent, et ton DPS et ta défense calculés par le jeu.",
+        "Fiche du perso : ouvre l'onglet Attributs de ton perso en jeu et la fiche complète (environ 190 stats) est enregistrée, avec ce qui a changé depuis la dernière fois.",
+        "Compétences : chaque sort est affiché avec ses propres soutiens, actifs et passifs, mis à jour en direct quand tu changes un soutien.",
+        "Équipement porté : chaque pièce avec ses affixes et leurs valeurs (palier, pièces corrompues, noms des légendaires), lu à la connexion.",
+        "Corrigé : une perte fantôme (par exemple « Precious Ember -10 ») pouvait s'afficher dans le widget pendant une carte quand l'app avait une image périmée d'une case du sac."
+      ]
+    },
+    {
       "version": "1.0.39",
       "date": "2026-10-26",
       "en": [

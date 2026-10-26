@@ -13,6 +13,7 @@ const GROUPS = {
   strat: ['stratBest', 'stratRoutes'],
   builds: ['build', 'bfollow', 'bmine'],
   char: ['meta'],
+  stats: ['stats'],
   market: ['prices'],
   settings: ['settings', 'widget'],
 };
@@ -48,6 +49,7 @@ function showTab(name) {
   if (name === 'meta') MetaTab.show();
   if (name === 'advisor') showAdvisor();
   if (name === 'bag') Bag.show();
+  if (name === 'stats') Stats.show();
   if (name === 'stratBest' || name === 'stratRoutes') Strategies.show(name);
   refresh(true);
 }

@@ -20,6 +20,22 @@ const UNIT_NEXT_RE = /^\|\s+\|\s+\|\s+\+\d+ \[([-\d.eE+]+)\]/;
 const MODIFIER_RE = /AddMapModifier\((\d+)\) success/;
 const HERO_RE = /PreLoadHeroId = (\d+)/;
 const NODE_RE = /GetCardDataByMapOrder AreaId = (\d+) MapOrder (\d+)/;
+// Onglet Stats : expérience (valeur brute dans le niveau, puis le niveau), mort (écran d'échec), compétence
+// qui a tué, et DPS / défense du perso calculés par le jeu (« actuel -> avec l'objet comparé »).
+const EXP_RE = /ExpMgr@UpdateExp Percent:(\d+) (\d+)/;
+const KILLER_RE = /GetDeathDesc\s+Id == \d+ Args == KilledSkill:(\d+)/;
+const POWER_RE = /AttributeMgr:Log\(BaseId=\d+, GoldId=\d+\) (DPS|DEF): ([\d.]+) ->/;
+// Fiche du perso (onglet Attributs en jeu) : « Attri.Id  Attack DPS  10100 » puis « [1] = 41670070.9, [2] = … ».
+const ATTR_NAME_RE = /RoleAttrMgr@Attri\.Id\s+(.+?)\s+(\d+)\s*$/;
+const ATTR_VAL_RE = /RoleAttrMgr@\[1\] = ([-\d.eE+]+)(?:, \[2\] = ([-\d.eE+]+))?/;
+// Compétences équipées (page -6) : sort actif N dans l'emplacement N (1 à 5) et ses soutiens en N01 à N05 ;
+// passifs en 1001, 1007, 1013, 1019 et leurs soutiens dans les 5 emplacements suivants.
+// « Reset PageId=-6 » (connexion) puis « Update » ; « Add » / « Delete » quand on change un soutien.
+const SKILL_SLOT_RE = /ItemChange@ (Update|Add|Delete) Id=(\d+)_[0-9a-f-]+(?: BagNum=\d+)? in PageId=-6 SlotId=(\d+)/;
+// Équipement porté (page -1) : quelle pièce (identifiant unique) est dans quel emplacement.
+const GEAR_SLOT_RE = /ItemChange@ (Update|Add|Delete) Id=(\d+_[0-9a-f-]+)(?: BagNum=\d+)? in PageId=-1 SlotId=(\d+)/;
+// Bloc « GetPlayerData » reçu à la connexion : chaque pièce portée (et l'onglet équipement du sac) avec ses affixes.
+const GEAR_SECTIONS = new Set(['BaseAttrAffix', 'FixedBaseAffix', 'Prefix', 'Suffix', 'ChipAffix', 'extAffix', 'EnchantAffixs', 'BaseAffix']);
 
 const FE_ID = 100300;
 
@@ -46,6 +62,12 @@ class LogParser {
   }
 
   feed(line) {
+    if (this.gpd) { this._feedGpd(line); return; }
+    if (line.includes('RecvMessage STT----GetPlayerData')) {
+      const ts = parseTs(line);
+      this.gpd = { ts: ts || this.lastTs, items: [], cur: null, sec: null, dyn: null };
+      return;
+    }
     if (this.block) {
       this._feedBlock(line);
       return;
@@ -61,7 +83,9 @@ class LogParser {
     const hasMisc = !hasBag && !hasItem && !hasLevel && !hasXchg &&
       (line.includes('AddMapModifier(') || line.includes('PreLoadHeroId') ||
        line.includes('GetCardDataByMapOrder') || line.endsWith('[Game] AffixInfos') || line.includes('ResreshConsumData') ||
-       line.includes('SelectRoleNetMgr@_EnterLevelStep5') || line.includes('SetPlayerEquipment(BaseId='));
+       line.includes('SelectRoleNetMgr@_EnterLevelStep5') || line.includes('SetPlayerEquipment(BaseId=') ||
+       line.includes('ExpMgr@UpdateExp') || line.includes('Open FightFailureView') || line.includes('KilledSkill:') || line.includes('AttributeMgr:Log(') ||
+       line.includes('RoleAttrMgr@') || line.includes('PageId=-6') || line.includes('PageId=-1'));
     if (!hasBag && !hasItem && !hasLevel && !hasXchg && !hasMisc) return;
 
     const ts = parseTs(line);
@@ -73,7 +97,36 @@ class LogParser {
       if (line.includes('SelectRoleNetMgr@_EnterLevelStep5')) { this.onEvent({ type: 'roleLogin', ts: t }); return; }
       const eq = SETEQ_RE.exec(line);
       if (eq) { this.onEvent({ type: 'equipHint', ts: t, base: +eq[1], gold: +eq[2] }); return; }
-      let m = MODIFIER_RE.exec(line);
+      if (line.includes('Open FightFailureView')) { this.onEvent({ type: 'death', ts: t }); return; }
+      if (line.includes('RoleAttrMgr@')) {
+        const n = ATTR_NAME_RE.exec(line);
+        if (n) { this.attrName = { name: n[1], id: +n[2] }; return; }
+        const v = ATTR_VAL_RE.exec(line);
+        if (v && this.attrName) {
+          this.onEvent({ type: 'attr', ts: t, id: this.attrName.id, name: this.attrName.name, v: v[2] != null ? [+v[1], +v[2]] : [+v[1]] });
+          this.attrName = null;
+        }
+        return;
+      }
+      if (line.includes('ItemChange@') && line.includes('PageId=-1')) {
+        if (/ItemChange@ Reset PageId=-1(?!\d)/.test(line)) { this.onEvent({ type: 'gearReset', ts: t }); return; } // pas -10, -11…
+        const g = GEAR_SLOT_RE.exec(line);
+        if (g) this.onEvent({ type: 'gearSlot', ts: t, op: g[1] === 'Delete' ? 'del' : 'set', uid: g[2], slot: +g[3] });
+        return;
+      }
+      if (line.includes('PageId=-6')) {
+        if (line.includes('ItemChange@ Reset PageId=-6')) { this.onEvent({ type: 'skillReset', ts: t }); return; }
+        const k = SKILL_SLOT_RE.exec(line);
+        if (k) this.onEvent({ type: 'skillSlot', ts: t, op: k[1] === 'Delete' ? 'del' : 'set', id: +k[2], slot: +k[3] });
+        return;
+      }
+      let m = EXP_RE.exec(line);
+      if (m) { this.onEvent({ type: 'exp', ts: t, xp: +m[1], level: +m[2] }); return; }
+      m = KILLER_RE.exec(line);
+      if (m) { this.onEvent({ type: 'deathKiller', ts: t, skill: +m[1] }); return; }
+      m = POWER_RE.exec(line);
+      if (m) { this.onEvent({ type: 'power', ts: t, stat: m[1], value: +m[2] }); return; }
+      m = MODIFIER_RE.exec(line);
       if (m) { this.onEvent({ type: 'mapModifier', ts: t, id: +m[1] }); return; }
       m = HERO_RE.exec(line);
       if (m) { this.onEvent({ type: 'hero', ts: t, heroId: +m[1] }); return; }
@@ -151,6 +204,51 @@ class LogParser {
       }
     }
     return false; // la ligne courante est une ligne normale, à traiter ensuite
+  }
+
+  // Lignes du bloc GetPlayerData : on n'en garde que les objets d'équipement (page -1 = porté, 100 = onglet
+  // équipement du sac), avec leurs affixes et leurs valeurs. Le reste du bloc est ignoré.
+  _feedGpd(line) {
+    const g = this.gpd;
+    if (line.includes('----Socket RecvMessage End----')) {
+      this.gpd = null;
+      if (g.items.length) this.onEvent({ type: 'gearDump', ts: g.ts, items: g.items });
+      return;
+    }
+    let m = /\+\d+\+Index \[(\d+)\]/.exec(line);
+    if (m) { g.cur = { slot: +m[1], affixes: [] }; g.sec = null; g.dyn = null; return; }
+    const c = g.cur;
+    if (!c) return;
+    m = /\+PageId \[(-?\d+)\]/.exec(line);
+    if (m) {
+      const page = +m[1];
+      if ((page === -1 || page === 100) && c.uid && c.affixes.length) g.items.push({ ...c, page });
+      g.cur = null;
+      return;
+    }
+    if (g.dyn) {
+      const d2 = /^[|\s]*\+2 \[([-\d.eE+]+)\]\s*$/.exec(line);
+      if (d2) { g.dyn.args.push(+d2[1]); return; }
+      g.dyn = null;
+    }
+    m = /\+DynArgs\+1 \[([-\d.eE+]+)\]/.exec(line);
+    if (m) { const a = c.affixes[c.affixes.length - 1]; if (a && g.sec) { a.args = [+m[1]]; g.dyn = a; } return; }
+    m = /\+([A-Za-z]+)\+1\+Id \[(\d+)\]/.exec(line);
+    if (m) {
+      g.sec = GEAR_SECTIONS.has(m[1]) ? m[1] : null;
+      if (g.sec) c.affixes.push({ sec: g.sec, id: +m[2], args: [] });
+      return;
+    }
+    m = /^[|\s]*\+\d+\+Id \[(\d+)\]\s*$/.exec(line);
+    if (m && g.sec) { c.affixes.push({ sec: g.sec, id: +m[1], args: [] }); return; }
+    if (/\+[A-Za-z]+\+1\+/.test(line)) { g.sec = null; return; } // autre liste (emplacements de craft…)
+    m = /\+Id \[(\d+)_([0-9a-f-]+)\]/.exec(line);
+    if (m) { c.uid = m[1] + '_' + m[2]; c.base = +m[1]; return; }
+    m = /\+UniqueItmId \[(\d+)\]/.exec(line);
+    if (m) { if (+m[1]) c.unique = +m[1]; return; }
+    m = /\+Level \[(\d+)\]/.exec(line);
+    if (m && !c.level) { c.level = +m[1]; return; }
+    if (line.includes('+Corrode [true]')) c.corroded = true;
   }
 
   _feedBlock(line) {

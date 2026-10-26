@@ -5,6 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const { LogParser } = require('./parser');
 const { Tracker, zoneLabel, TARTARUS_ENTRY, TARTARUS_MAX, STAR_MAX } = require('./tracker');
+const { StatsBook } = require('./stats');
 const { ItemDb, PriceBook } = require('./prices');
 const { LogWatcher, findLogPath, findGameDir, expectedLogDir } = require('./logwatcher');
 const { JsonStore } = require('./store');
@@ -104,7 +105,10 @@ items.custom = meta.data.itemNames || {};
 const tracker = new Tracker({ prices, items, settings, meta });
 // Nom de classe automatique quand le numéro de héros est connu.
 tracker.heroLookup = (id) => { const h = HEROES.find((x) => x.gameId === +id); return h ? { key: h.key, name: `${h.hero} — ${h.trait}` } : null; };
-const parser = new LogParser((ev) => tracker.handle(ev));
+// Onglet Stats : morts, XP gagnée, DPS / défense (lit les mêmes événements que le suivi du farm).
+const stats = new StatsBook(userDir, tracker);
+stats.prune();
+const parser = new LogParser((ev) => { tracker.handle(ev); stats.handle(ev); });
 const community = new CommunityClient(settings, () => saveSettings());
 const builds = new BuildStore(path.join(userDir, 'builds'));
 // Chaque prix vu à l'hôtel des ventes est partagé (anonymement) avec le serveur.
@@ -956,6 +960,66 @@ ipcMain.handle('setItemName', (_e, id, name) => {
 ipcMain.handle('setManualPrice', (_e, id, price) => { prices.setManual(id, price); broadcast(); });
 ipcMain.handle('listReports', () => listReports());
 ipcMain.handle('getHeroes', () => HEROES);
+// Équipement pour l'onglet Stats : chaque emplacement avec sa pièce (nom du légendaire si c'en est un) et ses
+// affixes écrits en clair grâce à la table tirée de tlidb (les fourchettes remplacées par les valeurs de la pièce).
+let GEAR_AFFIXES = null;
+function gearAffixText(id, args) {
+  if (!GEAR_AFFIXES) { try { GEAR_AFFIXES = require('../data/gear_affixes.json').affixes; } catch { GEAR_AFFIXES = {}; } }
+  const a = GEAR_AFFIXES[id];
+  if (!a) return { text: null, id };
+  const fmt = (v) => String(Math.round(v * 100) / 100);
+  const RANGE = /\((-?[\d.]+)\s*[–-]\s*(-?[\d.]+)\)/g;
+  const ranges = (a.t.match(RANGE) || []).length;
+  let k = 0, text;
+  if (!ranges) {
+    text = a.t; // valeurs fixes, déjà dans le texte
+  } else if (args.length > ranges) {
+    // Le jeu donne aussi une valeur pour les nombres fixes du texte, dans un ordre qui n'est pas celui de la
+    // phrase (« +(7–8)% … per 10 Dexterity » -> [10, 7]). Les valeurs égales à un nombre fixe du texte lui
+    // reviennent ; les autres remplissent les fourchettes. S'il n'en reste pas, la fourchette reste affichée.
+    const fixed = (a.t.replace(RANGE, ' ').match(/\d+(?:\.\d+)?/g) || []).map(Number);
+    const rest = args.slice();
+    for (const f of fixed) { const i = rest.findIndex((v) => Math.abs(v - f) < 1e-9); if (i >= 0) rest.splice(i, 1); }
+    text = a.t.replace(RANGE, (all) => (k < rest.length ? fmt(rest[k++]) : all));
+  } else {
+    // Une valeur par fourchette ; deux fourchettes identiques (« +(13–17)% … / +(13–17)% Minion … ») ont la même valeur.
+    const seen = {};
+    text = a.t.replace(RANGE, (all) => {
+      if (k < args.length) return (seen[all] = fmt(args[k++]));
+      return seen[all] != null ? seen[all] : all;
+    });
+  }
+  return { text, tier: a.tier != null ? a.tier : null };
+}
+const GEAR_ORDER = [1, 4, 9, 10, 8, 5, 6, 7, 2, 3]; // casque, torse, gants, bottes, ceinture, collier, bagues, armes
+function statsGearView(g) {
+  if (!g) return null;
+  const SEC = { BaseAttrAffix: 'base', FixedBaseAffix: 'base', BaseAffix: 'base', Prefix: 'prefix', Suffix: 'suffix' };
+  return GEAR_ORDER.filter((s) => g.slots[s]).map((slot) => {
+    const uid = g.slots[slot], it = g.items[uid];
+    const baseId = +String(uid).split('_')[0];
+    if (!it) return { slot, base: baseId, known: false };
+    const uniq = it.unique ? items.get(it.unique) : null;
+    const affixes = it.affixes.map((a) => ({ sec: SEC[a.sec] || 'other', ...gearAffixText(a.id, a.args || []) }));
+    return { slot, base: it.base, known: true, level: it.level, corroded: it.corroded, name: uniq && uniq.name && !/^#/.test(uniq.name) ? uniq.name : null, img: uniq ? uniq.img || null : null, affixes };
+  });
+}
+ipcMain.handle('getStats', () => {
+  const sum = stats.summary(Date.now(), tracker.snapshot().session.realTimeMs);
+  // Compétences équipées, chaque sort avec ses soutiens : actifs 1 à 5 (soutiens N01 à N05), passifs
+  // 1001 / 1007 / 1013 / 1019 (soutiens dans les 5 emplacements suivants).
+  const KIND = { '辅助技能': 'support', '崇高辅助技能': 'noble', '华贵辅助技能': 'magnificent', '触媒技能': 'catalyst' };
+  const sk = (id) => { const it = items.get(id); return { id, name: it.name, img: it.img || null, kind: KIND[it.type] || 'support' }; };
+  const skills = [];
+  const slots = (sum.loadout && sum.loadout.slots) || {};
+  const groups = [...[1, 2, 3, 4, 5].map((n) => ({ kind: 'active', main: n, sup: [1, 2, 3, 4, 5].map((i) => n * 100 + i) })),
+    ...[1001, 1007, 1013, 1019].map((n) => ({ kind: 'passive', main: n, sup: [1, 2, 3, 4, 5].map((i) => n + i) }))];
+  for (const g of groups) {
+    if (!slots[g.main]) continue;
+    skills.push({ kind: g.kind, skill: sk(slots[g.main]), supports: g.sup.filter((s) => slots[s]).map((s) => sk(slots[s])) });
+  }
+  return { ...sum, skills, gear: statsGearView(sum.gear), heroName: sum.hero ? tracker.heroName(sum.hero) : null };
+});
 // Liens externes autorisés : uniquement les pages de classe tlidb.
 const SUPPORT_URL = 'https://buymeacoffee.com/snoopiisz';
 ipcMain.handle('openExternal', (_e, url) => {
@@ -1753,6 +1817,17 @@ async function debugScreenshots(dir) {
   setCollapsed(false);
   openDashboard(); await wait(2500);
   fs.writeFileSync(path.join(dir, 'dashboard-live.png'), (await dashboard.webContents.capturePage()).toPNG());
+  // TLI_TAB : capture d'un onglet précis (haut puis bas de la page).
+  if (process.env.TLI_TAB) {
+    await dashboard.webContents.executeJavaScript(`showTab(${JSON.stringify(process.env.TLI_TAB)})`); await wait(2000);
+    fs.writeFileSync(path.join(dir, 'tab-top.png'), (await dashboard.webContents.capturePage()).toPNG());
+    for (const y of [700, 1300, 1900]) {
+      await dashboard.webContents.executeJavaScript(`document.querySelector('main').scrollTop = ${y}`); await wait(400);
+      fs.writeFileSync(path.join(dir, `tab-${y}.png`), (await dashboard.webContents.capturePage()).toPNG());
+    }
+    await dashboard.webContents.executeJavaScript("document.querySelector('main').scrollTop = 99999"); await wait(500);
+    fs.writeFileSync(path.join(dir, 'tab-bottom.png'), (await dashboard.webContents.capturePage()).toPNG());
+  }
   await dashboard.webContents.executeJavaScript("showTab('runs')"); await wait(1200);
   fs.writeFileSync(path.join(dir, 'dashboard-runs.png'), (await dashboard.webContents.capturePage()).toPNG());
   if (tracker.session.recording) {
@@ -2013,5 +2088,5 @@ if (!app.requestSingleInstanceLock()) {
     if (process.env.TLI_SHOT) debugScreenshots(process.env.TLI_SHOT);
   });
   app.on('window-all-closed', (e) => e.preventDefault()); // reste dans la barre des tâches
-  app.on('will-quit', () => { globalShortcut.unregisterAll(); prices.save(); meta.flush(); });
+  app.on('will-quit', () => { globalShortcut.unregisterAll(); prices.save(); meta.flush(); stats.store.flush(); });
 }
