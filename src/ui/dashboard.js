@@ -482,7 +482,13 @@ const POP_COLORS = ['#ffd447', '#ff9a3d', '#5fe38d', '#4fd8ff', '#ff6fb5', '#fff
 $('popColors').innerHTML = POP_COLORS.map((c) => `<button class="pop-sw" data-c="${c}" style="background:${c}" title="${c}"></button>`).join('');
 $('popColors').querySelectorAll('[data-c]').forEach((b) => (b.onclick = () => tli.action('popupColor', b.dataset.c)));
 $('popColor').oninput = (e) => tli.action('popupColor', e.target.value);
-$('popSize').oninput = (e) => { $('popSizeV').textContent = Math.round(e.target.value * 100) + ' %'; tli.action('popupSize', +e.target.value); };
+// Taille affichée en pixels (46 px à 100 %).
+const popPx = (k) => Math.round(46 * k) + ' px';
+$('popSize').oninput = (e) => { $('popSizeV').textContent = popPx(+e.target.value); tli.action('popupSize', +e.target.value); };
+$('popGlow').oninput = (e) => { $('popGlowV').textContent = Math.round(e.target.value * 100) + ' %'; tli.action('popupGlow', +e.target.value); };
+$('popRainbow').onchange = (e) => tli.action('popupRainbow', e.target.checked);
+$('popHold').oninput = (e) => { $('popHoldV').textContent = e.target.value + ' s'; tli.action('popupHold', +e.target.value); };
+$('popFly').onchange = (e) => tli.action('popupFly', e.target.checked);
 $('sAutoPause').onchange = (e) => tli.action('autoPause', e.target.checked);
 // Réglages > Contenu du widget : une case par info, regroupées comme dans le widget.
 const WIDGET_GROUPS = [
@@ -640,7 +646,12 @@ tli.onState((s) => {
     $('popPlace').textContent = t(s.popupPlacing ? 'pop.placeDone' : 'pop.place');
     $('popPlace').classList.toggle('primary', !!s.popupPlacing);
     const pp = s.settings.popup || {};
-    if (document.activeElement !== $('popSize')) { $('popSize').value = pp.size || 1; $('popSizeV').textContent = Math.round((pp.size || 1) * 100) + ' %'; }
+    if (document.activeElement !== $('popSize')) { $('popSize').value = pp.size || 1; $('popSizeV').textContent = popPx(pp.size || 1); }
+    const gl = pp.glow != null ? pp.glow : 1;
+    if (document.activeElement !== $('popGlow')) { $('popGlow').value = gl; $('popGlowV').textContent = Math.round(gl * 100) + ' %'; }
+    $('popRainbow').checked = pp.rainbow !== false;
+    $('popFly').checked = pp.fly !== false;
+    if (document.activeElement !== $('popHold')) { $('popHold').value = pp.hold || 5; $('popHoldV').textContent = (pp.hold || 5) + ' s'; }
     if (document.activeElement !== $('popColor')) $('popColor').value = pp.color || '#ffd447';
     $('popColors').querySelectorAll('[data-c]').forEach((b) => b.classList.toggle('on', b.dataset.c === (pp.color || '#ffd447')));
     $('sStar').checked = s.settings.starAlerts !== false;

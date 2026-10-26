@@ -47,7 +47,7 @@ const DEFAULTS = {
   timeMode: 'real',      // 'real' = temps réel de session ; 'map' = temps passé en carte
   communityPrices: true,
   hubPatterns: ['/XZ_'], // chemins de map considérés comme repaire / ville
-  popup: { enabled: false, x: null, y: null, size: 1, color: '#ffd447' }, // taille (0.6 à 2) et couleur du texte // popup des gains « +X FE » (fenêtre transparente, clics traversants)
+  popup: { enabled: false, x: null, y: null, size: 1, color: '#ffd447', glow: 1, rainbow: true, hold: 5, fly: true }, // hold : secondes d'affichage ; fly : les gains volent jusqu'au total // taille (0.3 à 2 = 14 à 92 px), couleur, halo (0 à 1), arc-en-ciel au-dessus de 100 FE // popup des gains « +X FE » (fenêtre transparente, clics traversants)
   overlay: { x: null, y: null, collapsed: false, opacity: 0.92, scale: 1, solid: false, locked: false, dropsSort: 'recent', ultra: false, ultraLines: ['rec', 'map', 'ph', 'sess'], unitPrice: false, noFlash: false, compact: false },
   server: { url: 'https://tlicompanion.com', token: null, userId: null, name: null },
   activeBuild: null,     // id du build suivi par le conseiller d'achat
@@ -624,8 +624,8 @@ setInterval(broadcast, 1000); // chronos
 // déplaçable (cadre + bouton OK) le temps de choisir sa position.
 let popupWin = null;
 let popupPlacing = false;
-const POPUP_SIZE = { w: 460, h: 150 };
-const popupDims = () => { const k = Math.min(2, Math.max(0.6, +settings.popup.size || 1)); return { w: Math.round(POPUP_SIZE.w * k), h: Math.round(POPUP_SIZE.h * k) }; };
+const POPUP_SIZE = { w: 460, h: 230 }; // assez haut pour que les petits gains arrivent de partout
+const popupDims = () => { const k = Math.min(2, Math.max(0.3, +settings.popup.size || 1)); return { w: Math.round(POPUP_SIZE.w * Math.max(0.5, k)), h: Math.round(POPUP_SIZE.h * Math.max(0.5, k)) }; };
 function createPopup() {
   if (popupWin && !popupWin.isDestroyed()) return;
   const wa = screen.getPrimaryDisplay().workArea;
@@ -1648,7 +1648,7 @@ ipcMain.handle('action', async (_e, name, arg) => {
     case 'popup': setPopup(arg); break;
     case 'popupPlace': placePopup(true); break;
     case 'popupSize': {
-      settings.popup.size = Math.min(2, Math.max(0.6, +arg || 1)); saveSettings();
+      settings.popup.size = Math.min(2, Math.max(0.3, +arg || 1)); saveSettings();
       if (popupWin && !popupWin.isDestroyed()) {
         // Agrandi / réduit autour de son centre, pour qu'il reste au même endroit à l'écran.
         const [x, y] = popupWin.getPosition(), [w, h] = popupWin.getSize(), d = popupDims();
@@ -1656,11 +1656,15 @@ ipcMain.handle('action', async (_e, name, arg) => {
       }
       broadcast(); break;
     }
+    case 'popupGlow': settings.popup.glow = Math.min(1, Math.max(0, +arg)); saveSettings(); broadcast(); break;
+    case 'popupRainbow': settings.popup.rainbow = !!arg; saveSettings(); broadcast(); break;
+    case 'popupHold': settings.popup.hold = Math.min(15, Math.max(1, Math.round(+arg) || 5)); saveSettings(); broadcast(); break;
+    case 'popupFly': settings.popup.fly = !!arg; saveSettings(); broadcast(); break;
     case 'popupColor': if (/^#[0-9a-f]{6}$/i.test(String(arg))) { settings.popup.color = String(arg).toLowerCase(); saveSettings(); broadcast(); } break;
     case 'popupPlaced': placePopup(false); break;
     case 'popupTest': {
       if (!popupWin) { setPopup(true); await new Promise((r) => setTimeout(r, 800)); }
-      for (const [ms, v] of [[0, 2.4], [500, 6.1], [1100, 1.3], [1800, 64]]) setTimeout(() => popupWin && !popupWin.isDestroyed() && popupWin.webContents.send('gain', { value: v }), ms);
+      for (const [ms, v] of [[0, 2.4], [150, 1], [300, 1], [500, 6.1], [700, 3.2], [1100, 1.3], [1250, 0.8], [1800, 64], [2600, 48]]) setTimeout(() => popupWin && !popupWin.isDestroyed() && popupWin.webContents.send('gain', { value: v }), ms);
       break;
     }
     case 'keepItem': {

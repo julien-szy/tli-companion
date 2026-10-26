@@ -5,6 +5,18 @@
   },
   "releases": [
     {
+      "version": "1.0.36",
+      "date": "2026-10-26",
+      "en": [
+        "Gain popup: each pickup now appears small at a random spot and flies to the total, which counts up (option \"Gains fly in from everywhere\", on by default).",
+        "Gain popup: new settings: size in pixels (down to 14 px), glow strength (0 = outline only), display duration (1 to 15 s, 5 by default), and a scrolling rainbow when the total goes over 100 FE."
+      ],
+      "fr": [
+        "Popup des gains : chaque objet ramassé apparaît maintenant en petit à un endroit au hasard et vole jusqu'au total, qui monte en défilant (option « Les gains arrivent de partout », activée par défaut).",
+        "Popup des gains : nouveaux réglages : taille en pixels (jusqu'à 14 px), force du halo (0 = seulement le contour), durée d'affichage (1 à 15 s, 5 par défaut), et arc-en-ciel qui défile quand le total dépasse 100 FE."
+      ]
+    },
+    {
       "version": "1.0.35",
       "date": "2026-10-26",
       "en": [

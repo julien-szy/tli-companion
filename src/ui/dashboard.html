@@ -118,7 +118,11 @@
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><label><input type="checkbox" id="sPopup"> <span data-i18n="pop.enable"></span></label>
         <button class="btn" id="popPlace" data-i18n="pop.place"></button><button class="btn" id="popTest" data-i18n="pop.test"></button></div>
       <div></div>
-      <div class="pop-style"><label><span data-i18n="pop.size"></span> <input type="range" id="popSize" min="0.6" max="2" step="0.05"> <b id="popSizeV"></b></label>
+      <div class="pop-style"><label><span data-i18n="pop.size"></span> <input type="range" id="popSize" min="0.3" max="2" step="0.02"> <b id="popSizeV"></b></label>
+        <label><span data-i18n="pop.glow"></span> <input type="range" id="popGlow" min="0" max="1" step="0.05"> <b id="popGlowV"></b></label>
+        <label><input type="checkbox" id="popRainbow"> <span data-i18n="pop.rainbow"></span></label>
+        <label><span data-i18n="pop.hold"></span> <input type="range" id="popHold" min="1" max="15" step="1"> <b id="popHoldV"></b></label>
+        <label><input type="checkbox" id="popFly"> <span data-i18n="pop.fly"></span></label>
         <span class="pop-colors" id="popColors"></span><input type="color" id="popColor" data-i18n-title="pop.custom"></div>
       <div class="help" data-i18n="pop.help"></div>
 

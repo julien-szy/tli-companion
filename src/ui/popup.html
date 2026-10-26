@@ -12,14 +12,30 @@
   /* Le texte ne doit jamais capter la souris : sinon il couvre le cadre « Placer » et son bouton OK. */
   .wrap { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; z-index: 4; }
   /* --c : couleur choisie ; --c2 : plus claire (unité, gros drops) ; --dk : plus sombre (ombre) ; --halo ; --s : taille. */
-  :root { --c: #ffd447; --c2: #ffe9a3; --dk: #7a4a00; --ol: #2a1600; --halo: rgba(255,190,40,.55); --halo2: rgba(255,210,60,.9); --s: 1; }
+  :root { --g: 1; --c: #ffd447; --c2: #ffe9a3; --dk: #7a4a00; --ol: #2a1600; --halo: rgba(255,190,40,.55); --halo2: rgba(255,210,60,.9); --s: 1; }
   .gain { position: relative; font-weight: 800; font-size: calc(46px * var(--s)); letter-spacing: .5px; font-variant-numeric: tabular-nums; white-space: nowrap;
     color: var(--c); opacity: 0;
-    text-shadow: 0 2px 0 var(--dk), 0 0 2px #000, -2px -2px 0 var(--ol), 2px -2px 0 var(--ol), -2px 2px 0 var(--ol), 2px 2px 0 var(--ol), 0 0 18px var(--halo); }
+    text-shadow: 0 2px 0 var(--dk), 0 0 2px #000, -2px -2px 0 var(--ol), 2px -2px 0 var(--ol), -2px 2px 0 var(--ol), 2px 2px 0 var(--ol), 0 0 calc(18px * var(--g)) var(--halo); }
   .gain small { font-size: calc(26px * var(--s)); margin-left: 6px; color: var(--c2); }
   .gain.show { opacity: 1; transform: translateY(0); transition: opacity .15s ease-out; }
   .gain.bump { animation: bump .28s ease-out; }
-  .gain.big { color: var(--c2); font-size: calc(58px * var(--s)); text-shadow: 0 2px 0 var(--dk), -2px -2px 0 var(--ol), 2px -2px 0 var(--ol), -2px 2px 0 var(--ol), 2px 2px 0 var(--ol), 0 0 28px var(--halo2); }
+  .gain.big { color: var(--c2); font-size: calc(58px * var(--s)); text-shadow: 0 2px 0 var(--dk), -2px -2px 0 var(--ol), 2px -2px 0 var(--ol), -2px 2px 0 var(--ol), 2px 2px 0 var(--ol), 0 0 calc(28px * var(--g)) var(--halo2); }
+  /* Total au-dessus de 100 FE : dégradé arc-en-ciel qui défile (contour et halo passent en drop-shadow). */
+  .gain.rainbow, .gain.rainbow small { color: transparent; text-shadow: none;
+    background: linear-gradient(90deg, #ff4d4d, #ffa64d, #ffe14d, #6cff6c, #4dd8ff, #6c7bff, #d36cff, #ff4d4d); background-size: 200% 100%;
+    -webkit-background-clip: text; background-clip: text; animation: rainbow 1.6s linear infinite; }
+  .gain.rainbow { filter: drop-shadow(0 2px 0 rgba(0,0,0,.85)) drop-shadow(0 0 1.5px #000) drop-shadow(0 0 calc(12px * var(--g)) rgba(255,255,255,calc(.45 * var(--g)))); }
+  .gain.rainbow.bump { animation: rainbow 1.6s linear infinite, bump .28s ease-out; }
+  @keyframes rainbow { from { background-position: 0% 50%; } to { background-position: 200% 50%; } }
+  /* Petits gains qui volent jusqu'au total (option « arrivée des gains ») */
+  #fx { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
+  .part { position: absolute; transform: translate(-50%, -50%) scale(1); font-weight: 800; font-size: calc(20px * var(--s)); color: var(--c); white-space: nowrap; opacity: 0;
+    text-shadow: 0 1px 0 var(--dk), -1px -1px 0 var(--ol), 1px -1px 0 var(--ol), -1px 1px 0 var(--ol), 1px 1px 0 var(--ol), 0 0 calc(8px * var(--g)) var(--halo);
+    transition: left .65s cubic-bezier(.55,0,.75,.3), top .65s cubic-bezier(.55,0,.75,.3), transform .65s ease-in, opacity .65s ease-in; }
+  .part.big { font-size: calc(26px * var(--s)); color: var(--c2); }
+  .part:not(.go) { opacity: 1; animation: partIn .15s ease-out; }
+  .part.go { opacity: .75; transform: translate(-50%, -50%) scale(.6); }
+  @keyframes partIn { from { opacity: 0; transform: translate(-50%, -50%) scale(.4); } }
   .gain.out { opacity: 0; transform: translateY(-28px); transition: opacity 1s ease-in, transform 1s ease-in; }
   @keyframes bump { 0% { transform: scale(1); } 40% { transform: scale(1.18); } 100% { transform: scale(1); } }
   /* Mode Placer */
@@ -32,6 +48,7 @@
 <body>
 <div class="place"><p id="placeTxt"></p><button id="placeOk">OK</button></div>
 <div class="wrap"><div class="gain" id="gain"></div></div>
+<div id="fx"></div>
 <script src="../i18n.js"></script>
 <script src="common.js"></script>
 <script src="popup.js"></script>
