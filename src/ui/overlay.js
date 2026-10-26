@@ -70,6 +70,8 @@ tli.onState((s) => {
   const ultra = !!s.settings.overlay.ultra;
   document.body.classList.toggle('ultra', ultra);
   if (ultra) {
+    const lines = s.settings.overlay.ultraLines || ['rec', 'map', 'ph', 'sess'];
+    document.querySelectorAll('[data-ul]').forEach((el) => (el.hidden = !lines.includes(el.dataset.ul)));
     const ss = s.session, c = s.current || s.lastRun;
     const st = !s.recording ? 'off' : ss.paused ? 'pause' : 'rec';
     $('uRec').className = 'u' + st;

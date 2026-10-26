@@ -5,6 +5,18 @@
   },
   "releases": [
     {
+      "version": "1.0.35",
+      "date": "2026-10-26",
+      "en": [
+        "Ultra minimal widget: choose which lines it shows (recording and time, current map, FE/h, session) in Settings › Widget. Keep only \"Current map\" for a single clean line.",
+        "Fix: the OK button could not be clicked when placing the gain popup. Enter or Escape also confirm, and \"Place it\" in Settings becomes \"Save the position\" while placing."
+      ],
+      "fr": [
+        "Widget ultra minimal : choisis les lignes qu'il affiche (enregistrement et temps, carte en cours, FE/h, session) dans Réglages › Widget. Ne garde que « Carte en cours » pour une seule ligne épurée.",
+        "Correctif : le bouton OK ne se cliquait pas pendant le placement du popup des gains. Entrée ou Échap valident aussi, et « Placer » dans les Réglages devient « Valider la position » pendant le placement."
+      ]
+    },
+    {
       "version": "1.0.34",
       "date": "2026-10-25",
       "en": [

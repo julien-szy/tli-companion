@@ -467,9 +467,15 @@ $('sOpacity').onchange = (e) => tli.action('opacity', +e.target.value);
 $('sScale').onchange = (e) => tli.action('scale', +e.target.value);
 $('sSolid').onchange = (e) => tli.action('solid', e.target.checked);
 $('sUltra').onchange = (e) => tli.action('ultra', e.target.checked);
+// Lignes du mode ultra minimal (au moins une reste cochée).
+document.querySelectorAll('#ultraLines [data-ul]').forEach((cb) => (cb.onchange = () => {
+  const on = [...document.querySelectorAll('#ultraLines [data-ul]')].filter((x) => x.checked).map((x) => x.dataset.ul);
+  if (!on.length) { cb.checked = true; return; }
+  tli.action('ultraLines', on);
+}));
 for (const [id, act] of [['sUnitPrice', 'unitPrice'], ['sNoFlash', 'noFlash'], ['sCompact', 'compact']]) $(id).onchange = (e) => tli.action(act, e.target.checked);
 $('sPopup').onchange = (e) => tli.action('popup', e.target.checked);
-$('popPlace').onclick = () => tli.action('popupPlace');
+$('popPlace').onclick = () => tli.action(last && last.popupPlacing ? 'popupPlaced' : 'popupPlace');
 $('popTest').onclick = () => tli.action('popupTest');
 // Taille et couleur du popup (les effets suivent la couleur). Couleurs prêtes + n'importe quelle couleur.
 const POP_COLORS = ['#ffd447', '#ff9a3d', '#5fe38d', '#4fd8ff', '#ff6fb5', '#ffffff'];
@@ -624,10 +630,15 @@ tli.onState((s) => {
     $('sScale').value = s.settings.overlay.scale;
     $('sSolid').checked = !!s.settings.overlay.solid;
     $('sUltra').checked = !!s.settings.overlay.ultra;
+    const ul = s.settings.overlay.ultraLines || ['rec', 'map', 'ph', 'sess'];
+    $('ultraLines').hidden = !s.settings.overlay.ultra;
+    document.querySelectorAll('#ultraLines [data-ul]').forEach((cb) => (cb.checked = ul.includes(cb.dataset.ul)));
     $('sUnitPrice').checked = !!s.settings.overlay.unitPrice;
     $('sNoFlash').checked = !!s.settings.overlay.noFlash;
     $('sCompact').checked = !!s.settings.overlay.compact;
     $('sPopup').checked = !!(s.settings.popup && s.settings.popup.enabled);
+    $('popPlace').textContent = t(s.popupPlacing ? 'pop.placeDone' : 'pop.place');
+    $('popPlace').classList.toggle('primary', !!s.popupPlacing);
     const pp = s.settings.popup || {};
     if (document.activeElement !== $('popSize')) { $('popSize').value = pp.size || 1; $('popSizeV').textContent = Math.round((pp.size || 1) * 100) + ' %'; }
     if (document.activeElement !== $('popColor')) $('popColor').value = pp.color || '#ffd447';

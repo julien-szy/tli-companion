@@ -48,7 +48,7 @@ const DEFAULTS = {
   communityPrices: true,
   hubPatterns: ['/XZ_'], // chemins de map considérés comme repaire / ville
   popup: { enabled: false, x: null, y: null, size: 1, color: '#ffd447' }, // taille (0.6 à 2) et couleur du texte // popup des gains « +X FE » (fenêtre transparente, clics traversants)
-  overlay: { x: null, y: null, collapsed: false, opacity: 0.92, scale: 1, solid: false, locked: false, dropsSort: 'recent', ultra: false, unitPrice: false, noFlash: false, compact: false },
+  overlay: { x: null, y: null, collapsed: false, opacity: 0.92, scale: 1, solid: false, locked: false, dropsSort: 'recent', ultra: false, ultraLines: ['rec', 'map', 'ph', 'sess'], unitPrice: false, noFlash: false, compact: false },
   server: { url: 'https://tlicompanion.com', token: null, userId: null, name: null },
   activeBuild: null,     // id du build suivi par le conseiller d'achat
   shareMeta: true,       // partage auto du Hero Ranking consulté (pseudos sauf profils masqués)
@@ -70,13 +70,15 @@ const DEFAULTS = {
 };
 const COLLAPSED = { w: 420, h: 48 };
 const ULTRA = { w: 210, h: 96 }; // mode ultra minimal : quelques chiffres, sans fond
+const ULTRA_LINES = ['rec', 'map', 'ph', 'sess']; // enregistrement, carte, FE/h, session : chaque ligne s'affiche ou non
 const EXPANDED = { w: 340, h: 520 };
 // Taille du widget choisie en tirant son coin (avant le zoom de « Taille du widget ») :
 // largeur et hauteur libres, le contenu ne change pas d'échelle, on voit juste plus ou moins de choses.
 const WIDGET_MIN = { w: 260, h: 110 }, WIDGET_MAX = { w: 900, h: 1400 }, COLLAPSED_MIN_W = 300;
 function widgetSize() {
   const o = settings.overlay;
-  if (o.ultra) return ULTRA;
+  // Mode ultra : hauteur selon le nombre de lignes choisies (24 px par ligne + marges).
+  if (o.ultra) { const n = ULTRA_LINES.filter((k) => (o.ultraLines || ULTRA_LINES).includes(k)).length || 1; return { w: ULTRA.w, h: 12 + n * 24 }; }
   return o.collapsed ? { w: o.cw || COLLAPSED.w, h: COLLAPSED.h } : { w: o.w || EXPANDED.w, h: o.h || EXPANDED.h };
 }
 
@@ -393,6 +395,7 @@ function broadcast() {
   lastBroadcast = Date.now();
   const snap = { ...tracker.snapshot(), status, settings: publicSettings() };
   snap.overlayVisible = !!(overlay && !overlay.isDestroyed() && overlay.isVisible());
+  snap.popupPlacing = popupPlacing;
   snap.update = updateState;
   snap.updateRequired = updateRequired;
   snap.appVersion = app.getVersion();
@@ -1671,6 +1674,12 @@ ipcMain.handle('action', async (_e, name, arg) => {
     }
     case 'unitPrice': case 'noFlash': case 'compact': settings.overlay[name] = !!arg; saveSettings(); broadcast(); break;
     case 'ultra': setUltra(arg); break;
+    case 'ultraLines': {
+      const keep = ULTRA_LINES.filter((k) => Array.isArray(arg) && arg.includes(k));
+      settings.overlay.ultraLines = keep.length ? keep : ['map']; // au moins une ligne
+      setCollapsed(settings.overlay.collapsed); // enregistre et ajuste la hauteur
+      break;
+    }
     case 'pause': tracker.togglePause(); broadcast(); break;
     case 'autoPause': settings.autoPause = !!arg; saveSettings(); break;
     // Contenu du widget : arg = { key, show }.
@@ -1841,7 +1850,10 @@ async function debugScreenshots(dir) {
     if (process.env.TLI_EVAL) console.log('EVAL', JSON.stringify(await dashboard.webContents.executeJavaScript(process.env.TLI_EVAL)));
     if (process.env.TLI_EVAL) fs.writeFileSync(path.join(dir, 'after-eval.png'), (await dashboard.webContents.capturePage()).toPNG());
     // Popup des gains (test) : capture de sa fenêtre après l'expression évaluée.
-    if (popupWin && !popupWin.isDestroyed()) fs.writeFileSync(path.join(dir, 'popup.png'), (await popupWin.webContents.capturePage()).toPNG());
+    if (popupWin && !popupWin.isDestroyed()) {
+      if (process.env.TLI_POPUP_EVAL) console.log('POPUP_EVAL', JSON.stringify(await popupWin.webContents.executeJavaScript(process.env.TLI_POPUP_EVAL)));
+      fs.writeFileSync(path.join(dir, 'popup.png'), (await popupWin.webContents.capturePage()).toPNG());
+    }
   }
   if (process.env.TLI_FARM_TEST) {
     const shot = async (name) => fs.writeFileSync(path.join(dir, name), (await dashboard.webContents.capturePage()).toPNG());

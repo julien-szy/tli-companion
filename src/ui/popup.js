@@ -38,7 +38,13 @@ tli.onState((s) => {
   setLang(s.settings.lang);
   applyStyle(s.settings.popup);
   const placing = !!(s.popupPlacing);
+  const was = document.body.classList.contains('placing');
   document.body.classList.toggle('placing', placing);
+  // Pendant le placement : un exemple fixe pour voir la taille ; ensuite on revient à l'affichage normal.
+  if (placing && !was) { clearTimeout(timer); clearTimeout(outTimer); total = 0; big = false; el.innerHTML = `+${fe(12.3)}<small>FE</small>`; el.className = 'gain show'; }
+  if (!placing && was) { total = 0; big = false; el.className = 'gain'; }
   document.getElementById('placeTxt').textContent = t('pop.placeHelp');
 });
 document.getElementById('placeOk').onclick = () => tli.action('popupPlaced');
+// Entrée ou Échap : valide la position (la fenêtre a le focus pendant le placement).
+document.addEventListener('keydown', (e) => { if (document.body.classList.contains('placing') && (e.key === 'Enter' || e.key === 'Escape')) tli.action('popupPlaced'); });

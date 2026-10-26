@@ -886,3 +886,7 @@ tr.hdet > td { background: rgba(255,255,255,.02); padding: 8px 12px 12px; }
 .pop-sw { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--line); cursor: pointer; padding: 0; }
 .pop-sw.on { border-color: var(--text); box-shadow: 0 0 0 2px var(--accent); }
 #popColor { width: 34px; height: 26px; padding: 0; border: 1px solid var(--line); border-radius: 6px; background: transparent; cursor: pointer; }
+
+/* Réglages : lignes du mode ultra minimal */
+.ul-lines { display: inline-flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 4px 10px; border-left: 2px solid var(--line); }
+.ul-lines[hidden] { display: none; }
