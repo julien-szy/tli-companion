@@ -861,7 +861,7 @@ function currentPrices() {
 
 // ---------------- Fichiers statiques (site) ----------------
 
-const MIME = { '.webp': 'image/webp', '.json': 'application/json; charset=utf-8', '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon' };
+const MIME = { '.woff2': 'font/woff2', '.woff': 'font/woff', '.txt': 'text/plain; charset=utf-8', '.webp': 'image/webp', '.json': 'application/json; charset=utf-8', '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon' };
 const SECURITY_HEADERS = {
   'Content-Security-Policy': "default-src 'self'; img-src 'self' https://cdn.tlidb.com data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'",
   'Referrer-Policy': 'no-referrer',
@@ -925,9 +925,36 @@ const PAGES = {
   '/': '/home.html', '/strategies': '/strategies.html', '/builds': '/builds.html', '/meta': '/meta.html',
   '/download': '/download.html', '/prices': '/prices.html', '/account': '/account.html', '/planner': '/planner.html', '/privacy': '/privacy.html', '/terms': '/terms.html',
 };
+// Planificateur de builds (version de test, application d'une seule page) : ses propres routes renvoient
+// vers son index.html ; les fichiers de assets/ ont un nom unique, donc gardés en cache longtemps.
+const POB_DIRS = ['pob-test'];
+function servePob(res, dir, pathname) {
+  const root = path.join(PUBLIC_DIR, dir);
+  let rel;
+  try { rel = decodeURIComponent(pathname.slice(dir.length + 1)); } catch { return send(res, 400, 'bad path'); }
+  let file = path.normalize(path.join(root, rel));
+  if (file !== root && !file.startsWith(root + path.sep)) return send(res, 404, 'not found');
+  fs.stat(file, (e, st) => {
+    if (e || st.isDirectory()) file = path.join(root, 'index.html');
+    fs.readFile(file, (err, data) => {
+      if (err) return send(res, 404, 'not found');
+      const hashed = file.includes(path.sep + 'assets' + path.sep);
+      send(res, 200, data, {
+        'Content-Type': MIME[path.extname(file)] || 'application/octet-stream',
+        'Cache-Control': hashed ? 'public, max-age=31536000, immutable' : 'no-cache',
+        ...SECURITY_HEADERS,
+      });
+    });
+  });
+}
+
 function serveStatic(req, res, pathname) {
   const dl = /^\/download\/([^/]+)$/.exec(pathname);
   if (dl) return serveDownload(req, res, decodeURIComponent(dl[1]));
+  for (const dir of POB_DIRS) {
+    if (pathname === '/' + dir) { res.writeHead(301, { Location: '/' + dir + '/' }); return res.end(); }
+    if (pathname.startsWith('/' + dir + '/')) return servePob(res, dir, pathname);
+  }
   if (PAGES[pathname]) pathname = PAGES[pathname];
   else if (/^\/s\/[0-9a-f-]{36}$/.test(pathname)) pathname = '/strategy.html';
   else if (/^\/b\/[0-9a-f-]{36}$/.test(pathname)) pathname = '/build.html';

@@ -20,3 +20,6 @@ Thumbs.db
 # Fichiers locaux
 scripts/local/
 server/local/
+
+# Planificateur de builds (construit depuis ../tli-pob, publié par deploy.ps1)
+server/public/pob-test/
