@@ -1063,13 +1063,23 @@ const Bag = (() => {
     return w.slice(0, 2).join(' ') + roman;
   };
   // Schéma de l'inventaire : l'onglet (2 à 4) en 9 colonnes, toutes ses lignes, les cases de l'objet surlignées.
+  // Vue « Sac » (9 colonnes) ou « Hôtel des ventes » (15 colonnes, mêmes positions, mêmes cases vides).
+  // Le nombre de colonnes dépend du « scaling » de l'écran choisi en jeu : réglable pour chaque vue, mémorisé.
+  let bagView = 'bag';
+  const cols = { bag: 9, ah: 15 };
+  try {
+    bagView = localStorage.getItem('bagView') === 'ah' ? 'ah' : 'bag';
+    for (const v of ['bag', 'ah']) { const n = +localStorage.getItem('bagCols_' + v); if (n >= 4 && n <= 30) cols[v] = n; }
+  } catch {}
   function bagWhere(r, pages) {
-    const COLS = 9, VISIBLE_ROWS = 3;
+    let COLS = cols[bagView];
+    const VISIBLE_ROWS = 3;
     const byPage = {};
     for (const w of r.where) (byPage[w.page] = byPage[w.page] || []).push(w);
     const tabs = Object.keys(byPage).map(Number).sort();
     let cur = tabs[0];
     const draw = () => {
+      COLS = cols[bagView];
       const list = pages[cur] || [], hit = new Set(byPage[cur].map((w) => w.slot));
       const rows = Math.max(VISIBLE_ROWS, Math.ceil((Math.max(...list.map((x) => x.slot), ...hit) + 1) / COLS));
       const cells = [];
@@ -1079,15 +1089,26 @@ const Bag = (() => {
       }
       const where = byPage[cur].map((w) => {
         const row = Math.floor(w.slot / COLS) + 1, col = (w.slot % COLS) + 1;
-        return `<li>${esc(t('bag.whereAt', { row, col, n: w.n }))}${row > VISIBLE_ROWS ? ` <span class="muted">${esc(t('bag.whereScroll'))}</span>` : ''}</li>`;
+        return `<li>${esc(t('bag.whereAt', { row, col, n: w.n }))}${bagView === 'bag' && row > VISIBLE_ROWS ? ` <span class="muted">${esc(t('bag.whereScroll'))}</span>` : ''}</li>`;
       }).join('');
       modal(`<div class="bw"><h1>${icon(r.img)} ${esc(r.name)}</h1>
-        <div class="bw-tabs">${[101, 102, 103].map((p) => `<button class="${p === cur ? 'on' : ''}${byPage[p] ? ' has' : ''}" data-tab="${p}" ${byPage[p] ? '' : 'disabled'}>${esc(t('bag.whereTab', { n: p - 99 }))}</button>`).join('')}</div>
+        <div class="bw-bar"><div class="bw-tabs">${[101, 102, 103].map((p) => `<button class="${p === cur ? 'on' : ''}${byPage[p] ? ' has' : ''}" data-tab="${p}" ${byPage[p] ? '' : 'disabled'}>${esc(t('bag.whereTab', { n: p - 99 }))}</button>`).join('')}</div>
+          <div class="bw-view">${['bag', 'ah'].map((v) => `<button class="${bagView === v ? 'on' : ''}" data-view="${v}">${esc(t('bag.view_' + v))}</button>`).join('')}</div>
+          <label class="bw-cols">${esc(t('bag.cols'))} <input type="number" id="bwCols" min="4" max="30" value="${COLS}" title="${esc(t('bag.colsTip'))}"></label></div>
         <ul class="bw-list">${where}</ul>
-        <div class="bw-grid">${cells.join('')}</div>
+        <div class="bw-grid" style="grid-template-columns:repeat(${COLS},1fr)">${cells.join('')}</div>
         <p class="muted small">${esc(t('bag.whereHelp'))}</p>
         <div class="foot"><span></span><button class="btn primary" id="bwOk">${esc(t('pc.close'))}</button></div></div>`);
       document.querySelectorAll('.bw-tabs [data-tab]').forEach((b) => (b.onclick = () => { cur = +b.dataset.tab; draw(); }));
+      document.querySelectorAll('.bw-view [data-view]').forEach((b) => (b.onclick = () => {
+        bagView = b.dataset.view; try { localStorage.setItem('bagView', bagView); } catch {}
+        draw();
+      }));
+      $('bwCols').onchange = (e) => {
+        const n = Math.min(30, Math.max(4, Math.round(+e.target.value) || cols[bagView]));
+        cols[bagView] = n; try { localStorage.setItem('bagCols_' + bagView, String(n)); } catch {}
+        draw();
+      };
       $('bwOk').onclick = () => modal('');
       const first = document.querySelector('.bw-cell.hit');
       if (first) first.scrollIntoView({ block: 'center' });

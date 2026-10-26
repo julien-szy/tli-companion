@@ -5,6 +5,16 @@
   },
   "releases": [
     {
+      "version": "1.0.38",
+      "date": "2026-10-26",
+      "en": [
+        "Scan my bag › Where?: new Auction House view. The Auction House shows your bag in the same places but with more columns (15 at the lowest screen scaling). Choose Bag or Auction House and set the number of columns you see in game; it is remembered."
+      ],
+      "fr": [
+        "Analyser mon sac › Où ? : nouvelle vue Hôtel des ventes. L'hôtel des ventes affiche ton sac aux mêmes places mais avec plus de colonnes (15 avec le scaling d'écran au minimum). Choisis Sac ou Hôtel des ventes et règle le nombre de colonnes que tu vois en jeu ; il est mémorisé."
+      ]
+    },
+    {
       "version": "1.0.37",
       "date": "2026-10-26",
       "en": [
