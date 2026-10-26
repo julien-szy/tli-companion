@@ -1,4 +1,6 @@
 const { app, BrowserWindow, ipcMain, globalShortcut, Tray, Menu, nativeImage, dialog, screen, shell, safeStorage } = require('electron');
+// Protocole interne pour les icônes intégrées à l'app (une adresse https ne peut pas être redirigée vers un fichier local).
+require('electron').protocol.registerSchemesAsPrivileged([{ scheme: 'tliicon', privileges: { standard: true, secure: true, supportFetchAPI: true } }]);
 const fs = require('fs');
 const path = require('path');
 const { LogParser } = require('./parser');
@@ -1957,6 +1959,21 @@ if (!app.requestSingleInstanceLock()) {
 } else {
   app.on('second-instance', openDashboard);
   app.whenReady().then(async () => {
+    // Images intégrées à l'app (src/ui/icons/cache, voir scripts/bundleicons.js) : servies en local, sans téléchargement.
+    // Les données gardent les adresses d'origine (routes partagées, stats) pour que le site les affiche aussi.
+    const ICON_DIR = path.join(__dirname, 'ui', 'icons', 'cache');
+    const { session, protocol, net } = require('electron');
+    const crypto = require('crypto');
+    protocol.handle('tliicon', (req) => {
+      const name = path.basename(new URL(req.url).pathname);
+      if (!/^[0-9a-f]{40}\.webp$/.test(name)) return new Response('', { status: 404 });
+      return net.fetch(require('url').pathToFileURL(path.join(ICON_DIR, name)).href);
+    });
+    session.defaultSession.webRequest.onBeforeRequest({ urls: ['https://cdn.tlidb.com/*', 'https://tlicompanion.com/icons/*'] }, (details, cb) => {
+      const name = crypto.createHash('sha1').update(details.url).digest('hex') + '.webp';
+      if (fs.existsSync(path.join(ICON_DIR, name))) cb({ redirectURL: `tliicon://cache/${name}` });
+      else cb({});
+    });
     repairShortcuts();
     renameStoredZones();
     // Nouvelle installation : pas de fenêtre « Nouveautés » (le guide de démarrage s'affiche à la place).

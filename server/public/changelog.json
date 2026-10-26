@@ -1,6 +1,18 @@
 {
   "releases": [
     {
+      "version": "1.0.39",
+      "date": "2026-10-26",
+      "en": [
+        "Icons: about 680 item icons were missing (Vorax organs, Kismets, Tartarus skills, prisms, Memory Threads…). They are back, in the app and on the website.",
+        "All images (items, gear, skills, talents, heroes) are now built into the app: they show instantly, even offline, with no download."
+      ],
+      "fr": [
+        "Icônes : environ 680 icônes d'objets manquaient (organes Vorax, Kismets, compétences de Tartarus, prismes, Memory Threads…). Elles sont de retour, dans l'app et sur le site.",
+        "Toutes les images (objets, équipements, compétences, talents, héros) sont maintenant intégrées à l'app : elles s'affichent tout de suite, même hors ligne, sans téléchargement."
+      ]
+    },
+    {
       "version": "1.0.38",
       "date": "2026-10-26",
       "en": [
