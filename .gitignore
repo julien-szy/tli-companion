@@ -21,5 +21,6 @@ Thumbs.db
 scripts/local/
 server/local/
 
-# Planificateur de builds (construit depuis ../tli-pob, publié par deploy.ps1)
+# TOB, le planificateur façon POB (construit depuis ../tli-pob, publié par deploy.ps1)
 server/public/pob-test/
+server/public/builds/

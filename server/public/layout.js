@@ -170,7 +170,7 @@ function renderLayout() {
     const link = (href, key, id) => `<a href="${href}" class="${page === id ? 'on' : ''}">${esc(t(key))}</a>`;
     header.innerHTML = `
       <a class="brand" href="/"><img class="logo" src="/logo.svg" alt="">TLI Companion</a>
-      <nav>${link('/', 'navHome', 'home')}${link('/meta', 'navMeta', 'meta')}${link('/builds', 'navBuilds', 'builds')}${link('/strategies', 'navStrategies', 'strategies')}${link('/prices', 'navPrices', 'prices')}${link('/download', 'navDownload', 'download')}</nav>
+      <nav>${link('/', 'navHome', 'home')}${link('/meta', 'navMeta', 'meta')}${link('/builds/', 'navBuilds', 'builds')}${link('/strategies', 'navStrategies', 'strategies')}${link('/prices', 'navPrices', 'prices')}${link('/download', 'navDownload', 'download')}</nav>
       <div class="right"><a class="btn coffee" href="${SUPPORT_URL}" target="_blank" rel="noopener">☕ ${esc(t('supButton'))}</a><button class="lang" id="themeSwitch"></button><button class="lang" id="langSwitch"></button><a class="btn" id="accBtn" href="/account">${esc(t('navAccount'))}</a></div>`;
     document.getElementById('themeSwitch').onclick = () => setTheme(!isLight());
     setTheme(isLight());

@@ -922,12 +922,13 @@ function serveDownload(req, res, name) {
 }
 
 const PAGES = {
-  '/': '/home.html', '/strategies': '/strategies.html', '/builds': '/builds.html', '/meta': '/meta.html',
+  '/': '/home.html', '/strategies': '/strategies.html', '/meta': '/meta.html',
   '/download': '/download.html', '/prices': '/prices.html', '/account': '/account.html', '/planner': '/planner.html', '/privacy': '/privacy.html', '/terms': '/terms.html',
 };
-// Planificateur de builds (version de test, application d'une seule page) : ses propres routes renvoient
-// vers son index.html ; les fichiers de assets/ ont un nom unique, donc gardés en cache longtemps.
-const POB_DIRS = ['pob-test'];
+// TOB, le planificateur façon POB (alpha publique, application d'une seule page) : servi sous /builds/, ses
+// propres routes renvoient vers son index.html ; les fichiers de assets/ ont un nom unique, donc gardés en
+// cache longtemps. L'ancienne adresse de test /pob-test redirige vers /builds/.
+const POB_DIRS = ['builds'];
 function servePob(res, dir, pathname) {
   const root = path.join(PUBLIC_DIR, dir);
   let rel;
@@ -951,6 +952,7 @@ function servePob(res, dir, pathname) {
 function serveStatic(req, res, pathname) {
   const dl = /^\/download\/([^/]+)$/.exec(pathname);
   if (dl) return serveDownload(req, res, decodeURIComponent(dl[1]));
+  if (pathname === '/pob-test' || pathname.startsWith('/pob-test/')) { res.writeHead(301, { Location: '/builds/' }); return res.end(); }
   for (const dir of POB_DIRS) {
     if (pathname === '/' + dir) { res.writeHead(301, { Location: '/' + dir + '/' }); return res.end(); }
     if (pathname.startsWith('/' + dir + '/')) return servePob(res, dir, pathname);
