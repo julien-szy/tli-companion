@@ -28,6 +28,17 @@ const AFK_GAP_MS = 3 * 60 * 1000;
 // Compteur de la saison Tartarus affiché en jeu (« 8/48 In Tartarus ») : 36 pour entrer, 48 au maximum.
 const TARTARUS_KEY = 'Coin_828';
 const TARTARUS_ENTRY = 36, TARTARUS_MAX = 48;
+// Modes à part (mini-jeux, contenus de saison) : chacun a son chrono dans la session. Reconnus par le nom de
+// zone ; toute autre sous-carte ouverte depuis une carte (Arcana…) compte aussi, sous son propre nom.
+const MODES = [
+  [/^Tartarus/, 'Tartarus'], [/^Vorax/, 'Vorax'], [/Aeterna/, 'Aeterna'], [/^Void Sea Terminal/, 'Void Sea Terminal'],
+  [/Arcana/i, 'Arcana'], [/^Secret Realm/, 'Secret Realm'], [/Sandlord|Quicksand/, 'Sandlord'],
+  [/^Rift of Dimensions/, 'Rift of Dimensions'], [/^Supreme Showdown/, 'Supreme Showdown'], [/^Fateful Contest/, 'Fateful Contest'],
+];
+function modeOf(zone, sub = false) {
+  for (const [re, name] of MODES) if (re.test(zone || '')) return name;
+  return sub && zone ? zone : null;
+}
 
 function addQty(obj, id, delta) {
   obj[id] = (obj[id] || 0) + delta;
@@ -99,6 +110,8 @@ class Tracker extends EventEmitter {
     s.lastActivity = now;
     this.session = s;
     const run = s.currentRun;
+    // Chrono de la zone en cours : le temps app fermée n'y compte pas.
+    if (run && run.segs && run.segSince != null) { this._segClock(run, Math.max(run.segSince, savedAt)); run.segSince = now; }
     if (run && (!this.zone || this.zone.hub || this.zone.path !== run.path)) {
       this._endRun(Math.max(run.startedAt, savedAt));
       // Dans une autre carte maintenant : elle compte comme une nouvelle carte.
@@ -367,8 +380,9 @@ class Tracker extends EventEmitter {
       run.zones.push(name);
       // Sous-carte (Arcana, Vorax, Void Sea Terminal…) : son loot est noté à part, en plus du total de la carte.
       this._seg(run);
+      this._segClock(run, ev.ts);
       let i = run.segs.findIndex((sg) => sg.path === path);
-      if (i < 0) { run.segs.push({ zone: name, path, loot: {} }); i = run.segs.length - 1; }
+      if (i < 0) { run.segs.push({ zone: name, path, loot: {}, ms: 0 }); i = run.segs.length - 1; }
       run.seg = i;
     }
     this.zone = { path, hub, since: ev.ts, levelId: ev.levelId };
@@ -381,7 +395,7 @@ class Tracker extends EventEmitter {
       name: shortName(path, levelId), path, startedAt: ts, endedAt: null,
       zones: [shortName(path, levelId)], loot: {}, cost: s.pendingCost,
       heroId: this.heroId, node: this.pendingNode, modifiers: {},
-      segs: [{ zone: shortName(path, levelId), path, loot: {} }], seg: 0,
+      segs: [{ zone: shortName(path, levelId), path, loot: {}, ms: 0 }], seg: 0, segSince: ts,
     };
     s.pendingCost = {};
     this.pendingNode = null;
@@ -399,6 +413,7 @@ class Tracker extends EventEmitter {
     const s = this.session;
     const run = s.currentRun;
     if (!run) return;
+    if (run.segs) this._segClock(run, ts);
     run.endedAt = ts;
     s.runs.unshift(run);
     s.currentRun = null;
@@ -485,6 +500,32 @@ class Tracker extends EventEmitter {
     return run.segs[run.seg || 0];
   }
 
+  // Temps passé dans la zone en cours de la carte (ajouté à son chrono quand on en sort).
+  _segClock(run, ts) {
+    const seg = this._seg(run);
+    if (run.segSince != null) seg.ms = (seg.ms || 0) + Math.max(0, ts - run.segSince);
+    run.segSince = ts;
+  }
+
+  // Temps par mode (Tartarus, Vorax, Arcana…) d'une carte. Ancienne carte sans chrono par zone : toute la
+  // carte compte pour son mode si c'en est un.
+  runModes(run, now = Date.now(), out = {}) {
+    const end = run.endedAt || now;
+    const segs = run.segs || [];
+    if (!segs.some((sg) => sg.ms != null)) {
+      const m = modeOf(run.zones && run.zones[0]);
+      if (m) out[m] = (out[m] || 0) + Math.max(0, end - run.startedAt);
+      return out;
+    }
+    segs.forEach((sg, i) => {
+      let ms = sg.ms || 0;
+      if (!run.endedAt && i === (run.seg || 0) && run.segSince != null) ms += Math.max(0, now - run.segSince);
+      const m = modeOf(sg.zone, i > 0);
+      if (m && ms > 0) out[m] = (out[m] || 0) + ms;
+    });
+    return out;
+  }
+
   runSummary(run, now = Date.now()) {
     const lootV = this.lootValueOf(run.loot);
     const costV = this.valueOf(run.cost);
@@ -534,7 +575,16 @@ class Tracker extends EventEmitter {
     if (s.currentRun) mapTime += Math.max(0, now - s.currentRun.startedAt);
     if (!this.replay) this.autoPauseCheck(now);
     const pausedMs = this.pausedTotal(now);
-    const realTime = Math.max(mapTime, now - s.startedAt - pausedMs);
+    // Chronos des modes à part. Réglage « compter les modes dans le temps » décoché : leur temps est retiré
+    // du temps de session et du temps en carte (le FE/h ne compte alors que le farm « normal »).
+    const modeTimes = {};
+    for (const r of s.runs) this.runModes(r, now, modeTimes);
+    if (s.currentRun) this.runModes(s.currentRun, now, modeTimes);
+    const modeMs = Object.values(modeTimes).reduce((a, b) => a + b, 0);
+    const countModes = this.settings.countModeTime !== false;
+    const cut = countModes ? 0 : modeMs;
+    mapTime = Math.max(0, mapTime - cut);
+    const realTime = Math.max(mapTime, now - s.startedAt - pausedMs - cut);
     const timeBase = this.settings.timeMode === 'map' ? mapTime : realTime;
     // Hors carte : actif (tri du sac, achats…) ou AFK (aucune activité > 3 min, y compris la pause en cours).
     const idleNow = !s.pausedAt && !s.currentRun && now - s.lastActivity > AFK_GAP_MS ? now - Math.max(s.lastActivity, s.startedAt) : 0;
@@ -576,6 +626,15 @@ class Tracker extends EventEmitter {
         startedAt: s.startedAt, realTimeMs: realTime, mapTimeMs: mapTime, hubTimeMs: hubTime, afkTimeMs: afkTime,
         paused: !!s.pausedAt, pauseAuto: !!s.pauseAuto, pausedMs, pauseNowMs: s.pausedAt ? Math.max(0, now - s.pausedAt) : 0,
         efficiency: realTime > 60000 ? mapTime / realTime : null,
+        modes: Object.entries(modeTimes).map(([name, ms]) => ({ name, ms })).sort((a, b) => b.ms - a.ms),
+        modeMs, countModes,
+        modeNow: (() => {
+          const r = s.currentRun;
+          if (!r || !r.segs) return null;
+          const i = r.seg || 0, sg = r.segs[i];
+          const name = sg && modeOf(sg.zone, i > 0);
+          return name ? { name, ms: (sg.ms || 0) + (r.segSince != null ? Math.max(0, now - r.segSince) : 0) } : null;
+        })(),
         // Détail du coût des cartes (balises, compas, sondes…) pour l'infobulle.
         costBreakdown: this.itemList(s.cost).filter((i) => i.qty < 0).slice(0, 10).map((i) => ({ name: i.name, qty: -i.qty, value: -i.value })),
         profit, perHour, loot: lootV, cost: costV, other: otherV,
@@ -644,4 +703,4 @@ function shortName(path, levelId) {
   return zoneLabel(parts[parts.length - 1] || path, levelId);
 }
 
-module.exports = { Tracker, zoneLabel, shortName, TARTARUS_ENTRY, TARTARUS_MAX, STAR_MAX };
+module.exports = { Tracker, zoneLabel, shortName, modeOf, TARTARUS_ENTRY, TARTARUS_MAX, STAR_MAX };

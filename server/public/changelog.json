@@ -1,6 +1,18 @@
 {
   "releases": [
     {
+      "version": "1.0.41",
+      "date": "2026-10-27",
+      "en": [
+        "New: a timer for each special mode in your farm session (Tartarus, Vorax, Arcana, Ruins of Aeterna, Secret Realm, Void Sea Terminal, Sandlord…), shown under the session numbers, in the widget while you are in one, and in the session sheet.",
+        "New setting \"Special modes\": choose whether their time counts in the session time and FE/h (on by default, as before). Unticked, your FE/h only uses your regular farming time."
+      ],
+      "fr": [
+        "Nouveau : un chrono pour chaque mode à part dans ta session de farm (Tartarus, Vorax, Arcana, Ruins of Aeterna, Secret Realm, Void Sea Terminal, Sandlord…), affiché sous les chiffres de la session, dans le widget quand tu es dedans, et dans la fiche de la session.",
+        "Nouveau réglage « Modes à part » : choisis si leur temps compte dans le temps de session et le FE/h (coché par défaut, comme avant). Décoché, ton FE/h ne prend que ton temps de farm normal."
+      ]
+    },
+    {
       "version": "1.0.40",
       "date": "2026-10-26",
       "en": [

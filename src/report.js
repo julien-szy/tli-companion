@@ -15,6 +15,9 @@ function buildReport(sess, tracker, { appVersion, title = '' } = {}) {
   const realMs = Math.max(0, sess.endedAt - sess.startedAt - (sess.pausedMs || 0));
   const mapMs = runs.reduce((a, r) => a + Math.max(0, r.endedAt - r.startedAt), 0);
   const perHour = (ms) => (ms > 60000 ? profit / (ms / 3600000) : 0);
+  // Temps par mode à part (Tartarus, Vorax, Arcana…), pour la fiche de la session.
+  const modeTimes = {};
+  for (const r of runs) tracker.runModes(r, sess.endedAt, modeTimes);
 
   // Héros le plus joué pendant la session
   const heroCount = {};
@@ -73,6 +76,7 @@ function buildReport(sess, tracker, { appVersion, title = '' } = {}) {
       minLootValue: +tracker.settings.minLootValue || 0,
       taxRate: tracker.taxRate(), // valeurs après taxe de l'hôtel des ventes (0 = prix plein)
       pausedMs: sess.pausedMs || 0,
+      modes: Object.entries(modeTimes).map(([name, ms]) => ({ name, ms })).sort((a, b) => b.ms - a.ms),
     },
     strategy: {
       maps: Object.values(maps).sort((a, b) => b.runs - a.runs),

@@ -285,6 +285,7 @@ async function openSession(id) {
       ${stat('d.maps', tot.runs)}
       ${stat('d.duration', dur(tot.realMs))}
       ${tot.afkMs != null ? stat('d.timeSplit', `${dur(tot.mapMs)} · ${dur(tot.hubMs)} · ${dur(tot.afkMs)}`, 'txt') : ''}
+      ${(tot.modes || []).length ? stat('d.modes', tot.modes.map((m) => `${m.name} ${dur(m.ms)}`).join(' · '), 'txt') : ''}
       ${tot.realMs > 60000 ? stat('d.eff', `${Math.round((tot.mapMs / tot.realMs) * 100)} %`) : ''}
       ${stat('d.avgMap', fe(tot.avgPerMap, true), cls(tot.avgPerMap))}
       ${stat('d.durMap', dur(tot.avgMapMs))}
@@ -423,6 +424,7 @@ $('newSession').onclick = () => tli.action('newSession');
 $('pickLog').onclick = () => tli.action('pickLog');
 $('sMode').onchange = (e) => tli.action('mode', e.target.value);
 $('sTime').onchange = (e) => tli.action('timeMode', e.target.value);
+$('sModeTime').onchange = (e) => tli.action('countModeTime', e.target.checked);
 $('sCommunity').onchange = (e) => tli.action('community', e.target.checked);
 $('sShareMeta').onchange = (e) => tli.action('shareMeta', e.target.checked);
 $('sStock').onchange = (e) => tli.action('stockAlerts', e.target.checked);
@@ -611,6 +613,13 @@ tli.onState((s) => {
   // Efficacité = part du temps passée en carte ; le détail est dans l'infobulle.
   $('kEff').textContent = ss.efficiency == null ? '–' : `${Math.round(ss.efficiency * 100)} %`;
   $('kEffBox').title = t('k.effTip', { map: dur(ss.mapTimeMs), hub: dur(ss.hubTimeMs || 0), afk: dur(ss.afkTimeMs || 0) });
+  // Chronos des modes à part (Tartarus, Vorax, Arcana, Aeterna…) de la session.
+  const modes = ss.modes || [];
+  $('kModes').hidden = !modes.length;
+  if (modes.length) {
+    $('kModes').innerHTML = `<span class="muted">${esc(t('k.modes'))}</span> ${modes.map((m) => `<span class="kmode${ss.modeNow && ss.modeNow.name === m.name ? ' now' : ''}">${esc(m.name)} <b>${dur(m.ms)}</b></span>`).join('')}`
+      + (ss.countModes ? '' : ` <span class="muted small">${esc(t('k.modesOut'))}</span>`);
+  }
 
   const st = s.status;
   const stateTxt = t('st.' + st.state, { pct: Math.round(st.progress * 100) });
@@ -621,6 +630,7 @@ tli.onState((s) => {
     $('logPath').textContent = st.logPath || t('set.logNotFound');
     $('sMode').value = s.mode;
     $('sTime').value = s.timeMode;
+    $('sModeTime').checked = s.settings.countModeTime !== false;
     $('sLang').value = LANG;
     $('sTheme').value = s.settings.theme === 'light' ? 'light' : 'dark';
     $('sCommunity').checked = s.settings.communityPrices;

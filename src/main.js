@@ -48,6 +48,7 @@ const DEFAULTS = {
   theme: 'dark',         // thème de la fenêtre principale : 'dark' (défaut) ou 'light' (le widget reste sombre)
   mode: 'farm',          // 'farm' = loot en carte - coût des cartes ; 'all' = tout ce qui entre/sort du sac
   timeMode: 'real',      // 'real' = temps réel de session ; 'map' = temps passé en carte
+  countModeTime: true,   // temps des modes à part (Tartarus, Vorax, Arcana, Aeterna…) compté dans le temps du FE/h
   communityPrices: true,
   hubPatterns: ['/XZ_'], // chemins de map considérés comme repaire / ville
   popup: { enabled: false, x: null, y: null, size: 1, color: '#ffd447', glow: 1, rainbow: true, hold: 5, fly: true }, // hold : secondes d'affichage ; fly : les gains volent jusqu'au total // taille (0.3 à 2 = 14 à 92 px), couleur, halo (0 à 1), arc-en-ciel au-dessus de 100 FE // popup des gains « +X FE » (fenêtre transparente, clics traversants)
@@ -1692,6 +1693,7 @@ ipcMain.handle('action', async (_e, name, arg) => {
     case 'resetFarm': if (tracker.session.recording) { tracker.stopFarm(); saveLiveSession(); beginFarm(); broadcast(); } break;
     case 'mode': settings.mode = arg; saveSettings(); break;
     case 'timeMode': settings.timeMode = arg; saveSettings(); break;
+    case 'countModeTime': settings.countModeTime = !!arg; saveSettings(); break;
     case 'shareMeta': settings.shareMeta = !!arg; saveSettings(); if (arg) uploadRankings(); break;
     case 'stockAlerts': settings.stockAlerts = !!arg; saveSettings(); break;
     case 'starAlerts': settings.starAlerts = !!arg; saveSettings(); break;

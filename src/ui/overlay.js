@@ -158,7 +158,7 @@ tli.onState((s) => {
     $('curCost').textContent = c.cost ? t('ov.costOf', { fe: fe(c.cost, true) }) : '';
     // Sous-carte (Arcana, Vorax…) : son loot à part, le total de la carte reste au-dessus.
     $('curSub').hidden = !c.sub;
-    if (c.sub) $('curSub').innerHTML = `<span>→ ${esc(c.sub.zone)}</span><b class="${cls(c.sub.loot)}">${fe(c.sub.loot, true)}</b>`;
+    if (c.sub) $('curSub').innerHTML = `<span>→ ${esc(c.sub.zone)}${ss.modeNow ? ` <em style="opacity:.7;font-style:normal">${dur(ss.modeNow.ms)}</em>` : ''}</span><b class="${cls(c.sub.loot)}">${fe(c.sub.loot, true)}</b>`;
     setVal($('miniMap'), c.profit);
     $('miniMapLbl').textContent = s.current ? dur(c.durationMs) : t('ov.last');
   } else {

@@ -41,6 +41,7 @@
     <div class="kpi"><div class="k" data-i18n="k.time"></div><div class="v" id="kTime">0:00</div></div>
     <div class="kpi" id="kEffBox"><div class="k" data-i18n="k.eff"></div><div class="v" id="kEff">–</div></div>
   </div>
+  <div class="kmodes" id="kModes" hidden></div>
   <button class="btn" id="newSession" data-i18n="btn.newSession"></button>
 </header>
 <main>
@@ -167,6 +168,9 @@
 
       <div data-i18n="set.time"></div>
       <div><select id="sTime"><option value="real" data-i18n="set.timeReal"></option><option value="map" data-i18n="set.timeMap"></option></select></div>
+
+      <div data-i18n="set.modeTime"></div>
+      <div><label><input type="checkbox" id="sModeTime"> <span data-i18n="set.modeTimeLabel"></span></label></div>
 
       <div data-i18n="set.community"></div>
       <div><label><input type="checkbox" id="sCommunity"> <span data-i18n="set.communityLabel"></span></label> <button class="btn" id="refreshCommunity" data-i18n="btn.refresh"></button></div>
