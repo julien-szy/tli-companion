@@ -166,7 +166,7 @@
 <div class="uwrap" id="ultra">
   <div data-ul="rec"><span id="uRec"></span> <small id="uTime"></small></div>
   <div data-ul="map"><span id="uMap"></span> <small id="uMapLbl"></small></div>
-  <div data-ul="ph"><span id="uPh" class="ufe"></span> <small>FE/h</small></div>
+  <div data-ul="ph"><span id="uPh" class="ufe"></span> <small id="uPhLbl">FE/h</small></div>
   <div data-ul="sess"><span id="uSess"></span> <small id="uRuns"></small></div>
 </div>
 <div class="panel">
@@ -176,7 +176,7 @@
     <button class="pausebtn" id="btnMore" hidden data-i18n-title="ov.more"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button>
     <span class="lockmark" id="lockMark"><svg viewBox="0 0 24 24"><path d="M12 17v4M8 3h8l-1 7 3 3H6l3-3z"/></svg></span>
     <div class="mini">
-      <span data-w="barPerHour"><b id="perHour">–</b> <small data-i18n="fe.h"></small></span>
+      <span data-w="barPerHour"><b id="perHour">–</b> <small id="perHourLbl" data-i18n="fe.h"></small></span>
       <span class="mini-only"><b id="miniMap">–</b> <small id="miniMapLbl"></small></span>
     </div>
     <div class="icons">
@@ -204,7 +204,7 @@
 
     <div class="grid" id="statGrid">
       <div class="stat" data-w="session"><div class="k" data-i18n="stat.session"></div><div class="v" id="sProfit">–</div></div>
-      <div class="stat" data-w="perHour"><div class="k" data-i18n="ov.perHourShort"></div><div class="v" id="sPerHour">–</div></div>
+      <div class="stat" data-w="perHour"><div class="k" id="sPerHourLbl" data-i18n="ov.perHourShort"></div><div class="v" id="sPerHour">–</div></div>
       <div class="stat" data-w="maps"><div class="k" data-i18n="stat.maps"></div><div class="v" id="sRuns">0</div></div>
     </div>
     <div class="line" id="infoLine">

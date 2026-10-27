@@ -44,13 +44,18 @@ const uVal = (el, v, signed = true) => { el.textContent = fe(v, signed); el.clas
 const IC_EXPAND = '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>';
 const IC_COLLAPSE = '<path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/>';
 
+// Unité du gain affiché dans le widget : FE par minute, par heure (défaut) ou par jour (24 h au même rythme).
+const RATE = { min: { k: 1 / 60, short: 'fe.min', long: 'ov.perMinShort' }, hour: { k: 1, short: 'fe.h', long: 'ov.perHourShort' }, day: { k: 24, short: 'fe.day', long: 'ov.perDayShort' } };
+const rateUnit = (s) => (RATE[s.settings.overlay.rateUnit] ? s.settings.overlay.rateUnit : 'hour');
+const rate = (s, perHour) => perHour * RATE[rateUnit(s)].k;
+
 function setVal(el, v, signed = true) {
   el.textContent = fe(v, signed);
   el.className = el.className.replace(/\b(pos|neg|zero)\b/g, '').trim() + ' ' + cls(v);
 }
 
 tli.onState((s) => {
-  if (setLang(s.settings.lang)) { firstRender = true; $('recent').dataset.html = ''; }
+  if (setLang(s.settings.lang, s.settings.shortcuts)) { firstRender = true; $('recent').dataset.html = ''; }
   const collapsed = s.settings.overlay.collapsed;
   // Infos choisies dans Réglages > Contenu du widget : les autres sont masquées.
   const off = new Set(s.settings.overlay.hide || []);
@@ -79,7 +84,8 @@ tli.onState((s) => {
     $('uTime').textContent = s.recording ? dur(ss.realTimeMs) : '';
     if (c) { uVal($('uMap'), c.profit); $('uMapLbl').textContent = `${t(s.current ? 'ov.u.map' : 'ov.u.last')} · ${dur(c.durationMs)}`; }
     else { $('uMap').textContent = '–'; $('uMap').className = 'uz'; $('uMapLbl').textContent = t('ov.u.map'); }
-    $('uPh').textContent = fe(ss.perHour);
+    $('uPh').textContent = fe(rate(s, ss.perHour));
+    $('uPhLbl').textContent = t(RATE[rateUnit(s)].short);
     uVal($('uSess'), ss.profit);
     $('uRuns').textContent = t('ov.u.session', { n: ss.runs });
   }
@@ -125,8 +131,11 @@ tli.onState((s) => {
   $('warn').textContent = warn;
 
   const ss = s.session;
-  setVal($('perHour'), ss.perHour, false);
-  setVal($('sPerHour'), ss.perHour, false);
+  // Gain par minute, heure ou jour (Réglages > Widget).
+  setVal($('perHour'), rate(s, ss.perHour), false);
+  setVal($('sPerHour'), rate(s, ss.perHour), false);
+  $('perHourLbl').textContent = t(RATE[rateUnit(s)].short);
+  $('sPerHourLbl').textContent = t(RATE[rateUnit(s)].long);
   setVal($('sProfit'), ss.profit);
   $('sRuns').textContent = ss.runs;
   setVal($('sAvg'), ss.avgPerRun);

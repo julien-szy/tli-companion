@@ -48,11 +48,12 @@ const DEFAULTS = {
   theme: 'dark',         // thème de la fenêtre principale : 'dark' (défaut) ou 'light' (le widget reste sombre)
   mode: 'farm',          // 'farm' = loot en carte - coût des cartes ; 'all' = tout ce qui entre/sort du sac
   timeMode: 'real',      // 'real' = temps réel de session ; 'map' = temps passé en carte
+  shortcuts: Object.fromEntries(I18N.SC_KEYS.map((k) => [k, I18N.scDefault(k)])), // raccourcis globaux (modifiables)
   countModeTime: true,   // temps des modes à part (Tartarus, Vorax, Arcana, Aeterna…) compté dans le temps du FE/h
   communityPrices: true,
   hubPatterns: ['/XZ_'], // chemins de map considérés comme repaire / ville
   popup: { enabled: false, x: null, y: null, size: 1, color: '#ffd447', glow: 1, rainbow: true, hold: 5, fly: true }, // hold : secondes d'affichage ; fly : les gains volent jusqu'au total // taille (0.3 à 2 = 14 à 92 px), couleur, halo (0 à 1), arc-en-ciel au-dessus de 100 FE // popup des gains « +X FE » (fenêtre transparente, clics traversants)
-  overlay: { x: null, y: null, collapsed: false, opacity: 0.92, scale: 1, solid: false, locked: false, dropsSort: 'recent', ultra: false, ultraLines: ['rec', 'map', 'ph', 'sess'], unitPrice: false, noFlash: false, compact: false },
+  overlay: { x: null, y: null, collapsed: false, opacity: 0.92, scale: 1, solid: false, locked: false, dropsSort: 'recent', ultra: false, ultraLines: ['rec', 'map', 'ph', 'sess'], unitPrice: false, noFlash: false, compact: false, rateUnit: 'hour' },
   server: { url: 'https://tlicompanion.com', token: null, userId: null, name: null },
   activeBuild: null,     // id du build suivi par le conseiller d'achat
   shareMeta: true,       // partage auto du Hero Ranking consulté (pseudos sauf profils masqués)
@@ -93,10 +94,11 @@ settings = {
   popup: { ...DEFAULTS.popup, ...(settings.popup || {}) },
   server: { ...DEFAULTS.server, ...(settings.server || {}) },
   volumes: { ...DEFAULTS.volumes, ...(settings.volumes || {}) },
+  shortcuts: { ...DEFAULTS.shortcuts, ...(settings.shortcuts || {}) },
   sounds: Object.fromEntries(Object.entries({ ...DEFAULTS.sounds, ...(settings.sounds || {}) }).map(([k, v]) => [k, String(v).startsWith('file:') ? v : 'builtin'])),
 };
 delete settings.overlay.clickThrough; // option retirée (0.3.0)
-const tr = () => I18N.make(settings.lang);
+const tr = () => I18N.make(settings.lang, settings.shortcuts);
 
 const items = new ItemDb(path.join(__dirname, '..', 'data', 'items_seed_en.json'));
 const prices = new PriceBook(path.join(userDir, 'prices.json'));
@@ -1666,8 +1668,45 @@ ipcMain.handle('metaBuild', async (_e, key, heroId, topN, threshold) => {
     steps,
   });
 });
+// Raccourcis globaux, modifiables dans Réglages. Clé = lettre du raccourci d'origine.
+// Ctrl+Maj+U (« ultra ») par défaut : pas Ctrl+Maj+M, déjà pris par Discord pour couper le micro.
+const SC_ACTIONS = {
+  F: () => { if (overlay) setCollapsed(!settings.overlay.collapsed); },
+  D: () => toggleDashboard(),
+  P: () => { if (tracker.session.recording) { tracker.togglePause(); broadcast(); } },
+  H: () => toggleOverlay(),
+  L: () => setLocked(!settings.overlay.locked),
+  G: () => setPopup(!settings.popup.enabled),
+  U: () => { if (!overlay) createOverlay(); setUltra(!settings.overlay.ultra); },
+};
+// Enregistre les raccourcis ; renvoie ceux refusés (déjà pris par un autre programme ou invalides).
+function registerShortcuts() {
+  globalShortcut.unregisterAll();
+  const failed = [];
+  for (const k of Object.keys(SC_ACTIONS)) {
+    const acc = settings.shortcuts[k];
+    if (!acc) continue;
+    try { if (!globalShortcut.register(acc, SC_ACTIONS[k])) failed.push(k); } catch { failed.push(k); }
+  }
+  return failed;
+}
+function setShortcut({ key, acc } = {}) {
+  if (!SC_ACTIONS[key]) return { error: 'bad' };
+  acc = typeof acc === 'string' ? acc.trim() : '';
+  if (acc && !/^((CommandOrControl|Alt|Shift)\+)*[A-Z0-9]$|^((CommandOrControl|Alt|Shift)\+)*F([1-9]|1[0-9]|2[0-4])$/.test(acc)) return { error: 'bad' };
+  const dup = acc && Object.keys(SC_ACTIONS).find((k) => k !== key && settings.shortcuts[k] === acc);
+  if (dup) return { error: 'dup', key: dup };
+  const prev = settings.shortcuts[key];
+  settings.shortcuts[key] = acc;
+  if (registerShortcuts().includes(key)) { settings.shortcuts[key] = prev; registerShortcuts(); return { error: 'busy' }; }
+  saveSettings(); buildTrayMenu(); broadcast();
+  return { ok: true };
+}
+
 ipcMain.handle('action', async (_e, name, arg) => {
   switch (name) {
+    case 'shortcut': return setShortcut(arg);
+    case 'resetShortcuts': settings.shortcuts = { ...DEFAULTS.shortcuts }; registerShortcuts(); saveSettings(); buildTrayMenu(); broadcast(); break;
     case 'collapse': setCollapsed(arg ?? !settings.overlay.collapsed); break;
     case 'dashboard': openDashboard(typeof arg === 'string' ? arg : null); break;
     // Bouton du widget : ouvre la fenêtre principale, ou la cache si elle est déjà affichée.
@@ -1758,6 +1797,7 @@ ipcMain.handle('action', async (_e, name, arg) => {
       break;
     }
     case 'unitPrice': case 'noFlash': case 'compact': settings.overlay[name] = !!arg; saveSettings(); broadcast(); break;
+    case 'rateUnit': if (['min', 'hour', 'day'].includes(arg)) { settings.overlay.rateUnit = arg; saveSettings(); broadcast(); } break;
     case 'ultra': setUltra(arg); break;
     case 'ultraLines': {
       const keep = ULTRA_LINES.filter((k) => Array.isArray(arg) && arg.includes(k));
@@ -2066,14 +2106,7 @@ if (!app.requestSingleInstanceLock()) {
       if (restore.dashboard || !restore.overlay) openDashboard('home');
     } else openDashboard('home');
     setupUpdates();
-    globalShortcut.register('CommandOrControl+Shift+F', () => { if (overlay) setCollapsed(!settings.overlay.collapsed); });
-    globalShortcut.register('CommandOrControl+Shift+D', toggleDashboard);
-    globalShortcut.register('CommandOrControl+Shift+P', () => { if (tracker.session.recording) { tracker.togglePause(); broadcast(); } });
-    globalShortcut.register('CommandOrControl+Shift+H', toggleOverlay);
-    globalShortcut.register('CommandOrControl+Shift+L', () => setLocked(!settings.overlay.locked));
-    globalShortcut.register('CommandOrControl+Shift+G', () => setPopup(!settings.popup.enabled));
-    // Ctrl+Maj+U (« ultra ») : pas Ctrl+Maj+M, déjà pris par Discord pour couper le micro.
-    globalShortcut.register('CommandOrControl+Shift+U', () => { if (!overlay) createOverlay(); setUltra(!settings.overlay.ultra); });
+    registerShortcuts();
     if (settings.popup.enabled) createPopup();
     if (settings.communityPrices && Date.now() - prices.communityFetchedAt > 15 * 60000) refreshCommunity();
     setInterval(refreshCommunity, 15 * 60000);

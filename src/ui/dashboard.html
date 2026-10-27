@@ -22,7 +22,7 @@
     <div class="spacer"></div>
     <button class="util feedback" id="feedbackBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span class="lbl" data-i18n="fb.button"></span></button>
     <button class="util support" id="supportBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 8h1a3 3 0 0 1 0 6h-1"/><path d="M3 8h14v6a5 5 0 0 1-5 5H8a5 5 0 0 1-5-5z"/><path d="M7 2v2M11 2v2M15 2v2"/></svg><span class="lbl" data-i18n="sup.short"></span></button>
-    <button class="util" data-grp="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg><span class="lbl" data-i18n="tab.settings"></span></button>
+    <button class="util" data-grp="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg><span class="lbl" data-i18n="rail.settings"></span></button>
   </nav>
   <div class="me"><span id="meAvatar"></span><div class="lbl"><b id="meName"></b><span id="meSub"></span></div></div>
 </aside>
@@ -103,46 +103,8 @@
     <table><thead><tr><th data-i18n="col.item"></th><th data-i18n="col.id"></th><th class="r" data-i18n="col.priceFe"></th><th data-i18n="col.source"></th><th data-i18n="col.updated"></th><th class="r" data-i18n="col.manual"></th></tr></thead><tbody id="priceList"></tbody></table>
     <div style="text-align:center;margin:12px 0"><button class="btn" id="pMore" hidden data-i18n="prices.more"></button></div>
   </section>
-  <section id="widget">
-    <div class="settings">
-      <div data-i18n="wc.title"></div>
-      <div class="wcfg" id="wCfg"></div>
-      <div class="help" data-i18n="wc.help"></div>
-
-      <div data-i18n="wc.dropsSort"></div>
-      <div><select id="sDropsSort"><option value="recent" data-i18n="wc.dropsRecent"></option><option value="value" data-i18n="wc.dropsValue"></option><option value="map" data-i18n="wc.dropsMap"></option></select></div>
-      <div class="help" data-i18n="wc.dropsSortHelp"></div>
-
-      <div data-i18n="wc.display"></div>
-      <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap"><label><input type="checkbox" id="sUnitPrice"> <span data-i18n="wc.unitPrice"></span></label> <label><input type="checkbox" id="sNoFlash"> <span data-i18n="wc.noFlash"></span></label> <label><input type="checkbox" id="sCompact"> <span data-i18n="wc.compact"></span></label></div>
-      <div class="help" data-i18n="wc.displayHelp"></div>
-
-      <div data-i18n="pop.title"></div>
-      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><label><input type="checkbox" id="sPopup"> <span data-i18n="pop.enable"></span></label>
-        <button class="btn" id="popPlace" data-i18n="pop.place"></button><button class="btn" id="popTest" data-i18n="pop.test"></button></div>
-      <div></div>
-      <div class="pop-style"><label><span data-i18n="pop.size"></span> <input type="range" id="popSize" min="0.3" max="2" step="0.02"> <b id="popSizeV"></b></label>
-        <label><span data-i18n="pop.glow"></span> <input type="range" id="popGlow" min="0" max="1" step="0.05"> <b id="popGlowV"></b></label>
-        <label><input type="checkbox" id="popRainbow"> <span data-i18n="pop.rainbow"></span></label>
-        <label><span data-i18n="pop.hold"></span> <input type="range" id="popHold" min="1" max="15" step="1"> <b id="popHoldV"></b></label>
-        <label><input type="checkbox" id="popFly"> <span data-i18n="pop.fly"></span></label>
-        <span class="pop-colors" id="popColors"></span><input type="color" id="popColor" data-i18n-title="pop.custom"></div>
-      <div class="help" data-i18n="pop.help"></div>
-
-      <div data-i18n="set.opacity"></div>
-      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><input type="range" id="sOpacity" min="0.4" max="1" step="0.02"> <label><input type="checkbox" id="sSolid"> <span data-i18n="set.solid"></span></label> <label><input type="checkbox" id="sUltra"> <span data-i18n="set.ultra"></span></label>
-        <span class="ul-lines" id="ultraLines"><span class="muted" data-i18n="set.ultraLines"></span>
-          <label><input type="checkbox" data-ul="rec"> <span data-i18n="set.ul.rec"></span></label><label><input type="checkbox" data-ul="map"> <span data-i18n="set.ul.map"></span></label>
-          <label><input type="checkbox" data-ul="ph"> <span data-i18n="set.ul.ph"></span></label><label><input type="checkbox" data-ul="sess"> <span data-i18n="set.ul.sess"></span></label></span> <label><input type="checkbox" id="sLock"> <span data-i18n="set.lock"></span></label></div>
-
-      <div data-i18n="set.scale"></div>
-      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><input type="range" id="sScale" min="0.6" max="2" step="0.05"> <span class="muted" data-i18n="set.scaleHint"></span></div>
-
-      <div data-i18n="wg.size"></div>
-      <div class="muted" data-i18n="wg.sizeHelp"></div>
-    </div>
-  </section>
   <section id="settings">
+    <p class="set-intro" data-i18n="setp.general"></p>
     <div class="settings">
       <div data-i18n="set.language"></div>
       <div><select id="sLang"><option value="en">English</option><option value="fr">Français</option></select></div>
@@ -156,6 +118,7 @@
 
       <div class="acc-row" hidden><span data-i18n="acc.title"></span> <span class="tag beta">BETA</span></div>
       <div class="acc-row" id="accBox" hidden></div>
+
       <div data-i18n="set.pseudo"></div>
       <div><input id="sPseudo" style="width:260px" data-i18n-ph="set.pseudoPh"> <button class="btn" id="savePseudo" data-i18n="btn.save"></button> <span class="muted" id="pseudoMsg"></span></div>
 
@@ -163,6 +126,13 @@
       <div><span id="logPath" class="muted"></span> <button class="btn" id="pickLog" data-i18n="btn.choose"></button></div>
       <div class="help" data-i18n="set.logHelp"></div>
 
+      <div data-i18n="set.updates"></div>
+      <div><button class="btn" id="sCheckUpd" data-i18n="set.checkUpdates"></button> <span class="muted" id="sUpdMsg"></span></div>
+    </div>
+  </section>
+  <section id="scalc">
+    <p class="set-intro" data-i18n="setp.calc"></p>
+    <div class="settings">
       <div data-i18n="set.mode"></div>
       <div><select id="sMode"><option value="farm" data-i18n="set.modeFarm"></option><option value="all" data-i18n="set.modeAll"></option></select></div>
 
@@ -172,18 +142,10 @@
       <div data-i18n="set.modeTime"></div>
       <div><label><input type="checkbox" id="sModeTime"> <span data-i18n="set.modeTimeLabel"></span></label></div>
 
-      <div data-i18n="set.community"></div>
-      <div><label><input type="checkbox" id="sCommunity"> <span data-i18n="set.communityLabel"></span></label> <button class="btn" id="refreshCommunity" data-i18n="btn.refresh"></button></div>
-
-      <div data-i18n="set.farmStats"></div>
-      <div><label><input type="checkbox" id="sFarmStats"> <span data-i18n="set.farmStatsLabel"></span></label></div>
-
-      <div data-i18n="set.shareMeta"></div>
-      <div><label><input type="checkbox" id="sShareMeta"> <span data-i18n="set.shareMetaLabel"></span></label></div>
-
       <div data-i18n="set.tax"></div>
       <div><label><input type="checkbox" id="sAfterTax"> <span data-i18n="set.taxOn"></span></label> <input id="sTaxRate" type="number" min="0" max="50" step="0.5" style="width:70px"> <span class="muted">%</span></div>
       <div class="help" data-i18n="set.taxHelp"></div>
+
       <div data-i18n="set.minLoot"></div>
       <div><input id="sMinLoot" type="number" min="0" step="0.1" style="width:90px"> <span class="muted">FE</span></div>
       <div class="help" data-i18n="set.minLootHelp"></div>
@@ -191,11 +153,22 @@
       <div data-i18n="set.autoPause"></div>
       <div><label><input type="checkbox" id="sAutoPause"> <span data-i18n="set.autoPauseLabel"></span></label></div>
 
+      <div data-i18n="set.hub"></div>
+      <div><input id="sHub" style="width:360px"> <button class="btn" id="saveHub" data-i18n="btn.save"></button></div>
+      <div class="help"><span data-i18n="set.hubHelp"></span> <b id="zoneNow"></b></div>
+    </div>
+  </section>
+  <section id="salerts">
+    <p class="set-intro" data-i18n="setp.alerts"></p>
+    <div class="settings">
+      <div data-i18n="set.tartarus"></div>
+      <div><label><input type="checkbox" id="sTartarus"> <span data-i18n="set.tartarusLabel"></span></label></div>
+
       <div data-i18n="set.star"></div>
       <div><label><input type="checkbox" id="sStar"> <span data-i18n="set.starLabel"></span></label></div>
 
-      <div data-i18n="set.tartarus"></div>
-      <div><label><input type="checkbox" id="sTartarus"> <span data-i18n="set.tartarusLabel"></span></label></div>
+      <div data-i18n="set.stock"></div>
+      <div><label><input type="checkbox" id="sStock"> <span data-i18n="set.stockLabel"></span></label> <button class="btn" id="sStockTest" data-i18n="set.stockTest" style="margin-left:8px;padding:3px 10px"></button></div>
 
       <div data-i18n="snd.title"></div>
       <div class="sounds">
@@ -206,19 +179,87 @@
         <div><span data-i18n="snd.beacon"></span><button class="btn" data-sndtest="beacon">▶</button><em class="muted" data-sndname="beacon"></em><button class="btn" data-sndfile="beacon" data-i18n="snd.file"></button><button class="btn" data-sndreset="beacon" data-i18n="snd.reset"></button><span class="sndvol"><input type="range" min="0" max="100" step="5" data-sndvol="beacon"><b data-sndvolv="beacon"></b></span></div>
         <div><span data-i18n="snd.beaconEmpty"></span><button class="btn" data-sndtest="beaconEmpty">▶</button><em class="muted" data-sndname="beaconEmpty"></em><button class="btn" data-sndfile="beaconEmpty" data-i18n="snd.file"></button><button class="btn" data-sndreset="beaconEmpty" data-i18n="snd.reset"></button><span class="sndvol"><input type="range" min="0" max="100" step="5" data-sndvol="beaconEmpty"><b data-sndvolv="beaconEmpty"></b></span></div>
       </div>
+    </div>
+  </section>
+  <section id="sshare">
+    <p class="set-intro" data-i18n="setp.share"></p>
+    <div class="settings">
+      <div data-i18n="set.community"></div>
+      <div><label><input type="checkbox" id="sCommunity"> <span data-i18n="set.communityLabel"></span></label> <button class="btn" id="refreshCommunity" data-i18n="btn.refresh"></button></div>
 
-      <div data-i18n="set.stock"></div>
-      <div><label><input type="checkbox" id="sStock"> <span data-i18n="set.stockLabel"></span></label> <button class="btn" id="sStockTest" data-i18n="set.stockTest" style="margin-left:8px;padding:3px 10px"></button></div>
+      <div data-i18n="set.farmStats"></div>
+      <div><label><input type="checkbox" id="sFarmStats"> <span data-i18n="set.farmStatsLabel"></span></label></div>
 
-      <div data-i18n="set.hub"></div>
-      <div><input id="sHub" style="width:360px"> <button class="btn" id="saveHub" data-i18n="btn.save"></button></div>
-      <div class="help"><span data-i18n="set.hubHelp"></span> <b id="zoneNow"></b></div>
+      <div data-i18n="set.shareMeta"></div>
+      <div><label><input type="checkbox" id="sShareMeta"> <span data-i18n="set.shareMetaLabel"></span></label></div>
+    </div>
+  </section>
+  <section id="widget">
+    <p class="set-intro" data-i18n="setp.widget"></p>
+    <div class="settings">
+      <div data-i18n="wc.title"></div>
+      <div class="wcfg" id="wCfg"></div>
+      <div class="help" data-i18n="wc.help"></div>
 
-      <div data-i18n="set.updates"></div>
-      <div><button class="btn" id="sCheckUpd" data-i18n="set.checkUpdates"></button> <span class="muted" id="sUpdMsg"></span></div>
+      <div data-i18n="wc.dropsSort"></div>
+      <div><select id="sDropsSort"><option value="recent" data-i18n="wc.dropsRecent"></option><option value="value" data-i18n="wc.dropsValue"></option><option value="map" data-i18n="wc.dropsMap"></option></select></div>
+      <div class="help" data-i18n="wc.dropsSortHelp"></div>
+      <div></div>
+      <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap"><label><input type="checkbox" id="sUnitPrice"> <span data-i18n="wc.unitPrice"></span></label> <label><input type="checkbox" id="sNoFlash"> <span data-i18n="wc.noFlash"></span></label></div>
 
+      <div data-i18n="wc.rate"></div>
+      <div><select id="sRate"><option value="min" data-i18n="wc.rateMin"></option><option value="hour" data-i18n="wc.rateHour"></option><option value="day" data-i18n="wc.rateDay"></option></select></div>
+    </div>
+  </section>
+  <section id="wlook">
+    <p class="set-intro" data-i18n="setp.wlook"></p>
+    <div class="settings">
+      <div data-i18n="set.opacity"></div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><input type="range" id="sOpacity" min="0.4" max="1" step="0.02"> <label><input type="checkbox" id="sSolid"> <span data-i18n="set.solid"></span></label></div>
+
+      <div data-i18n="set.scale"></div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><input type="range" id="sScale" min="0.6" max="2" step="0.05"> <span class="muted" data-i18n="set.scaleHint"></span></div>
+
+      <div data-i18n="wg.size"></div>
+      <div class="muted" data-i18n="wg.sizeHelp"></div>
+
+      <div data-i18n="wl.compact"></div>
+      <div><label><input type="checkbox" id="sCompact"> <span data-i18n="wc.compact"></span></label></div>
+      <div class="help" data-i18n="wc.displayHelp"></div>
+
+      <div data-i18n="wl.ultra"></div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><label><input type="checkbox" id="sUltra"> <span data-i18n="set.ultra"></span></label>
+        <span class="ul-lines" id="ultraLines"><span class="muted" data-i18n="set.ultraLines"></span>
+          <label><input type="checkbox" data-ul="rec"> <span data-i18n="set.ul.rec"></span></label><label><input type="checkbox" data-ul="map"> <span data-i18n="set.ul.map"></span></label>
+          <label><input type="checkbox" data-ul="ph"> <span data-i18n="set.ul.ph"></span></label><label><input type="checkbox" data-ul="sess"> <span data-i18n="set.ul.sess"></span></label></span></div>
+
+      <div data-i18n="wl.lock"></div>
+      <div><label><input type="checkbox" id="sLock"> <span data-i18n="set.lock"></span></label></div>
+    </div>
+  </section>
+  <section id="spopup">
+    <p class="set-intro" data-i18n="setp.popup"></p>
+    <div class="settings">
+      <div data-i18n="pop.title"></div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><label><input type="checkbox" id="sPopup"> <span data-i18n="pop.enable"></span></label>
+        <button class="btn" id="popPlace" data-i18n="pop.place"></button><button class="btn" id="popTest" data-i18n="pop.test"></button></div>
+      <div></div>
+      <div class="pop-style"><label><span data-i18n="pop.size"></span> <input type="range" id="popSize" min="0.3" max="2" step="0.02"> <b id="popSizeV"></b></label>
+        <label><span data-i18n="pop.glow"></span> <input type="range" id="popGlow" min="0" max="1" step="0.05"> <b id="popGlowV"></b></label>
+        <label><input type="checkbox" id="popRainbow"> <span data-i18n="pop.rainbow"></span></label>
+        <label><span data-i18n="pop.hold"></span> <input type="range" id="popHold" min="1" max="15" step="1"> <b id="popHoldV"></b></label>
+        <label><input type="checkbox" id="popFly"> <span data-i18n="pop.fly"></span></label>
+        <span class="pop-colors" id="popColors"></span><input type="color" id="popColor" data-i18n-title="pop.custom"></div>
+      <div class="help" data-i18n="pop.help"></div>
+    </div>
+  </section>
+  <section id="skeys">
+    <p class="set-intro" data-i18n="setp.keys"></p>
+    <div class="settings">
       <div data-i18n="set.shortcuts"></div>
-      <div><div class="muted" data-i18n="set.shortcutsList"></div><button class="btn" id="sTips" style="margin-top:8px" data-i18n="tour.again"></button></div>
+      <div><div class="sc-list" id="scList"></div>
+        <div class="help" data-i18n="sc.help"></div><div class="neg small" id="scErr" hidden></div>
+        <button class="btn" id="scReset" style="margin-top:8px" data-i18n="sc.reset"></button> <button class="btn" id="sTips" style="margin-top:8px" data-i18n="tour.again"></button></div>
     </div>
   </section>
 </main>

@@ -1,6 +1,22 @@
 {
   "releases": [
     {
+      "version": "1.1.0",
+      "date": "2026-10-27",
+      "en": [
+        "Settings are now split into short pages: General, Profit & time, Alerts & sounds, Sharing, Widget content, Widget look, Gain popup and Shortcuts.",
+        "Widget: new setting in Settings › Widget to show your gain per minute, per hour (default) or per day.",
+        "Shortcuts can now be changed in Settings › Shortcuts: click one, press the new keys (Delete removes it). All the texts of the app show your shortcuts.",
+        "Fixed: the Sacred Court Manor hideout was counted as a map instead of the hideout."
+      ],
+      "fr": [
+        "Les réglages sont maintenant découpés en pages courtes : Général, Profit et temps, Alertes et sons, Partage, Widget : contenu, Widget : apparence, Popup des gains et Raccourcis.",
+        "Widget : nouveau réglage dans Réglages › Widget pour afficher ton gain par minute, par heure (par défaut) ou par jour.",
+        "Les raccourcis se changent maintenant dans Réglages › Raccourcis : clique sur l'un d'eux, appuie sur les nouvelles touches (Suppr le retire). Tous les textes de l'appli affichent tes raccourcis.",
+        "Corrigé : le repaire Sacred Court Manor était compté comme une carte au lieu du repaire."
+      ]
+    },
+    {
       "version": "1.0.41",
       "date": "2026-10-27",
       "en": [

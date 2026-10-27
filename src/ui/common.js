@@ -4,13 +4,17 @@ let LOCALE = 'en-US';
 let t = I18N.make('en');
 let nf0, nf1, nf3;
 
-// Change la langue (et le format des nombres). Renvoie true si elle a changé.
-function setLang(lang) {
+let SC_SIG = '';
+// Change la langue (et le format des nombres) ; sc = raccourcis choisis (les textes les citent).
+// Renvoie true si la langue ou les raccourcis ont changé.
+function setLang(lang, sc) {
   lang = I18N.LANGS[lang] ? lang : 'en';
-  if (lang === LANG) return false;
+  const sig = JSON.stringify(sc || {});
+  if (lang === LANG && sig === SC_SIG) return false;
   LANG = lang;
+  SC_SIG = sig;
   LOCALE = I18N.LOCALES[lang];
-  t = I18N.make(lang);
+  t = I18N.make(lang, sc);
   nf0 = new Intl.NumberFormat(LOCALE, { maximumFractionDigits: 0 });
   nf1 = new Intl.NumberFormat(LOCALE, { maximumFractionDigits: 1, minimumFractionDigits: 1 });
   nf3 = new Intl.NumberFormat(LOCALE, { maximumFractionDigits: 3 });

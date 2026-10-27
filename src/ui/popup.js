@@ -97,7 +97,7 @@ function applyStyle(p) {
   r.setProperty('--halo', rgba(c, 0.55 * g)); r.setProperty('--halo2', rgba(mix(c, 255, 0.3), 0.9 * g)); r.setProperty('--s', String(sz)); r.setProperty('--g', String(g));
 }
 tli.onState((s) => {
-  setLang(s.settings.lang);
+  setLang(s.settings.lang, s.settings.shortcuts);
   applyStyle(s.settings.popup);
   const placing = !!(s.popupPlacing);
   const was = document.body.classList.contains('placing');

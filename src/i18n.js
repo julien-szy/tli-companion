@@ -7,7 +7,9 @@
       'app.title': 'TLI Companion',
       'btn.start': 'Start', 'btn.stop': 'Stop', 'btn.save': 'Save', 'btn.back': '← Back', 'btn.delete': 'Delete',
       'btn.choose': 'Choose…', 'btn.refresh': 'Refresh', 'btn.newSession': 'Reset counters',
-      'fe.h': 'FE/h', 'zone.hideout': 'Hideout', 'zone.inMap': 'In map', 'unknown': '–',
+      'fe.h': 'FE/h', 'fe.min': 'FE/min', 'fe.day': 'FE/day', 'ov.perMinShort': 'FE / minute', 'ov.perDayShort': 'FE / day',
+      'wc.rate': 'Gain shown per', 'wc.rateMin': 'minute', 'wc.rateHour': 'hour', 'wc.rateDay': 'day (24 h)',
+      'zone.hideout': 'Hideout', 'zone.inMap': 'In map', 'unknown': '–',
       // Widget
       'ov.map': 'map', 'ov.last': 'last',
       'ov.rec.title': 'Start / stop a farm session',
@@ -49,7 +51,7 @@
       'k.profit': 'Session profit', 'k.perHour': 'FE / hour', 'k.maps': 'Maps', 'k.avg': 'Avg / map',
       'k.loot': 'Loot', 'k.cost': 'Map cost', 'k.other': 'Outside maps', 'k.time': 'Time',
       'tab.live': 'Live', 'tab.sessions': 'Farm sessions', 'tab.runs': 'Maps', 'tab.items': 'Items',
-      'tab.history': 'History', 'tab.prices': 'Prices', 'tab.settings': 'Settings',
+      'tab.history': 'History', 'tab.prices': 'Prices', 'tab.settings': 'General', 'rail.settings': 'Settings',
       // Direct
       'live.loot': 'Loot', 'live.cost': 'Map cost', 'live.other': 'Outside maps (sales, purchases, crafting…)',
       'live.filter': 'Filter an item…', 'live.empty': 'Nothing yet. Run a map: every item you pick up will show up here live.',
@@ -235,6 +237,12 @@
       'set.hub': 'Hideout zones', 'set.hubHelp': 'Map path fragments (comma separated) treated as outside maps. Current zone:',
       'set.opacity': 'Widget opacity', 'set.scale': "Text size",
       'set.shortcuts': 'Shortcuts',
+      'sc.F': 'Collapse / expand the widget', 'sc.H': 'Hide / show the widget', 'sc.L': 'Lock / unlock the widget', 'sc.U': 'Ultra minimal mode',
+      'sc.G': 'Gain popup', 'sc.P': 'Pause the session', 'sc.D': 'Open / hide this window',
+      'sc.help': "Click a shortcut, then press the new keys (with Ctrl, Shift or Alt). Esc cancels, Delete removes the shortcut.",
+      'sc.press': 'Press the keys…', 'sc.reset': 'Default shortcuts',
+      'sc.dup': "This shortcut is already used for: {what}", 'sc.busy': "This shortcut is already taken by another program (Discord, the game…). Pick another one.",
+      'sc.needMod': "Use at least Ctrl or Alt (or an F1–F12 key), so it does not trigger while you type in game.",
       'set.shortcutsList': 'Ctrl+Shift+F collapse/expand · Ctrl+Shift+H hide · Ctrl+Shift+L lock/unlock · Ctrl+Shift+U ultra minimal mode · Ctrl+Shift+G gain popup · Ctrl+Shift+P pause · Ctrl+Shift+D this window',
       // Menu de la zone de notification / dialogues
       'tray.dashboard': 'Full scan (dashboard)', 'tray.toggleOverlay': 'Show / hide the widget',
@@ -282,7 +290,16 @@
       'h.pausedAuto': "Auto-paused (AFK) · {time}",
       'set.autoPause': "Auto pause",
       'set.autoPauseLabel': "Pause the farm session automatically after 3 min without activity in the hideout (it resumes as soon as you do something)",
-      'tab.widget': "Widget",
+      'tab.widget': "Widget: content", 'tab.wlook': "Widget: look", 'tab.spopup': "Gain popup",
+      'tab.scalc': "Profit & time", 'tab.salerts': "Alerts & sounds", 'tab.sshare': "Sharing", 'tab.skeys': "Shortcuts",
+      'setp.general': "Language, look of the app, your class and account, and the game log.",
+      'setp.calc': "How profit, FE/h and session time are counted.",
+      'setp.alerts': "Alerts while you play and their sounds.",
+      'setp.share': "What the app downloads from and sends to tlicompanion.com.",
+      'setp.widget': "What the widget shows over the game.",
+      'setp.wlook': "Size, transparency and display modes of the widget.",
+      'setp.popup': "The \"+X FE\" shown in the middle of the screen when you loot.",
+      'setp.keys': "Keyboard shortcuts, usable even while the game has focus.",
       'wg.size': "Widget size",
       'wg.sizeHelp': "Drag the bottom-right corner of the widget to change its width and height. Ctrl+Shift+F collapses it, Ctrl+Shift+L locks it.",
       'wc.title': "Widget content",
@@ -309,8 +326,8 @@
       'wc.dropsValue': "Most valuable drops (total price)",
       'wc.dropsMap': "Most valuable drops of the current map",
       'wc.dropsSortHelp': "Most valuable: every item looted this session, grouped and sorted by total value (quantity × price). Current map: the same, but only for the map you are in (or the last one when you are in the hideout).",
-      'wc.display': "Display", 'wc.unitPrice': "Price per item in the drops list", 'wc.noFlash': "No highlight on new drops", 'wc.compact': "Compact widget",
-      'wc.displayHelp': "Compact: smaller current map block and session numbers, same content. To scale the whole widget, use \"Widget size\" below.",
+      'wc.display': "Display", 'wl.compact': "Compact", 'wl.ultra': "Ultra minimal", 'wl.lock': "Lock", 'wc.unitPrice': "Price per item in the drops list", 'wc.noFlash': "No highlight on new drops", 'wc.compact': "Compact widget",
+      'wc.displayHelp': "Smaller current map block and session numbers, same content.",
       'ov.unitTip': "Price per item", 'hist.noLoot': "No valuable loot on this map.", 'hist.more': "+{n} more", 'hist.cost': "Cost:",
       'bag.warnStale1': "These prices are estimates. 1 item marked to sell has a price not checked for more than 1 day (in red): search it at the Auction House before you sell.",
       'bag.warnTitle': "Always check the price in game before selling",
@@ -1092,7 +1109,9 @@
       'app.title': 'TLI Companion',
       'btn.start': 'Démarrer', 'btn.stop': 'Terminer', 'btn.save': 'Enregistrer', 'btn.back': '← Retour', 'btn.delete': 'Supprimer',
       'btn.choose': 'Choisir…', 'btn.refresh': 'Rafraîchir', 'btn.newSession': 'Remettre à zéro',
-      'fe.h': 'FE/h', 'zone.hideout': 'Repaire', 'zone.inMap': 'En carte', 'unknown': '–',
+      'fe.h': 'FE/h', 'fe.min': 'FE/min', 'fe.day': 'FE/jour', 'ov.perMinShort': 'FE / minute', 'ov.perDayShort': 'FE / jour',
+      'wc.rate': 'Gain affiché par', 'wc.rateMin': 'minute', 'wc.rateHour': 'heure', 'wc.rateDay': 'jour (24 h)',
+      'zone.hideout': 'Repaire', 'zone.inMap': 'En carte', 'unknown': '–',
       'ov.map': 'carte', 'ov.last': 'dernière',
       'ov.rec.title': 'Démarrer / terminer une session de farm',
       'ov.dash.title': "Ouvrir / cacher le scan complet (Ctrl+Maj+D)",
@@ -1132,7 +1151,7 @@
       'k.profit': 'Profit session', 'k.perHour': 'FE / heure', 'k.maps': 'Cartes', 'k.avg': 'Moy. / carte',
       'k.loot': 'Loot', 'k.cost': 'Coût cartes', 'k.other': 'Hors carte', 'k.time': 'Temps',
       'tab.live': 'Direct', 'tab.sessions': 'Sessions de farm', 'tab.runs': 'Cartes', 'tab.items': 'Objets',
-      'tab.history': 'Historique', 'tab.prices': 'Prix', 'tab.settings': 'Réglages',
+      'tab.history': 'Historique', 'tab.prices': 'Prix', 'tab.settings': 'Général', 'rail.settings': 'Réglages',
       'live.loot': 'Loot', 'live.cost': 'Coût cartes', 'live.other': 'Hors carte (ventes, achats, craft…)',
       'live.filter': 'Filtrer un objet…', 'live.empty': "Rien pour l'instant. Lance une carte : chaque objet ramassé apparaîtra ici en direct.",
       'col.time': 'Heure', 'col.item': 'Objet', 'col.qty': 'Qté', 'col.unit': 'Prix u.', 'col.value': 'Valeur',
@@ -1312,6 +1331,12 @@
       'set.hub': 'Zones « repaire »', 'set.hubHelp': 'Morceaux de chemin de map (séparés par des virgules) considérés comme hors-carte. Zone actuelle :',
       'set.opacity': 'Opacité du widget', 'set.scale': "Taille du texte",
       'set.shortcuts': 'Raccourcis',
+      'sc.F': 'Réduire / agrandir le widget', 'sc.H': 'Masquer / afficher le widget', 'sc.L': 'Verrouiller / déverrouiller le widget', 'sc.U': 'Mode ultra minimal',
+      'sc.G': 'Popup des gains', 'sc.P': 'Mettre la session en pause', 'sc.D': 'Ouvrir / cacher cette fenêtre',
+      'sc.help': "Clique sur un raccourci, puis appuie sur les nouvelles touches (avec Ctrl, Maj ou Alt). Échap annule, Suppr retire le raccourci.",
+      'sc.press': 'Appuie sur les touches…', 'sc.reset': 'Raccourcis par défaut',
+      'sc.dup': "Ce raccourci sert déjà pour : {what}", 'sc.busy': "Ce raccourci est déjà pris par un autre programme (Discord, le jeu…). Choisis-en un autre.",
+      'sc.needMod': "Utilise au moins Ctrl ou Alt (ou une touche F1 à F12), pour qu'il ne se déclenche pas quand tu écris en jeu.",
       'set.shortcutsList': 'Ctrl+Maj+F réduire/agrandir · Ctrl+Maj+H masquer · Ctrl+Maj+L verrouiller/déverrouiller · Ctrl+Maj+U mode ultra minimal · Ctrl+Maj+G popup des gains · Ctrl+Maj+P pause · Ctrl+Maj+D cette fenêtre',
       'tray.dashboard': 'Scan complet (tableau de bord)', 'tray.toggleOverlay': 'Afficher / masquer le widget',
       'tray.collapse': 'Réduire / agrandir le widget', 'tray.farm': 'Démarrer / terminer une session de farm',
@@ -1358,7 +1383,16 @@
       'h.pausedAuto': "En pause auto (AFK) · {time}",
       'set.autoPause': "Pause automatique",
       'set.autoPauseLabel': "Mettre la session de farm en pause toute seule après 3 min sans activité au repaire (elle reprend dès que tu fais quelque chose)",
-      'tab.widget': "Widget",
+      'tab.widget': "Widget : contenu", 'tab.wlook': "Widget : apparence", 'tab.spopup': "Popup des gains",
+      'tab.scalc': "Profit et temps", 'tab.salerts': "Alertes et sons", 'tab.sshare': "Partage", 'tab.skeys': "Raccourcis",
+      'setp.general': "Langue, apparence de l'appli, ta classe et ton compte, et le log du jeu.",
+      'setp.calc': "Comment sont comptés le profit, le FE/h et le temps de session.",
+      'setp.alerts': "Les alertes pendant que tu joues et leurs sons.",
+      'setp.share': "Ce que l'appli télécharge depuis tlicompanion.com et ce qu'elle y envoie.",
+      'setp.widget': "Ce que le widget affiche par-dessus le jeu.",
+      'setp.wlook': "Taille, transparence et modes d'affichage du widget.",
+      'setp.popup': "Le « +X FE » affiché au milieu de l'écran quand tu ramasses.",
+      'setp.keys': "Raccourcis clavier, utilisables même quand le jeu est au premier plan.",
       'wg.size': "Taille du widget",
       'wg.sizeHelp': "Tire le coin en bas à droite du widget pour changer sa largeur et sa hauteur. Ctrl+Maj+F le réduit, Ctrl+Maj+L le verrouille.",
       'wc.title': "Contenu du widget",
@@ -1385,8 +1419,8 @@
       'wc.dropsValue': "Drops les plus rentables (prix total)",
       'wc.dropsMap': "Drops les plus rentables de la carte en cours",
       'wc.dropsSortHelp': "Les plus rentables : tous les objets ramassés pendant la session, regroupés et triés par valeur totale (quantité × prix). Carte en cours : pareil, mais seulement pour la carte où tu es (ou la dernière au repaire).",
-      'wc.display': "Affichage", 'wc.unitPrice': "Prix à l'unité dans la liste des drops", 'wc.noFlash': "Pas de surlignage des nouveaux drops", 'wc.compact': "Widget compact",
-      'wc.displayHelp': "Compact : bloc de la carte en cours et chiffres de la session plus petits, même contenu. Pour agrandir ou réduire tout le widget, utilise « Taille du widget » plus bas.",
+      'wc.display': "Affichage", 'wl.compact': "Compact", 'wl.ultra': "Ultra minimal", 'wl.lock': "Verrouillage", 'wc.unitPrice': "Prix à l'unité dans la liste des drops", 'wc.noFlash': "Pas de surlignage des nouveaux drops", 'wc.compact': "Widget compact",
+      'wc.displayHelp': "Bloc de la carte en cours et chiffres de la session plus petits, même contenu.",
       'ov.unitTip': "Prix à l'unité", 'hist.noLoot': "Pas de loot rentable sur cette carte.", 'hist.more': "+{n} autres", 'hist.cost': "Coût :",
       'bag.warnStale1': "Ces prix sont des estimations. 1 objet à vendre a un prix qui n'a pas été vérifié depuis plus d'un jour (en rouge) : cherche-le à l'hôtel des ventes avant de vendre.",
       'bag.warnTitle': "Vérifie toujours le prix en jeu avant de vendre",
@@ -2169,11 +2203,25 @@
   const LANGS = { en: 'English', fr: 'Français' };
   const LOCALES = { en: 'en-US', fr: 'fr-FR' };
 
-  function make(lang) {
+  // Raccourcis : chacun garde comme identifiant la lettre de son raccourci d'origine (Ctrl+Maj+F -> « F »).
+  const SC_KEYS = ['F', 'H', 'L', 'U', 'G', 'P', 'D'];
+  const scDefault = (k) => `CommandOrControl+Shift+${k}`;
+  // Texte lisible d'un raccourci (« CommandOrControl+Shift+K » -> « Ctrl+Maj+K »).
+  function scLabel(acc, lang) {
+    if (!acc) return lang === 'fr' ? 'aucun raccourci' : 'no shortcut';
+    return acc.replace('CommandOrControl', 'Ctrl').replace(/Shift/g, lang === 'fr' ? 'Maj' : 'Shift');
+  }
+
+  // sc : raccourcis choisis par le joueur ; les textes qui citent un raccourci d'origine affichent le nouveau.
+  function make(lang, sc) {
     const d = STR[lang] || STR.en;
+    const keys = {};
+    for (const k of SC_KEYS) if (sc && sc[k] != null && sc[k] !== scDefault(k)) keys[k] = scLabel(sc[k], lang);
+    const swap = Object.keys(keys).length > 0;
     return (key, vars) => {
       let s = d[key] ?? STR.en[key] ?? key;
       if (vars) s = s.replace(/\{(\w+)\}/g, (m, n) => (vars[n] != null ? vars[n] : m));
+      if (swap) s = s.replace(/Ctrl\+(?:Shift|Maj)\+([A-Z])\b/g, (m, k) => keys[k] || m);
       return s;
     };
   }
@@ -2185,7 +2233,7 @@
     doc.querySelectorAll('[data-i18n-ph]').forEach((el) => { el.placeholder = t(el.dataset.i18nPh); });
   }
 
-  const api = { STR, LANGS, LOCALES, make, apply };
+  const api = { STR, LANGS, LOCALES, make, apply, SC_KEYS, scDefault, scLabel };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.I18N = api;
 })(this);

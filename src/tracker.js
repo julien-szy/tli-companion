@@ -184,7 +184,7 @@ class Tracker extends EventEmitter {
     if (!path) return true;
     const pats = this.settings.hubPatterns || [];
     // Repaires connus (Ember's Rest, Sacred Court Manor…) + morceaux de chemin choisis par le joueur.
-    return /^Hideout/.test(shortName(path)) || pats.some((p) => p && path.includes(p));
+    return /^Hideout\b/.test(shortName(path)) || pats.some((p) => p && path.includes(p));
   }
 
   handle(ev) {

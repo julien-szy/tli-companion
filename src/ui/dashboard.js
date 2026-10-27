@@ -15,7 +15,7 @@ const GROUPS = {
   char: ['meta'],
   stats: ['stats'],
   market: ['prices'],
-  settings: ['settings', 'widget'],
+  settings: ['settings', 'scalc', 'salerts', 'sshare', 'widget', 'wlook', 'spopup', 'skeys'],
 };
 const groupOf = (name) => Object.keys(GROUPS).find((g) => GROUPS[g].includes(name)) || 'home';
 const lastSub = {};
@@ -477,6 +477,7 @@ document.querySelectorAll('#ultraLines [data-ul]').forEach((cb) => (cb.onchange 
   if (!on.length) { cb.checked = true; return; }
   tli.action('ultraLines', on);
 }));
+$('sRate').onchange = (e) => tli.action('rateUnit', e.target.value);
 for (const [id, act] of [['sUnitPrice', 'unitPrice'], ['sNoFlash', 'noFlash'], ['sCompact', 'compact']]) $(id).onchange = (e) => tli.action(act, e.target.checked);
 $('sPopup').onchange = (e) => tli.action('popup', e.target.checked);
 $('popPlace').onclick = () => tli.action(last && last.popupPlacing ? 'popupPlaced' : 'popupPlace');
@@ -579,6 +580,49 @@ function tipsModal(step = 0) {
 }
 if ($('sTips')) $('sTips').onclick = () => tipsModal(0);
 
+// ---------- Raccourcis modifiables (Réglages) ----------
+// Clic sur un raccourci, puis la nouvelle combinaison. Échap annule, Suppr / Retour arrière le retire.
+let scState = null, scCapture = null, scSig = '';
+function scErr(msg) { $('scErr').hidden = !msg; $('scErr').textContent = msg || ''; }
+function renderShortcuts(s, force) {
+  scState = s.settings.shortcuts || {};
+  const sig = LANG + JSON.stringify(scState);
+  if (scCapture || (!force && sig === scSig)) return;
+  scSig = sig;
+  $('scList').innerHTML = I18N.SC_KEYS.map((k) => `<span>${esc(t('sc.' + k))}</span><button class="btn" data-sc="${k}">${esc(I18N.scLabel(scState[k], LANG))}</button>`).join('');
+  $('scList').querySelectorAll('[data-sc]').forEach((b) => (b.onclick = () => startCapture(b)));
+}
+function startCapture(btn) {
+  if (scCapture) return;
+  scErr('');
+  scCapture = btn.dataset.sc;
+  btn.classList.add('cap');
+  btn.textContent = t('sc.press');
+  const stop = () => { document.removeEventListener('keydown', onKey, true); scCapture = null; renderShortcuts({ settings: { shortcuts: scState } }, true); };
+  const onKey = (ev) => {
+    ev.preventDefault(); ev.stopPropagation();
+    if (['Control', 'Shift', 'Alt', 'Meta'].includes(ev.key)) return;
+    if (ev.key === 'Escape') return stop();
+    const key = scCapture;
+    let acc;
+    if (ev.key === 'Delete' || ev.key === 'Backspace') acc = '';
+    else {
+      const m = /^Key([A-Z])$|^Digit([0-9])$|^(F(?:[1-9]|1[0-9]|2[0-4]))$/.exec(ev.code);
+      if (!m) return;
+      const main = m[1] || m[2] || m[3];
+      if (!ev.ctrlKey && !ev.altKey && !m[3]) { scErr(t('sc.needMod')); return; }
+      acc = [ev.ctrlKey && 'CommandOrControl', ev.altKey && 'Alt', ev.shiftKey && 'Shift', main].filter(Boolean).join('+');
+    }
+    stop();
+    tli.action('shortcut', { key, acc }).then((r) => {
+      if (r && r.error === 'dup') scErr(t('sc.dup', { what: t('sc.' + r.key) }));
+      else if (r && r.error === 'busy') scErr(t('sc.busy'));
+    });
+  };
+  document.addEventListener('keydown', onKey, true);
+}
+$('scReset').onclick = () => { scErr(''); tli.action('resetShortcuts'); };
+
 tli.onState((s) => {
   last = s;
   // Thème clair (Réglages) : feuille de style claire générée à partir de app.css.
@@ -590,7 +634,7 @@ tli.onState((s) => {
   // Information unique : dès que l'app est prête (toutes les cartes jouées comptent, pas seulement les sessions).
   if (s.settings.onboarded && whatsNewDone && !tipsOpen && (s.settings.tipsSeen || 0) < TIPS_V && !$('wnOk') && !$('fnOk')) setTimeout(() => { if (!tipsOpen && !$('wnOk')) tipsModal(0); }, 0);
   if (s.settings.onboarded && whatsNewDone && !tipsOpen && (s.settings.tipsSeen || 0) >= TIPS_V && !s.settings.farmStatsNotice && !$('wnOk')) setTimeout(farmStatsNotice, 0);
-  if (setLang(s.settings.lang)) {
+  if (setLang(s.settings.lang, s.settings.shortcuts)) {
     // Langue changée : on redessine ce qui est généré en JS.
     $('feed').dataset.h = '';
     if (tab === 'sessions') { if (openReportId) openSession(openReportId); else loadSessions(); }
@@ -631,6 +675,7 @@ tli.onState((s) => {
     $('sMode').value = s.mode;
     $('sTime').value = s.timeMode;
     $('sModeTime').checked = s.settings.countModeTime !== false;
+    renderShortcuts(s);
     $('sLang').value = LANG;
     $('sTheme').value = s.settings.theme === 'light' ? 'light' : 'dark';
     $('sCommunity').checked = s.settings.communityPrices;
@@ -654,6 +699,7 @@ tli.onState((s) => {
     $('sUnitPrice').checked = !!s.settings.overlay.unitPrice;
     $('sNoFlash').checked = !!s.settings.overlay.noFlash;
     $('sCompact').checked = !!s.settings.overlay.compact;
+    $('sRate').value = ['min', 'day'].includes(s.settings.overlay.rateUnit) ? s.settings.overlay.rateUnit : 'hour';
     $('sPopup').checked = !!(s.settings.popup && s.settings.popup.enabled);
     $('popPlace').textContent = t(s.popupPlacing ? 'pop.placeDone' : 'pop.place');
     $('popPlace').classList.toggle('primary', !!s.popupPlacing);
