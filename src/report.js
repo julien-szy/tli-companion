@@ -13,7 +13,7 @@ function buildReport(sess, tracker, { appVersion, title = '' } = {}) {
   const profit = lootV + costV;
   // Les pauses (bouton ou AFK automatique) ne comptent pas dans la durée de la session.
   const realMs = Math.max(0, sess.endedAt - sess.startedAt - (sess.pausedMs || 0));
-  const mapMs = runs.reduce((a, r) => a + Math.max(0, r.endedAt - r.startedAt), 0);
+  const mapMs = runs.reduce((a, r) => a + tracker.runMs(r), 0); // sans les pauses
   const perHour = (ms) => (ms > 60000 ? profit / (ms / 3600000) : 0);
   // Temps par mode à part (Tartarus, Vorax, Arcana…), pour la fiche de la session.
   const modeTimes = {};

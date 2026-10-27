@@ -134,6 +134,13 @@ class Tracker extends EventEmitter {
     const s = this.session;
     if (!s || !s.pausedAt) return;
     s.pausedMs += Math.max(0, at - s.pausedAt);
+    // La pause compte aussi hors du temps de la carte en cours (et de sa zone en cours).
+    const run = s.currentRun;
+    if (run) {
+      const from = Math.max(s.pausedAt, run.startedAt);
+      run.pausedMs = (run.pausedMs || 0) + Math.max(0, at - from);
+      if (run.segSince != null) run.segSince += Math.max(0, at - Math.max(s.pausedAt, run.segSince));
+    }
     s.pausedAt = null; s.pauseAuto = false;
     this.emit('changed');
   }
@@ -413,7 +420,9 @@ class Tracker extends EventEmitter {
     const s = this.session;
     const run = s.currentRun;
     if (!run) return;
-    if (run.segs) this._segClock(run, ts);
+    // Carte terminée pendant une pause : la partie en pause ne compte pas dans sa durée.
+    if (s.pausedAt) run.pausedMs = (run.pausedMs || 0) + Math.max(0, ts - Math.max(s.pausedAt, run.startedAt));
+    if (run.segs) this._segClock(run, s.pausedAt ? Math.max(run.segSince || 0, s.pausedAt) : ts);
     run.endedAt = ts;
     s.runs.unshift(run);
     s.currentRun = null;
@@ -514,16 +523,28 @@ class Tracker extends EventEmitter {
     const segs = run.segs || [];
     if (!segs.some((sg) => sg.ms != null)) {
       const m = modeOf(run.zones && run.zones[0]);
-      if (m) out[m] = (out[m] || 0) + Math.max(0, end - run.startedAt);
+      if (m) out[m] = (out[m] || 0) + this.runMs(run, now);
       return out;
     }
     segs.forEach((sg, i) => {
       let ms = sg.ms || 0;
-      if (!run.endedAt && i === (run.seg || 0) && run.segSince != null) ms += Math.max(0, now - run.segSince);
+      if (!run.endedAt && i === (run.seg || 0) && run.segSince != null) ms += Math.max(0, this._segNow(now) - run.segSince);
       const m = modeOf(sg.zone, i > 0);
       if (m && ms > 0) out[m] = (out[m] || 0) + ms;
     });
     return out;
+  }
+
+  // Heure où s'arrête le chrono de la zone en cours : le début de la pause en cours, sinon maintenant.
+  _segNow(now) { const s = this.session; return s && s.pausedAt ? Math.min(now, s.pausedAt) : now; }
+
+  // Durée d'une carte, sans ses pauses (y compris la pause en cours).
+  runMs(run, now = Date.now()) {
+    const end = run.endedAt || now;
+    let paused = run.pausedMs || 0;
+    const s = this.session;
+    if (!run.endedAt && s && s.currentRun === run && s.pausedAt) paused += Math.max(0, end - Math.max(s.pausedAt, run.startedAt));
+    return Math.max(0, end - run.startedAt - paused);
   }
 
   runSummary(run, now = Date.now()) {
@@ -540,7 +561,7 @@ class Tracker extends EventEmitter {
       name: run.name, zones: run.zones, startedAt: run.startedAt, endedAt: run.endedAt,
       node: run.node || null, heroId: run.heroId ?? null,
       modifierCount: Object.values(run.modifiers || {}).reduce((a, b) => a + b, 0),
-      durationMs: Math.max(0, end - run.startedAt),
+      durationMs: this.runMs(run, now),
       loot: lootV, cost: costV, profit: lootV + costV,
       items: this.itemList(run.loot).concat(this.itemList(run.cost)),
     };
@@ -571,8 +592,8 @@ class Tracker extends EventEmitter {
     const profit = mode === 'all' ? farmProfit + otherV : farmProfit;
 
     let mapTime = 0;
-    for (const r of s.runs) mapTime += Math.max(0, r.endedAt - r.startedAt);
-    if (s.currentRun) mapTime += Math.max(0, now - s.currentRun.startedAt);
+    for (const r of s.runs) mapTime += this.runMs(r, now);
+    if (s.currentRun) mapTime += this.runMs(s.currentRun, now);
     if (!this.replay) this.autoPauseCheck(now);
     const pausedMs = this.pausedTotal(now);
     // Chronos des modes à part. Réglage « compter les modes dans le temps » décoché : leur temps est retiré
@@ -633,14 +654,14 @@ class Tracker extends EventEmitter {
           if (!r || !r.segs) return null;
           const i = r.seg || 0, sg = r.segs[i];
           const name = sg && modeOf(sg.zone, i > 0);
-          return name ? { name, ms: (sg.ms || 0) + (r.segSince != null ? Math.max(0, now - r.segSince) : 0) } : null;
+          return name ? { name, ms: (sg.ms || 0) + (r.segSince != null ? Math.max(0, this._segNow(now) - r.segSince) : 0) } : null;
         })(),
         // Détail du coût des cartes (balises, compas, sondes…) pour l'infobulle.
         costBreakdown: this.itemList(s.cost).filter((i) => i.qty < 0).slice(0, 10).map((i) => ({ name: i.name, qty: -i.qty, value: -i.value })),
         profit, perHour, loot: lootV, cost: costV, other: otherV,
         runs: runsDone,
         avgPerRun: runsDone ? s.runs.reduce((a, r) => a + this.runSummary(r).profit, 0) / runsDone : 0,
-        avgRunMs: runsDone ? s.runs.reduce((a, r) => a + Math.max(0, r.endedAt - r.startedAt), 0) / runsDone : 0,
+        avgRunMs: runsDone ? s.runs.reduce((a, r) => a + this.runMs(r), 0) / runsDone : 0,
       },
       current: s.currentRun ? this.runSummary(s.currentRun, now) : null,
       lastRun: s.runs[0] ? this.runSummary(s.runs[0]) : null,

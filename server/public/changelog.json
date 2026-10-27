@@ -1,6 +1,16 @@
 {
   "releases": [
     {
+      "version": "1.1.2",
+      "date": "2026-10-27",
+      "en": [
+        "Fixed: when you paused the session during a map, the map timer (and so the session time) kept running. The pause now stops both."
+      ],
+      "fr": [
+        "Corrigé : quand tu mettais la session en pause pendant une carte, le chrono de la carte (et donc le temps de session) continuait de tourner. La pause arrête maintenant les deux."
+      ]
+    },
+    {
       "version": "1.1.1",
       "date": "2026-10-27",
       "en": [

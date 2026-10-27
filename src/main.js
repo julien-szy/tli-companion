@@ -575,7 +575,7 @@ function autoStatsFlush() {
   const loot = {}, cost = {};
   let mapMs = 0;
   for (const r of runs) {
-    mapMs += Math.max(0, r.endedAt - r.startedAt);
+    mapMs += tracker.runMs(r);
     for (const id in r.loot) loot[id] = (loot[id] || 0) + r.loot[id];
     for (const id in r.cost) cost[id] = (cost[id] || 0) + r.cost[id];
   }
