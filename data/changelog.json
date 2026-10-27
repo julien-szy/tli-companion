@@ -5,6 +5,18 @@
   },
   "releases": [
     {
+      "version": "1.1.1",
+      "date": "2026-10-27",
+      "en": [
+        "Session sheet: new \"Session loot\" section with a ring chart of what your loot is made of, the full list of every item looted, and an \"Export CSV\" button (opens in Excel).",
+        "Sharing a route: after the Void Chart, you can now pick the loot pactspirits you used (up to 3, with their level). They are shown on the route page on tlicompanion.com. Optional, and remembered for your next route."
+      ],
+      "fr": [
+        "Fiche de session : nouvelle section « Loot de la session » avec un graphique en anneau de ce qui compose ton loot, la liste complète de chaque objet ramassé et un bouton « Exporter en CSV » (s'ouvre dans Excel).",
+        "Partage d'une route : après le Void Chart, tu peux maintenant choisir les pactspirits de loot utilisés (jusqu'à 3, avec leur niveau). Ils s'affichent sur la page de la route sur tlicompanion.com. Facultatif, et retenu pour ta prochaine route."
+      ]
+    },
+    {
       "version": "1.1.0",
       "date": "2026-10-27",
       "en": [

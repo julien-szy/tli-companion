@@ -21,6 +21,8 @@ contextBridge.exposeInMainWorld('tli', {
   listReports: () => ipcRenderer.invoke('listReports'),
   getReport: (id) => ipcRenderer.invoke('getReport', id),
   voidChartHistory: () => ipcRenderer.invoke('voidChartHistory'),
+  lootPacts: () => ipcRenderer.invoke('lootPacts'),
+  saveCsv: (name, content) => ipcRenderer.invoke('saveCsv', name, content),
   updateReport: (id, patch) => ipcRenderer.invoke('updateReport', id, patch),
   deleteReport: (id) => ipcRenderer.invoke('deleteReport', id),
   setHeroName: (heroId, name) => ipcRenderer.invoke('setHeroName', heroId, name),

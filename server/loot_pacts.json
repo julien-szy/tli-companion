@@ -1,0 +1,273 @@
+{
+ "_source": "Drop pactspirits (Increases Drop Quantity) listed on tlidb.com",
+ "pacts": [
+  {
+   "name": "Alice 1",
+   "rarity": "Legendary"
+  },
+  {
+   "name": "Avatar of Moon",
+   "rarity": "Legendary"
+  },
+  {
+   "name": "Captain Shadow",
+   "rarity": "Legendary"
+  },
+  {
+   "name": "Chalk Spirit",
+   "rarity": "Legendary"
+  },
+  {
+   "name": "Corgi Fighter No.32",
+   "rarity": "Legendary"
+  },
+  {
+   "name": "Doro-Doro Dorothy",
+   "rarity": "Legendary"
+  },
+  {
+   "name": "Eternity Summoner",
+   "rarity": "Legendary"
+  },
+  {
+   "name": "Fluffhead Hare",
+   "rarity": "Legendary"
+  },
+  {
+   "name": "Heart-binding Rose",
+   "rarity": "Legendary"
+  },
+  {
+   "name": "Intern Shelley",
+   "rarity": "Legendary"
+  },
+  {
+   "name": "Jestress",
+   "rarity": "Legendary"
+  },
+  {
+   "name": "Key of Overrealm",
+   "rarity": "Legendary"
+  },
+  {
+   "name": "Kong",
+   "rarity": "Legendary"
+  },
+  {
+   "name": "Lady Obituary",
+   "rarity": "Legendary"
+  },
+  {
+   "name": "Mistville Orphan",
+   "rarity": "Legendary"
+  },
+  {
+   "name": "Monument Knight",
+   "rarity": "Legendary"
+  },
+  {
+   "name": "Moonshadow Guide",
+   "rarity": "Legendary"
+  },
+  {
+   "name": "Prof. SOURCE",
+   "rarity": "Legendary"
+  },
+  {
+   "name": "Rainbowpaint Owl",
+   "rarity": "Legendary"
+  },
+  {
+   "name": "Shepherd",
+   "rarity": "Legendary"
+  },
+  {
+   "name": "Starfish Chanter",
+   "rarity": "Legendary"
+  },
+  {
+   "name": "Twilight Sparks",
+   "rarity": "Legendary"
+  },
+  {
+   "name": "Twin Inquisitors",
+   "rarity": "Legendary"
+  },
+  {
+   "name": "Benign Bug",
+   "rarity": "Rare"
+  },
+  {
+   "name": "Benign Bug - Barbie Pink",
+   "rarity": "Rare"
+  },
+  {
+   "name": "Benign Bug - Merciless Silver",
+   "rarity": "Rare"
+  },
+  {
+   "name": "Bird Nest",
+   "rarity": "Rare"
+  },
+  {
+   "name": "Cloudgatherer - Sky",
+   "rarity": "Rare"
+  },
+  {
+   "name": "Cloudgatherer - Sky's Dome",
+   "rarity": "Rare"
+  },
+  {
+   "name": "Cloudgatherer - Surging Gold",
+   "rarity": "Rare"
+  },
+  {
+   "name": "Dragon Plant",
+   "rarity": "Rare"
+  },
+  {
+   "name": "Dragon Plant - Lettuce",
+   "rarity": "Rare"
+  },
+  {
+   "name": "First Mate of the Furious Sea - Silent Night",
+   "rarity": "Rare"
+  },
+  {
+   "name": "Heartbloom - Iris",
+   "rarity": "Rare"
+  },
+  {
+   "name": "Hell Cavalry - Sea",
+   "rarity": "Rare"
+  },
+  {
+   "name": "Letice",
+   "rarity": "Rare"
+  },
+  {
+   "name": "Letice - Frost",
+   "rarity": "Rare"
+  },
+  {
+   "name": "Miss Melancholy - Azure",
+   "rarity": "Rare"
+  },
+  {
+   "name": "Miss Melancholy - Cyan",
+   "rarity": "Rare"
+  },
+  {
+   "name": "Miss Melancholy - Pink",
+   "rarity": "Rare"
+  },
+  {
+   "name": "Plaintive Ball of Thread - Flower",
+   "rarity": "Rare"
+  },
+  {
+   "name": "Plaintive Ball of Thread - Frost",
+   "rarity": "Rare"
+  },
+  {
+   "name": "Plaintive Ball of Thread - Gold Leaf",
+   "rarity": "Rare"
+  },
+  {
+   "name": "Shro-Shroom",
+   "rarity": "Rare"
+  },
+  {
+   "name": "Shro-Shroom - Lurid Bolete",
+   "rarity": "Rare"
+  },
+  {
+   "name": "Feasting Samurai",
+   "rarity": "Magic"
+  },
+  {
+   "name": "Feasting Samurai - Mint",
+   "rarity": "Magic"
+  },
+  {
+   "name": "Happy Chonky",
+   "rarity": "Magic"
+  },
+  {
+   "name": "Happy Chonky - Emerald",
+   "rarity": "Magic"
+  },
+  {
+   "name": "Happy Chonky - Sun",
+   "rarity": "Magic"
+  },
+  {
+   "name": "Happy Chonky - Violet",
+   "rarity": "Magic"
+  },
+  {
+   "name": "Idling Weasel - Cherry Blossom",
+   "rarity": "Magic"
+  },
+  {
+   "name": "Idling Weasel - Sparkle",
+   "rarity": "Magic"
+  },
+  {
+   "name": "Luluri - Green Leaf",
+   "rarity": "Magic"
+  },
+  {
+   "name": "Lumidrake",
+   "rarity": "Magic"
+  },
+  {
+   "name": "Lumidrake - Flare",
+   "rarity": "Magic"
+  },
+  {
+   "name": "Lumidrake - Glow",
+   "rarity": "Magic"
+  },
+  {
+   "name": "Meowth - Aurora",
+   "rarity": "Magic"
+  },
+  {
+   "name": "Meowth - Nightfire",
+   "rarity": "Magic"
+  },
+  {
+   "name": "Meowth - Violet",
+   "rarity": "Magic"
+  },
+  {
+   "name": "Ripplepop - Taro",
+   "rarity": "Magic"
+  },
+  {
+   "name": "Shocket",
+   "rarity": "Magic"
+  },
+  {
+   "name": "Shocket - Dark Night",
+   "rarity": "Magic"
+  },
+  {
+   "name": "Spiny Snail - Cloud",
+   "rarity": "Magic"
+  },
+  {
+   "name": "Sprouting Grass",
+   "rarity": "Magic"
+  },
+  {
+   "name": "Sprouting Grass - Purple Sand",
+   "rarity": "Magic"
+  },
+  {
+   "name": "Sprouting Grass - White Porcelain",
+   "rarity": "Magic"
+  }
+ ]
+}

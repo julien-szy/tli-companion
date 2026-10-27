@@ -161,6 +161,7 @@ async function endSessionModal(id) {
           await tli.register(name);
         }
         if (!(await checkVoidChart(id))) { openSession(id); return; }
+        if (!(await pickLootPacts(id))) { openSession(id); return; }
         await tli.shareReport(id);
       } catch (e) { if ($('endMsg')) $('endMsg').textContent = t('share.error', { msg: errMsg(e) }); return; }
       modal('');
@@ -293,6 +294,7 @@ async function openSession(id) {
       ${stat('d.bagValue', tot.netWorthStart != null ? `${fe(tot.netWorthStart)} → ${fe(tot.netWorthEnd)}` : '–')}
       ${stat('d.class', esc(r.hero ? r.hero.name : '–'), 'txt')}
     </div></div>
+    ${lootSection(r)}
     <div class="card"><h2>${esc(t('d.notes'))}</h2>
       <textarea id="dNotes" placeholder="${esc(t('d.notesPh'))}">${esc(r.notes || '')}</textarea>
       <label class="gc-row">${esc(t('gc.label'))}<input id="dCode" maxlength="4000" placeholder="${esc(t('gc.ph'))}" value="${esc(r.gameCode || '')}"></label>
@@ -309,10 +311,8 @@ async function openSession(id) {
       <div class="card"><h2>${esc(t('d.modifiers'))}</h2><table><thead><tr><th class="r">${esc(t('col.perMap'))}</th><th>${esc(t('col.effect'))}</th></tr></thead><tbody>
         ${mods.slice(0, 40).map((m) => `<tr><td class="r">${nf1.format(m.perMap)}×</td><td class="bar-cell"><div class="bar" style="width:${(m.perMap / maxMod) * 100}%"></div><span>${esc(m.desc)}</span></td></tr>`).join('') || `<tr><td colspan="2" class="muted">${esc(t('d.noModifiers'))}</td></tr>`}
       </tbody></table>${hiddenMods ? `<p class="muted" style="margin-top:8px">${esc(t('d.hiddenMods', { n: hiddenMods }))}</p>` : ''}</div>
-      <div class="card"><h2>${esc(t('d.bestDrops'))}</h2><table><thead><tr><th>${esc(t('col.item'))}</th><th class="r">${esc(t('col.qty'))}</th><th class="r">${esc(t('col.value'))}</th></tr></thead><tbody>
-        ${r.loot.slice(0, 25).map((i) => `<tr class="${i.ignored ? 'ignored' : ''}"><td>${icon(i.img)}${esc(i.name)}</td><td class="r">${qty(i.qty)}</td><td class="r ${cls(i.value)}">${fe(i.value, true)}</td></tr>`).join('')}
-      </tbody></table></div>
     </div>`;
+  bindLootSection(r);
   $('sessDetail').insertAdjacentHTML('beforeend', '<div class="card vce" id="vceBox"></div>');
   VoidChart.mount($('vceBox'), r).catch(() => $('vceBox').remove());
   $('sessList').hidden = true;
@@ -328,6 +328,68 @@ async function openSession(id) {
   };
   renderShare(r);
   loadCompare(id);
+}
+
+// ---------- Loot de la session : anneau (part de chaque objet dans la valeur), liste complète, export CSV ----------
+// Couleurs : palette catégorielle validée (daltonisme), une version par thème ; « Autres » en gris.
+const LOOT_COLORS = { dark: ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181', '#008300', '#9085e9'], light: ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300', '#6250d6'] };
+const LOOT_SLICES = 7;
+function lootRows(r) { return (r.loot || []).filter((i) => i.qty > 0); }
+function lootSection(r) {
+  const rows = lootRows(r);
+  if (!rows.length) return '';
+  const total = rows.reduce((a, i) => a + Math.max(0, i.value), 0);
+  const byVal = rows.filter((i) => i.value > 0).sort((a, b) => b.value - a.value);
+  const top = byVal.slice(0, LOOT_SLICES);
+  const rest = total - top.reduce((a, i) => a + i.value, 0);
+  const pal = LOOT_COLORS[$('lightCss') && !$('lightCss').disabled ? 'light' : 'dark'];
+  const parts = top.map((i, k) => ({ name: i.name, value: i.value, color: pal[k] }))
+    .concat(rest > total * 0.001 ? [{ name: t('loot.others', { n: byVal.length - top.length }), value: rest, color: 'var(--muted)' }] : []);
+  // Anneau en SVG : chaque part est un arc, avec 2 px de vide entre deux parts.
+  const R = 70, W = 26, C = 2 * Math.PI * R;
+  let off = 0;
+  const arcs = total > 0 ? parts.map((p, k) => {
+    const len = (p.value / total) * C;
+    const gap = parts.length > 1 ? Math.min(2, len / 2) : 0;
+    const a = `<circle class="ld-arc" data-k="${k}" r="${R}" cx="90" cy="90" fill="none" stroke="${p.color}" stroke-width="${W}" stroke-dasharray="${Math.max(0, len - gap)} ${C}" stroke-dashoffset="${-off}" transform="rotate(-90 90 90)"><title>${esc(p.name)} · ${fe(p.value)} FE · ${Math.round((p.value / total) * 100)} %</title></circle>`;
+    off += len;
+    return a;
+  }).join('') : '';
+  const pct = (v) => (total > 0 ? `${nf1.format((Math.max(0, v) / total) * 100)} %` : '–');
+  const old = r.loot.length === 80;
+  return `<div class="card loot-card"><div class="loot-head"><h2>${esc(t('loot.title'))}</h2>
+      <span class="muted">${esc(t('loot.count', { n: rows.length }))}</span>
+      <button class="btn" id="lootCsv">${esc(t('loot.csv'))}</button></div>
+    <div class="loot-top">
+      <svg class="loot-donut" viewBox="0 0 180 180" role="img" aria-label="${esc(t('loot.title'))}">${arcs}
+        <text x="90" y="88" text-anchor="middle" class="ld-v">${fe(total)}</text><text x="90" y="106" text-anchor="middle" class="ld-k">${esc(t('loot.totalFe'))}</text></svg>
+      <ul class="loot-legend">${parts.map((p, k) => `<li data-k="${k}"><i style="background:${p.color}"></i><span>${esc(p.name)}</span><b>${fe(p.value)}</b><em>${pct(p.value)}</em></li>`).join('')}</ul>
+    </div>
+    <table class="loot-table"><thead><tr><th>${esc(t('col.item'))}</th><th class="r">${esc(t('col.qty'))}</th><th class="r">${esc(t('col.unit'))}</th><th class="r">${esc(t('col.value'))}</th><th class="r">%</th></tr></thead><tbody>
+      ${rows.map((i) => `<tr class="${i.ignored ? 'ignored' : ''}" title="${i.ignored ? esc(t('items.ignored')) : ''}"><td>${icon(i.img)}${esc(i.name)}</td><td class="r">${qty(i.qty)}</td><td class="r muted">${unit(i.unit)}</td><td class="r ${cls(i.value)}">${fe(i.value, true)}</td><td class="r muted">${pct(i.value)}</td></tr>`).join('')}
+    </tbody></table>
+    ${old ? `<p class="muted" style="margin-top:8px">${esc(t('loot.old'))}</p>` : ''}</div>`;
+}
+function bindLootSection(r) {
+  const box = document.querySelector('.loot-card');
+  if (!box) return;
+  // Survol d'une part ou d'une ligne de la légende : les deux s'allument ensemble.
+  const hl = (k) => box.querySelectorAll('[data-k]').forEach((el) => el.classList.toggle('dim', k != null && el.dataset.k !== k));
+  box.querySelectorAll('[data-k]').forEach((el) => { el.onmouseenter = () => hl(el.dataset.k); el.onmouseleave = () => hl(null); });
+  $('lootCsv').onclick = async () => {
+    // Séparateurs selon la langue : « ; » et virgule décimale en français (Excel FR), « , » et point sinon.
+    const fr = LANG === 'fr';
+    const sep = fr ? ';' : ',';
+    const num = (v, d = 2) => String(Math.round(v * 10 ** d) / 10 ** d).replace('.', fr ? ',' : '.');
+    const cell = (s) => (/[";,\n]/.test(String(s)) ? `"${String(s).replace(/"/g, '""')}"` : String(s));
+    const rows = lootRows(r);
+    const total = rows.reduce((a, i) => a + Math.max(0, i.value), 0);
+    const lines = [[t('col.item'), t('col.qty'), t('loot.csvUnit'), t('loot.csvValue'), '%', t('loot.csvCounted')].map(cell).join(sep)]
+      .concat(rows.map((i) => [cell(i.name), num(i.qty, 0), num(i.unit, 3), num(i.value), num(total > 0 ? (Math.max(0, i.value) / total) * 100 : 0), cell(i.ignored ? t('loot.no') : t('loot.yes'))].join(sep)));
+    const name = `${r.title || (r.strategy.maps[0] ? r.strategy.maps[0].name : 'session')} ${new Date(r.startedAt).toISOString().slice(0, 10)}`;
+    const saved = await tli.saveCsv(name, lines.join('\r\n'));
+    if (saved) $('lootCsv').textContent = t('loot.saved');
+  };
 }
 
 // Comparaison avec la communauté (stats anonymes, même carte et même Timemark).
@@ -409,11 +471,41 @@ async function checkVoidChart(id) {
   });
 }
 
+// Juste après le Void Chart : le joueur indique ses pactspirits de loot (le jeu ne les écrit pas pendant la
+// session). Pré-rempli avec ceux de la route, sinon ceux de la dernière route partagée. Facultatif.
+async function pickLootPacts(id) {
+  const r = await tli.getReport(id);
+  if (!r) return true;
+  const { list, last: prev } = await tli.lootPacts();
+  const cur = r.lootPacts || prev || [];
+  const RAR = ['Legendary', 'Rare', 'Magic'];
+  const opts = (sel) => `<option value="">${esc(t('lp.none'))}</option>` + RAR.map((rar) => `<optgroup label="${esc(t('lp.r.' + rar))}">${list.filter((p) => p.rarity === rar)
+    .map((p) => `<option${p.name === sel ? ' selected' : ''}>${esc(p.name)}</option>`).join('')}</optgroup>`).join('');
+  const lv = (sel) => `<option value="">${esc(t('lp.level'))}</option>` + [1, 2, 3, 4, 5, 6].map((n) => `<option value="${n}"${n === sel ? ' selected' : ''}>${esc(t('lp.lv', { n }))}</option>`).join('');
+  return new Promise((resolve) => {
+    modal(`<h1>${esc(t('lp.title'))}</h1>
+      <div class="body end-form" style="min-height:0"><p class="muted">${esc(t('lp.help'))}</p>
+        ${[0, 1, 2].map((i) => `<div class="lp-row"><select data-lp="${i}">${opts(cur[i] && cur[i].name)}</select><select data-lpl="${i}">${lv(cur[i] && cur[i].level)}</select></div>`).join('')}
+      </div>
+      <div class="foot"><button class="btn" id="lpCancel">${esc(t('vcm.cancel'))}</button>
+        <span style="display:flex;gap:8px"><button class="btn" id="lpSkip">${esc(t('lp.skip'))}</button><button class="btn primary big" id="lpOk">${esc(t('lp.ok'))}</button></span></div>`);
+    $('lpCancel').onclick = () => { modal(''); resolve(false); };
+    $('lpSkip').onclick = async () => { await tli.updateReport(id, { lootPacts: [] }); modal(''); resolve(true); };
+    $('lpOk').onclick = async () => {
+      const picked = [0, 1, 2].map((i) => ({ name: document.querySelector(`[data-lp="${i}"]`).value, level: +document.querySelector(`[data-lpl="${i}"]`).value || null })).filter((p) => p.name);
+      await tli.updateReport(id, { lootPacts: picked });
+      modal('');
+      resolve(true);
+    };
+  });
+}
+
 async function doShare(id) {
   if ($('shMsg')) $('shMsg').textContent = t('share.sending');
   try {
     await tli.updateReport(id, { title: $('dTitle').value, notes: $('dNotes').value, strategyTag: $('dTag').value, gameCode: $('dCode').value });
     if (!(await checkVoidChart(id))) { openSession(id); return; }
+    if (!(await pickLootPacts(id))) { openSession(id); return; }
     await tli.shareReport(id);
     openSession(id);
   } catch (e) { if ($('shMsg')) $('shMsg').textContent = t('share.error', { msg: errMsg(e) }); }

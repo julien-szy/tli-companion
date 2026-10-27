@@ -24,6 +24,7 @@ api('/api/reports/' + encodeURIComponent(id)).then(({ report: r, author, likes, 
         ${stat('totalCost', fe(tot.cost), 'neg')}
       </div>
     </div>
+    ${(r.lootPacts || []).length ? `<div class="card"><h2>${esc(t('lootPacts'))}</h2><div class="lpacts">${r.lootPacts.map((p) => `<span class="tag">${esc(p.name)}${p.level ? ` · ${esc(t('lpLevel', { n: p.level }))}` : ''}</span>`).join(' ')}</div></div>` : ''}
     ${r.notes ? `<div class="card"><h2>${esc(t('explained'))}</h2><div class="notes">${esc(r.notes)}</div></div>` : ''}
     ${r.gameCode ? `<div class="card gcode"><h2>${esc(t('gcTitle'))}</h2><p class="muted">${esc(t('gcHelp'))}</p>
       <div class="gcode-row"><input id="gCode" readonly value="${esc(r.gameCode)}"><button class="btn primary" id="gCopy">${esc(t('gcCopy'))}</button></div></div>` : ''}

@@ -35,6 +35,15 @@ const LIVE_MAX_AGE = 12 * 3600000;
 const HEROES = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'data', 'heroes.json'), 'utf8')).heroes;
 const FE_ID = 100300;
 // Noms des arbres de talents, talents principaux, pactes et traits (ids du jeu), avec leurs icônes.
+// Pactspirits de loot (Increases Drop Quantity), choisis par le joueur quand il partage une route.
+const LOOT_PACTS = (() => { try { return JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'data', 'loot_pacts.json'), 'utf8')).pacts; } catch { return []; } })();
+const LOOT_PACT_NAMES = new Set(LOOT_PACTS.map((p) => p.name));
+// Jusqu'à 3 pactes de loot, chacun avec son niveau (1 à 6) si le joueur l'a indiqué.
+function cleanLootPacts(v) {
+  const seen = new Set();
+  return (Array.isArray(v) ? v : []).filter((p) => p && LOOT_PACT_NAMES.has(p.name) && !seen.has(p.name) && seen.add(p.name)).slice(0, 3)
+    .map((p) => ({ name: p.name, level: Number.isInteger(p.level) && p.level >= 1 && p.level <= 6 ? p.level : null }));
+}
 const GAME_NAMES = (() => { try { return JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'data', 'game_names.json'), 'utf8')); } catch { return {}; } })();
 const EXTRA_ICONS = (() => { try { return JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'data', 'extra_icons.json'), 'utf8')).icons; } catch { return {}; } })();
 function gameNamed(cat, id) {
@@ -1256,6 +1265,16 @@ function cleanVoidChart(v) {
   }
   return out;
 }
+// Export CSV (liste du loot d'une session) : le joueur choisit où l'enregistrer.
+ipcMain.handle('saveCsv', async (e, name, content) => {
+  const win = BrowserWindow.fromWebContents(e.sender);
+  const safe = String(name || 'session').replace(/[\\/:*?"<>|]+/g, '-').slice(0, 80);
+  const res = await dialog.showSaveDialog(win, { defaultPath: path.join(app.getPath('documents'), safe + '.csv'), filters: [{ name: 'CSV', extensions: ['csv'] }] });
+  if (res.canceled || !res.filePath) return null;
+  fs.writeFileSync(res.filePath, '\ufeff' + String(content)); // BOM : Excel lit bien les accents
+  return res.filePath;
+});
+ipcMain.handle('lootPacts', () => ({ list: LOOT_PACTS, last: settings.lastLootPacts || [] }));
 ipcMain.handle('updateReport', (_e, id, patch) => {
   const r = loadJson(reportPath(id), null);
   if (!r) return null;
@@ -1265,6 +1284,8 @@ ipcMain.handle('updateReport', (_e, id, patch) => {
   if (typeof patch.gameCode === 'string') r.gameCode = ((v) => String(v || '').replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, 4000))(patch.gameCode);
   if (patch.voidChart !== undefined) { r.voidChart = cleanVoidChart(patch.voidChart); r.voidChartAt = Date.now(); }
   if (patch.voidChartChecked === true) r.voidChartChecked = Date.now();
+  // Pactes de loot : gardés aussi comme choix par défaut de la prochaine route.
+  if (patch.lootPacts !== undefined) { r.lootPacts = cleanLootPacts(patch.lootPacts); r.lootPactsChecked = Date.now(); settings.lastLootPacts = r.lootPacts; saveSettings(); }
   if (typeof patch.strategyTag === 'string' && STRATEGY_TAGS.includes(patch.strategyTag)) r.strategyTag = patch.strategyTag;
   if (typeof patch.strategyTag === 'string' && r.statsSent) { r.statsSent = false; setImmediate(() => sendFarmStats(r)); }
   saveReport(r);
@@ -1859,6 +1880,14 @@ async function debugScreenshots(dir) {
   setCollapsed(false);
   openDashboard(); await wait(2500);
   fs.writeFileSync(path.join(dir, 'dashboard-live.png'), (await dashboard.webContents.capturePage()).toPNG());
+  // TLI_DASH_EVAL : expression évaluée dans la fenêtre principale, puis captures (haut et bas de la page).
+  if (process.env.TLI_DASH_EVAL) {
+    await dashboard.webContents.executeJavaScript(process.env.TLI_DASH_EVAL); await wait(2000);
+    for (const y of [0, 700, 1400]) {
+      await dashboard.webContents.executeJavaScript(`document.querySelector('main').scrollTop = ${y}`); await wait(400);
+      fs.writeFileSync(path.join(dir, `eval-${y}.png`), (await dashboard.webContents.capturePage()).toPNG());
+    }
+  }
   // TLI_TAB : capture d'un onglet précis (haut puis bas de la page).
   if (process.env.TLI_TAB) {
     await dashboard.webContents.executeJavaScript(`showTab(${JSON.stringify(process.env.TLI_TAB)})`); await wait(2000);

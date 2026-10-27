@@ -79,6 +79,14 @@ function depthOf({ mainMap, timemark, areaIds, consumables }) {
   return ids.some((id) => PROFOUND_IDS.has(id)) ? 'profound' : null;
 }
 
+// Pactspirits de loot indiqués par le joueur au partage : 3 au plus, noms de la liste connue, niveau 1 à 6.
+const LOOT_PACTS = new Set((() => { try { return require('./loot_pacts.json').pacts.map((p) => p.name); } catch { return []; } })());
+function cleanLootPacts(v) {
+  const seen = new Set();
+  return arr(v, 10).filter((p) => p && LOOT_PACTS.has(p.name) && !seen.has(p.name) && seen.add(p.name)).slice(0, 3)
+    .map((p) => ({ name: p.name, level: Number.isInteger(p.level) && p.level >= 1 && p.level <= 6 ? p.level : null }));
+}
+
 function sanitizeReport(r) {
   if (!r || typeof r !== 'object') throw bad('invalid session');
   if (r.version !== 1) throw bad('unsupported session version');
@@ -104,6 +112,7 @@ function sanitizeReport(r) {
       afkMs: int(t.afkMs), hubMs: int(t.hubMs), minLootValue: num(t.minLootValue),
     },
     voidChart: cleanVoidChart(r.voidChart),
+    lootPacts: cleanLootPacts(r.lootPacts),
     strategy: {
       maps: arr(s.maps, 40).map((m) => ({
         name: str(m && m.name, 120), runs: int(m && m.runs), profit: num(m && m.profit),

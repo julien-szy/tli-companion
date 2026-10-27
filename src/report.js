@@ -84,7 +84,7 @@ function buildReport(sess, tracker, { appVersion, title = '' } = {}) {
         .map((i) => ({ ...i, perMap: runs.length ? -i.qty / runs.length : 0 })),
       modifiers: modifiers.slice(0, 80),
     },
-    loot: tracker.itemList(sess.loot).slice(0, 80),
+    loot: tracker.itemList(sess.loot), // tout le loot (liste et export CSV de la fiche ; le site n'en garde que 120)
     runs: runs.map((r) => {
       const s = tracker.runSummary(r);
       return {
