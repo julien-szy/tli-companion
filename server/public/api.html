@@ -18,7 +18,7 @@
   .legal p code, .legal li code, .legal td code { background: #1a1d26; padding: 1px 5px; border-radius: 4px; }
   .legal table { border-collapse: collapse; width: 100%; margin-top: 6px; font-size: 14px; }
   .legal th, .legal td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
-  .legal .tbl { overflow-x: auto; }
+  .legal .tbl { overflow-x: auto; margin-bottom: 14px; }
   [data-l] { display: none; }
 </style>
 </head>
@@ -99,6 +99,13 @@ console.log(byId[100200]?.price);</code></pre>
   <h2 id="builds">Shared builds</h2>
   <p>Builds shared from the <a href="/builds/">TLI Companion planner</a> (most of them imported straight from the game). A player clicks <b>Share</b> and gets a link like <code>https://tlicompanion.com/b/Ab3dEf7h</code>. The same build, as plain JSON:</p>
   <pre><code>GET https://tlicompanion.com/api/public/v1/builds/Ab3dEf7h</code></pre>
+  <p><b>Real examples</b> (open the link to see the build in the planner, or the JSON to see what the API returns):</p>
+  <div class="tbl"><table>
+    <tr><th>Build</th><th>Planner</th><th>API</th></tr>
+    <tr><td>Scent Weaver Sage: full build imported from the game</td><td><a href="/b/SiMXYXwy">/b/SiMXYXwy</a></td><td><a href="/api/public/v1/builds/SiMXYXwy">JSON</a></td></tr>
+    <tr><td>Erika Wind Stalker: full build imported from the game</td><td><a href="/b/mqjwf2F5">/b/mqjwf2F5</a></td><td><a href="/api/public/v1/builds/mqjwf2F5">JSON</a></td></tr>
+    <tr><td>Almost empty build, to see empty fields and <code>null</code></td><td><a href="/b/MWnAqr4b">/b/MWnAqr4b</a></td><td><a href="/api/public/v1/builds/MWnAqr4b">JSON</a></td></tr>
+  </table></div>
   <pre><code>{
   "id": "Ab3dEf7h",
   "url": "https://tlicompanion.com/b/Ab3dEf7h",
@@ -177,6 +184,13 @@ console.log(byId[100200]?.price);</code></pre>
   <h2 id="builds">Builds partagés</h2>
   <p>Les builds partagés depuis le <a href="/builds/">planner de TLI Companion</a> (la plupart importés directement du jeu). Un joueur clique sur <b>Partager</b> et obtient un lien du type <code>https://tlicompanion.com/b/Ab3dEf7h</code>. Le même build en JSON :</p>
   <pre><code>GET https://tlicompanion.com/api/public/v1/builds/Ab3dEf7h</code></pre>
+  <p><b>Exemples réels</b> (le lien ouvre le build dans le planner, le JSON montre ce que renvoie l'API) :</p>
+  <div class="tbl"><table>
+    <tr><th>Build</th><th>Planner</th><th>API</th></tr>
+    <tr><td>Scent Weaver Sage : build complet importé du jeu</td><td><a href="/b/SiMXYXwy">/b/SiMXYXwy</a></td><td><a href="/api/public/v1/builds/SiMXYXwy">JSON</a></td></tr>
+    <tr><td>Erika Wind Stalker : build complet importé du jeu</td><td><a href="/b/mqjwf2F5">/b/mqjwf2F5</a></td><td><a href="/api/public/v1/builds/mqjwf2F5">JSON</a></td></tr>
+    <tr><td>Build presque vide, pour voir les champs vides et les <code>null</code></td><td><a href="/b/MWnAqr4b">/b/MWnAqr4b</a></td><td><a href="/api/public/v1/builds/MWnAqr4b">JSON</a></td></tr>
+  </table></div>
   <p>Renvoie <code>build</code> au format <code>tlicompanion-build</code> version 1 : héros et traits, souvenirs, équipement (chaque ligne d'affixe en texte anglais), compétences et soutiens, nœuds de talents (<code>x</code> = colonne, <code>y</code> = ligne, à partir de 0), pactes et leurs anneaux, tablettes de divinité, effets en plus et stats calculées (sans les dégâts). Le détail et un exemple sont dans la version anglaise de cette page. Seuls les builds que les joueurs choisissent de partager sont lisibles, sans rien de leur compte ; un partage retiré par son auteur donne <code>404</code>.</p>
 
   <h2>Contact</h2>
