@@ -101,7 +101,7 @@ async function load() {
   }));
 
   $('rows').innerHTML = reports.map((r) => `<tr class="click" data-id="${esc(r.id)}">
-      <td><b>${esc(r.title || r.main_map || t('farmSession'))}</b><br><span class="muted">${esc(mapLabel(r.region, r.timemark, r.depth))}${r.strategy_tag ? ' · ' + esc(tagName(r.strategy_tag)) : ''}</span>
+      <td><b>${esc(r.title || r.main_map || t('farmSession'))}</b>${routeBadges(r.short, r.lucky)}<br><span class="muted">${esc(mapLabel(r.region, r.timemark, r.depth))}${r.strategy_tag ? ' · ' + esc(tagName(r.strategy_tag)) : ''}</span>
         ${(r.loot_pacts || []).length ? `<div class="lp-tiles sm">${r.loot_pacts.map((p) => pactTile(icons, p)).join('')}</div>` : ''}</td>
       <td>${esc(r.hero_id != null ? heroName(r.hero_id, r.hero_display) : '–')}</td><td class="hide-sm muted">${esc(r.author)}${r.server_region ? `<br><span style="font-size:12px">${esc(r.server_region)}</span>` : ''}</td>
       <td class="r">${r.runs}</td><td class="r hide-sm">${dur(r.real_ms)}</td>
@@ -115,3 +115,17 @@ async function load() {
 FILTERS.forEach((k) => ($(k).onchange = load));
 $('reset').onclick = () => { FILTERS.forEach((k) => { if (k !== 'sort') $(k).value = ''; }); load(); };
 loadFilters().then(load).catch((e) => { $('rows').innerHTML = `<tr><td colspan="8" class="empty">${esc(t('error', { msg: e.message }))}</td></tr>`; });
+
+// Affichage des pactes dans la liste des routes : icônes seules (par défaut, prend moins de place), icônes et
+// noms, ou masqués. Choix gardé dans ce navigateur.
+(function pactView() {
+  const sel = $('pactView');
+  const table = $('rows').closest('table');
+  let v = 'icons';
+  try { v = localStorage.getItem('tlicPactView') || v; } catch { /* stockage bloqué */ }
+  if (![...sel.options].some((o) => o.value === v)) v = 'icons';
+  const apply = () => { table.dataset.pacts = sel.value; };
+  sel.value = v;
+  apply();
+  sel.onchange = () => { apply(); try { localStorage.setItem('tlicPactView', sel.value); } catch { /* ignoré */ } };
+})();

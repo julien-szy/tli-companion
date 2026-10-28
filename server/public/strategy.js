@@ -11,7 +11,7 @@ api('/api/reports/' + encodeURIComponent(id)).then(({ report: r, author, likes, 
   const mods = r.strategy.modifiers.filter((m) => m.desc);
   $('content').innerHTML = `
     <div class="card">
-      <div class="title">${esc(title)}</div>
+      <div class="title">${esc(title)}${(() => { const f = routeFlags(tot.runs, tot.realMs, tot.profit, r.loot); return routeBadges(f.short, f.lucky, true); })()}</div>
       <div class="muted" style="margin-bottom:14px">${esc(t('by'))} <b>${esc(author)}</b> · ${esc(heroName)} · ${new Date(r.startedAt).toLocaleDateString(LOCALE)}</div>
       <div class="stats">
         ${stat('perHourReal', fe(tot.perHourReal))}

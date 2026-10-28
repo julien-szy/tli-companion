@@ -419,4 +419,20 @@ header.site nav .ver { font-size: 11px; padding: 1px 6px; border-radius: 999px; 
 .lp-tiles.lg .lp-tile { padding: 6px 14px 6px 6px; }
 .lp-tiles.lg .lp-nm { font-size: 14px; }
 
+/* Liste des routes : pactes en icônes seules (nom au survol) ou masqués. */
+table[data-pacts="icons"] .lp-tiles.sm { gap: 7px; margin-top: 6px; }
+table[data-pacts="icons"] .lp-tiles.sm .lp-tile { padding: 0; border: 0; background: none; }
+table[data-pacts="icons"] .lp-tiles.sm .lp-tx { display: none; }
+table[data-pacts="icons"] .lp-tiles.sm .lp-ic { width: 26px; height: 26px; border-radius: 6px; }
+table[data-pacts="icons"] .lp-tiles.sm .lp-ic img { border-radius: 4px; }
+table[data-pacts="hide"] .lp-tiles.sm { display: none; }
+
+/* Étiquettes des routes : trop courte, chanceuse (un gros drop). */
+.rt-flags { display: inline-flex; gap: 5px; margin-left: 8px; vertical-align: middle; flex-wrap: wrap; }
+.rt-flag { display: inline-flex; align-items: center; gap: 3px; padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 600; white-space: nowrap; line-height: 1.6; cursor: help; }
+.rt-flag.lucky { color: #7ee2a0; background: rgba(95,211,141,.12); border: 1px solid rgba(95,211,141,.35); }
+.rt-flag.short { color: #292d36; background: rgba(103,107,116,.14); border: 1px solid rgba(103,107,116,.35); }
+.title .rt-flag { font-size: 12px; }
+.rt-why { font-size: 13px; font-weight: 400; margin-top: 6px; line-height: 1.5; }
+
 html { color-scheme: light; }

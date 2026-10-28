@@ -6,7 +6,7 @@ const STR = {
     tagline: 'Torchlight: Infinite farming strategies shared by players, measured for real.',
     allClasses: 'All classes', allMaps: 'All maps',
     stratTagline: 'Real farm sessions shared by TLI Companion players. Profit is recalculated with today’s market prices.',
-    fClass: 'Class', fMap: 'Map', fTier: 'Timemark', fTag: 'Strategy type', fItem: 'Compass / consumable', fSort: 'Sort by',
+    fClass: 'Class', fMap: 'Map', fTier: 'Timemark', fTag: 'Strategy type', fItem: 'Compass / consumable', fSort: 'Sort by', tagShort: 'Too short', tagShortTip: 'Under 10 maps or 30 min: too short to judge its FE/h. Ranked after the other routes when sorting by FE/h.', tagLucky: 'Lucky', tagLuckyTip: '{item} = {pct} of the profit: one big drop, not a regular farm.', fPacts: 'Pactspirits', pvIcons: 'Icons', pvTiles: 'Icons and names', pvHide: 'Hidden',
     fDepth: 'Level', allDepths: 'All levels', 'depth_8-0': 'T8-0', 'depth_8-1': 'T8-1', 'depth_8-2': 'T8-2', depth_profound: 'Profound', depth_deep: 'Deep Space',
     allTiers: 'All Timemarks', allTags: 'All types', allItems: 'Any', allServers: 'All servers', resetFilters: 'Reset filters',
     timemarkN: 'Timemark {n}', bestTitle: 'Global strategy: most profitable right now',
@@ -79,7 +79,7 @@ const STR = {
     tagline: 'Stratégies de farm Torchlight: Infinite partagées par les joueurs, mesurées en vrai.',
     allClasses: 'Toutes les classes', allMaps: 'Toutes les cartes',
     stratTagline: 'De vraies sessions de farm partagées par les joueurs de TLI Companion. Le profit est recalculé avec les prix actuels du marché.',
-    fClass: 'Classe', fMap: 'Carte', fTier: 'Timemark', fTag: 'Type de stratégie', fItem: 'Compas / consommable', fSort: 'Trier par',
+    fClass: 'Classe', fMap: 'Carte', fTier: 'Timemark', fTag: 'Type de stratégie', fItem: 'Compas / consommable', fSort: 'Trier par', tagShort: 'Trop court', tagShortTip: "Moins de 10 cartes ou de 30 min : trop court pour juger son FE/h. Classée après les autres routes quand on trie par FE/h.", tagLucky: 'Chanceux', tagLuckyTip: "{item} = {pct} du profit : un gros drop, pas un farm régulier.", fPacts: 'Pactes', pvIcons: 'Icônes', pvTiles: 'Icônes et noms', pvHide: 'Masqués',
     fDepth: 'Niveau', allDepths: 'Tous les niveaux', 'depth_8-0': 'T8-0', 'depth_8-1': 'T8-1', 'depth_8-2': 'T8-2', depth_profound: 'Profound', depth_deep: 'Deep Space',
     allTiers: 'Tous les Timemarks', allTags: 'Tous les types', allItems: 'Tous', allServers: 'Tous les serveurs', resetFilters: 'Réinitialiser',
     timemarkN: 'Timemark {n}', bestTitle: 'Stratégie globale : les plus rentables en ce moment',
@@ -405,4 +405,26 @@ function pactTile(meta, p, share) {
     <span class="lp-tx"><span class="lp-nm">${esc(p.name)}</span>${share != null
       ? `<span class="lp-sub">${Math.round(share * 100)} %</span><span class="lp-bar"><i style="width:${Math.round(Math.min(1, share) * 100)}%"></i></span>`
       : lv ? `<span class="lp-sub">${esc(lv)}</span>` : ''}</span></span>`;
+}
+
+// Étiquettes d'une route : « Trop court » (moins de 10 cartes ou 30 min) et « Chanceux » (un objet fait au moins
+// la moitié du profit). Mêmes règles que le serveur (server.js, MIN_RUNS / MIN_MS / LUCKY_SHARE).
+const ROUTE_MIN_RUNS = 10, ROUTE_MIN_MS = 30 * 60000;
+function routeFlags(runs, realMs, profit, loot) {
+  const short = !(runs >= ROUTE_MIN_RUNS && realMs >= ROUTE_MIN_MS);
+  let lucky = null;
+  if (profit > 0) for (const i of loot || []) {
+    const v = i.value || (i.qty || 0) * (i.unit || 0);
+    if (v >= 0.5 * profit && (!lucky || v > lucky.value)) lucky = { name: i.name, value: v, share: v / profit };
+  }
+  return { short, lucky };
+}
+function routeBadges(short, lucky, withText = false) {
+  const out = [];
+  const luckTip = lucky ? t('tagLuckyTip', { item: lucky.name || '?', pct: `${Math.round(lucky.share * 100)} %` }) : '';
+  if (lucky) out.push(`<span class="rt-flag lucky" title="${esc(luckTip)}">🍀 ${esc(t('tagLucky'))}</span>`);
+  if (short) out.push(`<span class="rt-flag short" title="${esc(t('tagShortTip'))}">⏱ ${esc(t('tagShort'))}</span>`);
+  if (!out.length) return '';
+  const text = withText ? [lucky ? luckTip : '', short ? t('tagShortTip') : ''].filter(Boolean).map((x) => `<div>${esc(x)}</div>`).join('') : '';
+  return `<span class="rt-flags">${out.join('')}</span>${text ? `<div class="rt-why muted small">${text}</div>` : ''}`;
 }
