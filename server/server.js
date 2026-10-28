@@ -199,7 +199,6 @@ const BIG_CUTS = [0, 50, 100, 250, 500, 1000];
 // trie par FE/h. Route « chanceuse » : un seul gros drop (objet à 100 FE ou plus l'unité, pas le FE ramassé)
 // fait au moins la moitié du profit.
 const MIN_RUNS = 10, MIN_MS = 30 * 60000, LUCKY_SHARE = 0.5, LUCKY_UNIT = 100;
-const RANKED_SQL = `(r.runs >= ${MIN_RUNS} AND r.real_ms >= ${MIN_MS})`;
 const isShort = (r) => !(r.runs >= MIN_RUNS && r.real_ms >= MIN_MS);
 function luckyOf(json) {
   try {
@@ -221,7 +220,7 @@ route('GET', /^\/api\/reports$/, (req, url) => {
   const { where, args } = reportFilters(q);
   const sortKey = SORTS[q.get('sort')] ? q.get('sort') : 'perhour';
   const byFeh = sortKey === 'perhour' || sortKey === 'perhourmap';
-  const sort = (byFeh ? `${RANKED_SQL} DESC, ` : '') + SORTS[sortKey];
+  const sort = SORTS[sortKey];
   const limit = Math.min(100, Math.max(1, +q.get('limit') || 50));
   const offset = Math.max(0, +q.get('offset') || 0);
   const cut = bigCut(q);
@@ -229,13 +228,17 @@ route('GET', /^\/api\/reports$/, (req, url) => {
       r.per_hour_real, r.per_hour_map, r.runs, r.real_ms, r.started_at, r.created_at, r.likes, r.dislikes,
       r.region, r.timemark, r.strategy_tag, r.server_region, r.depth, json_extract(r.json, '$.lootPacts') AS loot_pacts`;
   let rows;
-  if (!cut) {
+  if (!cut && !byFeh) {
     rows = db.prepare(`SELECT ${cols} FROM reports r JOIN users u ON u.id = r.user_id WHERE ${where.join(' AND ')} ORDER BY ${sort} LIMIT ? OFFSET ?`)
       .all(...args, limit, offset);
   } else {
-    // Sans les gros drops : profit et FE/h recalculés pour chaque session, puis tri et pagination ici.
+    // Tri par FE/h, ou sans les gros drops : tri et pagination ici. Par FE/h, les routes trop courtes ou
+    // chanceuses passent après les autres. Sans les gros drops, profit et FE/h recalculés pour chaque session.
     rows = db.prepare(`SELECT ${cols}, r.json FROM reports r JOIN users u ON u.id = r.user_id WHERE ${where.join(' AND ')} ORDER BY ${sort} LIMIT 5000`).all(...args);
     for (const r of rows) {
+      r.lucky = luckyOf(r.json);
+      r.short = isShort(r);
+      if (!cut) { delete r.json; continue; }
       let removed = 0;
       try { for (const i of JSON.parse(r.json).loot || []) if (i.qty > 0 && i.unit >= cut) removed += i.value || i.qty * i.unit; } catch { /* fiche illisible : rien retiré */ }
       delete r.json;
@@ -247,7 +250,8 @@ route('GET', /^\/api\/reports$/, (req, url) => {
       r.per_hour_map *= k;
     }
     const key = { perhour: 'per_hour_real', perhourmap: 'per_hour_map', profit: 'profit' }[sortKey];
-    if (key) rows.sort((a, b) => (byFeh ? isShort(a) - isShort(b) : 0) || b[key] - a[key]);
+    const late = (r) => (r.short || r.lucky ? 1 : 0);
+    if (key) rows.sort((a, b) => (byFeh ? late(a) - late(b) : 0) || b[key] - a[key]);
     rows = rows.slice(offset, offset + limit);
   }
   const names = heroNameMap();
@@ -256,8 +260,7 @@ route('GET', /^\/api\/reports$/, (req, url) => {
   for (const r of rows) {
     r.hero_display = names[r.hero_id] || r.hero_name;
     try { r.loot_pacts = JSON.parse(r.loot_pacts || '[]') || []; } catch { r.loot_pacts = []; }
-    r.short = isShort(r);
-    r.lucky = luckyOf(jsonOf.get(r.id));
+    if (!('short' in r)) { r.short = isShort(r); r.lucky = luckyOf(jsonOf.get(r.id)); }
   }
   // Vote du visiteur connecté sur chaque route de la liste (boutons j'aime / je n'aime pas).
   const me = Accounts.authOptional(req);
