@@ -196,8 +196,9 @@ function reportFilters(q) {
 // FE/h plus proche d'une session normale. 0 = tout garder.
 const BIG_CUTS = [0, 50, 100, 250, 500, 1000];
 // Routes trop courtes pour juger un FE/h (moins de 10 cartes ou de 30 min) : listées après les autres quand on
-// trie par FE/h. Route « chanceuse » : un seul objet fait au moins la moitié du profit.
-const MIN_RUNS = 10, MIN_MS = 30 * 60000, LUCKY_SHARE = 0.5;
+// trie par FE/h. Route « chanceuse » : un seul gros drop (objet à 100 FE ou plus l'unité, pas le FE ramassé)
+// fait au moins la moitié du profit.
+const MIN_RUNS = 10, MIN_MS = 30 * 60000, LUCKY_SHARE = 0.5, LUCKY_UNIT = 100;
 const RANKED_SQL = `(r.runs >= ${MIN_RUNS} AND r.real_ms >= ${MIN_MS})`;
 const isShort = (r) => !(r.runs >= MIN_RUNS && r.real_ms >= MIN_MS);
 function luckyOf(json) {
@@ -208,7 +209,7 @@ function luckyOf(json) {
     let top = null;
     for (const i of j.loot || []) {
       const v = i.value || (i.qty || 0) * (i.unit || 0);
-      if (v > 0 && (!top || v > top.value)) top = { name: i.name, value: v };
+      if (v > 0 && (i.unit || 0) >= LUCKY_UNIT && (!top || v > top.value)) top = { name: i.name, value: v };
     }
     return top && top.value >= LUCKY_SHARE * profit ? { name: top.name, value: top.value, share: top.value / profit } : null;
   } catch { return null; }

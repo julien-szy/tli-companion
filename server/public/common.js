@@ -407,15 +407,15 @@ function pactTile(meta, p, share) {
       : lv ? `<span class="lp-sub">${esc(lv)}</span>` : ''}</span></span>`;
 }
 
-// Étiquettes d'une route : « Trop court » (moins de 10 cartes ou 30 min) et « Chanceux » (un objet fait au moins
-// la moitié du profit). Mêmes règles que le serveur (server.js, MIN_RUNS / MIN_MS / LUCKY_SHARE).
+// Étiquettes d'une route : « Trop court » (moins de 10 cartes ou 30 min) et « Chanceux » (un gros drop, objet à
+// 100 FE ou plus l'unité, fait au moins la moitié du profit). Mêmes règles que le serveur (server.js, MIN_RUNS / MIN_MS / LUCKY_SHARE).
 const ROUTE_MIN_RUNS = 10, ROUTE_MIN_MS = 30 * 60000;
 function routeFlags(runs, realMs, profit, loot) {
   const short = !(runs >= ROUTE_MIN_RUNS && realMs >= ROUTE_MIN_MS);
   let lucky = null;
   if (profit > 0) for (const i of loot || []) {
     const v = i.value || (i.qty || 0) * (i.unit || 0);
-    if (v >= 0.5 * profit && (!lucky || v > lucky.value)) lucky = { name: i.name, value: v, share: v / profit };
+    if ((i.unit || 0) >= 100 && v >= 0.5 * profit && (!lucky || v > lucky.value)) lucky = { name: i.name, value: v, share: v / profit };
   }
   return { short, lucky };
 }
