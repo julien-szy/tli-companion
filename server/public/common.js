@@ -384,3 +384,25 @@ async function hydrateVoidCharts(root) {
     }));
   }
 }
+
+// Pactes de loot (Stratégies, page d'une route) : vignette avec icône, cadre à la couleur de la rareté, badge
+// de niveau et, si donnée, la part des routes qui l'utilisent. Icônes et raretés chargées une fois.
+let PACT_META = null;
+function pactMeta() {
+  return (PACT_META ||= Promise.all([
+    api('/extra_icons.json').then((j) => j.icons || j).catch(() => ({})),
+    api('/api/pacts/usage').then((u) => Object.fromEntries((u.drop || []).map((d) => [d.name, d.rarity]))).catch(() => ({})),
+  ]).then(([icons, rarity]) => ({ icons, rarity })));
+}
+function pactTile(meta, p, share) {
+  const m = meta || { icons: {}, rarity: {} };
+  const img = m.icons[p.name] ? m.icons[p.name].replace(/^https:\/\/tlicompanion\.com/, '') : null;
+  const rar = String(m.rarity[p.name] || '').toLowerCase();
+  const lv = p.level ? t('lpLevel', { n: p.level }) : '';
+  const tip = [p.name, lv, share != null ? `${Math.round(share * 100)} %` : ''].filter(Boolean).join(' · ');
+  return `<span class="lp-tile ${esc(rar)}" title="${esc(tip)}" data-pact="${esc(p.name)}" data-level="${p.level || ''}">
+    <span class="lp-ic">${img ? `<img src="${esc(img)}" alt="" loading="lazy">` : `<span class="lp-ph">${esc(p.name.slice(0, 1))}</span>`}${p.level ? `<b class="lp-lv">${p.level}</b>` : ''}</span>
+    <span class="lp-tx"><span class="lp-nm">${esc(p.name)}</span>${share != null
+      ? `<span class="lp-sub">${Math.round(share * 100)} %</span><span class="lp-bar"><i style="width:${Math.round(Math.min(1, share) * 100)}%"></i></span>`
+      : lv ? `<span class="lp-sub">${esc(lv)}</span>` : ''}</span></span>`;
+}

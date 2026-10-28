@@ -24,7 +24,7 @@ api('/api/reports/' + encodeURIComponent(id)).then(({ report: r, author, likes, 
         ${stat('totalCost', fe(tot.cost), 'neg')}
       </div>
     </div>
-    ${(r.lootPacts || []).length ? `<div class="card"><h2>${esc(t('lootPacts'))}</h2><div class="lp-chips" id="lpChips">${r.lootPacts.map((p) => `<span class="lp-chip" data-pact="${esc(p.name)}"><span>${esc(p.name)}${p.level ? ` <span class="muted">${esc(t('lpLevel', { n: p.level }))}</span>` : ''}</span></span>`).join('')}</div></div>` : ''}
+    ${(r.lootPacts || []).length ? `<div class="card"><h2>${esc(t('lootPacts'))}</h2><div class="lp-tiles lg" id="lpChips">${r.lootPacts.map((p) => pactTile(null, p)).join('')}</div></div>` : ''}
     ${r.notes ? `<div class="card"><h2>${esc(t('explained'))}</h2><div class="notes">${esc(r.notes)}</div></div>` : ''}
     ${r.gameCode ? `<div class="card gcode"><h2>${esc(t('gcTitle'))}</h2><p class="muted">${esc(t('gcHelp'))}</p>
       <div class="gcode-row"><input id="gCode" readonly value="${esc(r.gameCode)}"><button class="btn primary" id="gCopy">${esc(t('gcCopy'))}</button></div></div>` : ''}
@@ -57,18 +57,14 @@ api('/api/reports/' + encodeURIComponent(id)).then(({ report: r, author, likes, 
   Social.mountComments($('sComments'), 'report', id, { signIn });
 }).catch((e) => { $('content').innerHTML = `<div class="empty">${esc(t('error', { msg: e.message }))}</div>`; });
 
-// Icônes des pactes de loot (ajoutées après coup, la page s'affiche sans attendre).
+// Icônes et raretés des pactes de loot (ajoutées après coup, la page s'affiche sans attendre).
 (function pactIconsOnRoute() {
   const tryAdd = () => {
-    const chips = document.querySelectorAll('#lpChips [data-pact]');
-    if (!chips.length) return false;
-    api('/extra_icons.json').then((j) => {
-      const icons = j.icons || j;
-      chips.forEach((c) => {
-        const url = icons[c.dataset.pact];
-        if (url && !c.querySelector('img')) c.insertAdjacentHTML('afterbegin', `<img src="${esc(url.replace(/^https:\/\/tlicompanion\.com/, ''))}" alt="" loading="lazy">`);
-      });
-    }).catch(() => {});
+    const box = document.getElementById('lpChips');
+    if (!box) return false;
+    pactMeta().then((meta) => {
+      box.innerHTML = [...box.querySelectorAll('[data-pact]')].map((el) => pactTile(meta, { name: el.dataset.pact, level: +el.dataset.level || null })).join('');
+    });
     return true;
   };
   if (!tryAdd()) { const mo = new MutationObserver(() => { if (tryAdd()) mo.disconnect(); }); mo.observe(document.body, { childList: true, subtree: true }); }

@@ -819,20 +819,25 @@ route('GET', /^\/api\/prices\/movers$/, (req, url) => {
 });
 
 // Pactes : combien de routes partagées les utilisent comme pactes de loot, et leur FE/h moyen. Sert à la page
-// Pactes (petite flamme sur les plus utilisés). Routes des 120 derniers jours.
+// Pactes (petite flamme sur les plus utilisés). Routes des 120 derniers jours. FE/h sans les gros drops (objets à
+// PACT_BIG_CUT FE ou plus l'unité), comme le filtre des Stratégies : un jackpot ne doit pas faire la moyenne.
 let pactsUsageCache = { at: 0, body: null };
+const PACT_BIG_CUT = 100;
 route('GET', /^\/api\/pacts\/usage$/, () => {
   if (pactsUsageCache.body && Date.now() - pactsUsageCache.at < 10 * 60000) return pactsUsageCache.body;
-  const rows = db.prepare('SELECT user_id, per_hour_real, json FROM reports WHERE created_at > ?').all(Date.now() - 120 * 86400000);
+  const rows = db.prepare('SELECT user_id, profit, per_hour_real, json FROM reports WHERE created_at > ?').all(Date.now() - 120 * 86400000);
   const use = {}; let routes = 0;
   for (const r of rows) {
-    let lp;
-    try { lp = JSON.parse(r.json).lootPacts || []; } catch { lp = []; }
+    let lp, j;
+    try { j = JSON.parse(r.json); lp = j.lootPacts || []; } catch { lp = []; }
     if (!lp.length) continue;
+    let removed = 0;
+    for (const i of j.loot || []) if (i.qty > 0 && i.unit >= PACT_BIG_CUT) removed += i.value || i.qty * i.unit;
+    r.feh = r.per_hour_real * (r.profit > 0 ? Math.max(0, r.profit - removed) / r.profit : 1);
     routes++;
     for (const p of lp) {
       const u = (use[p.name] = use[p.name] || { name: p.name, routes: 0, players: new Set(), fe: 0, levels: {} });
-      u.routes++; u.players.add(r.user_id); u.fe += r.per_hour_real;
+      u.routes++; u.players.add(r.user_id); u.fe += r.feh;
       if (p.level) u.levels[p.level] = (u.levels[p.level] || 0) + 1;
     }
   }
@@ -841,7 +846,7 @@ route('GET', /^\/api\/pacts\/usage$/, () => {
     .sort((a, b) => b.routes - a.routes);
   let drop = [];
   try { drop = JSON.parse(fs.readFileSync(path.join(__dirname, 'loot_pacts.json'), 'utf8')).pacts || []; } catch { /* facultatif */ }
-  pactsUsageCache = { at: Date.now(), body: { routes, pacts, drop } };
+  pactsUsageCache = { at: Date.now(), body: { routes, pacts, drop, bigCut: PACT_BIG_CUT } };
   return pactsUsageCache.body;
 });
 
