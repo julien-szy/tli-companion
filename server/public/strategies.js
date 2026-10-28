@@ -41,11 +41,19 @@ function query() {
   return q;
 }
 
+// Icônes des pactes (même fichier que la page Pactes), chargées une fois.
+let PACT_ICONS = null;
+const pactIcons = () => (PACT_ICONS ||= api('/extra_icons.json').then((j) => j.icons || j).catch(() => ({})));
+const pactChip = (icons, p, extra = '') => {
+  const img = icons[p.name] ? icons[p.name].replace(/^https:\/\/tlicompanion\.com/, '') : null;
+  return `<span class="lp-chip" title="${esc(p.name)}${extra ? ' · ' + esc(extra) : ''}">${img ? `<img src="${esc(img)}" alt="" loading="lazy">` : ''}<span>${esc(p.name)}${p.level ? ` <span class="muted">${esc(t('lpLevel', { n: p.level }))}</span>` : ''}</span></span>`;
+};
+
 async function load() {
   const q = query();
   history.replaceState(null, '', q.toString() ? '/strategies?' + q : '/strategies');
   $('reset').hidden = ![...q.keys()].some((k) => k !== 'sort');
-  const [{ reports }, bestRes] = await Promise.all([api('/api/reports?' + q), api('/api/strategies/best?' + q)]);
+  const [{ reports }, bestRes, icons] = await Promise.all([api('/api/reports?' + q), api('/api/strategies/best?' + q), pactIcons()]);
   const best = bestRes.best;
 
   // Les plus rentables en ce moment (regroupées par carte + Timemark + type). Clic = détail qui se déplie.
@@ -68,7 +76,9 @@ async function load() {
       <div class="scols">
         <div><h4>${esc(t('dMech'))}</h4>${mech}
           ${b.mechanicsKnown < b.sessions ? `<p class="muted small">${esc(t('dMechPartial', { n: b.mechanicsKnown, total: b.sessions }))}</p>` : ''}</div>
-        <div><h4>${esc(t('dLoot'))}</h4><ul class="lootl">${loot}</ul>
+        <div>${b.lootPacts ? `<h4>${esc(t('dPacts'))}</h4><div class="lp-chips">${b.lootPacts.top.map((p) => pactChip(icons, p, pctf(p.share))).join('')}</div>
+          <p class="muted small" style="margin:4px 0 12px">${esc(t('dPactsN', { n: b.lootPacts.routes }))}</p>` : ''}
+          <h4>${esc(t('dLoot'))}</h4><ul class="lootl">${loot}</ul>
           <h4 style="margin-top:12px">${esc(t('dItems'))}</h4><ul class="lootl">${items}</ul></div>
       </div>
       <button class="btn" data-routes="${esc(b.region || '')}|${b.timemark ?? ''}|${esc(b.tag || '')}|${esc(b.depth || '')}">${esc(t('dRoutes'))}</button>
@@ -98,7 +108,8 @@ async function load() {
   }));
 
   $('rows').innerHTML = reports.map((r) => `<tr class="click" data-id="${esc(r.id)}">
-      <td><b>${esc(r.title || r.main_map || t('farmSession'))}</b><br><span class="muted">${esc(mapLabel(r.region, r.timemark, r.depth))}${r.strategy_tag ? ' · ' + esc(tagName(r.strategy_tag)) : ''}</span></td>
+      <td><b>${esc(r.title || r.main_map || t('farmSession'))}</b><br><span class="muted">${esc(mapLabel(r.region, r.timemark, r.depth))}${r.strategy_tag ? ' · ' + esc(tagName(r.strategy_tag)) : ''}</span>
+        ${(r.loot_pacts || []).length ? `<div class="lp-chips sm">${r.loot_pacts.map((p) => pactChip(icons, p)).join('')}</div>` : ''}</td>
       <td>${esc(r.hero_id != null ? heroName(r.hero_id, r.hero_display) : '–')}</td><td class="hide-sm muted">${esc(r.author)}${r.server_region ? `<br><span style="font-size:12px">${esc(r.server_region)}</span>` : ''}</td>
       <td class="r">${r.runs}</td><td class="r hide-sm">${dur(r.real_ms)}</td>
       <td class="r ${cls(r.profit)}">${fe(r.profit, true)}${r.big_removed > 0 ? `<br><span class="muted small" title="${esc(t('bigRemovedTip'))}">−${fe(r.big_removed)} ${esc(t('bigRemoved'))}</span>` : ''}</td><td class="r"><b>${fe(r.per_hour_real)}</b></td>

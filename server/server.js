@@ -206,7 +206,7 @@ route('GET', /^\/api\/reports$/, (req, url) => {
   const cut = bigCut(q);
   const cols = `r.id, r.user_id, u.name AS author, r.hero_id, r.hero_name, r.title, r.main_map, r.profit,
       r.per_hour_real, r.per_hour_map, r.runs, r.real_ms, r.started_at, r.created_at, r.likes, r.dislikes,
-      r.region, r.timemark, r.strategy_tag, r.server_region, r.depth`;
+      r.region, r.timemark, r.strategy_tag, r.server_region, r.depth, json_extract(r.json, '$.lootPacts') AS loot_pacts`;
   let rows;
   if (!cut) {
     rows = db.prepare(`SELECT ${cols} FROM reports r JOIN users u ON u.id = r.user_id WHERE ${where.join(' AND ')} ORDER BY ${sort} LIMIT ? OFFSET ?`)
@@ -230,7 +230,10 @@ route('GET', /^\/api\/reports$/, (req, url) => {
     rows = rows.slice(offset, offset + limit);
   }
   const names = heroNameMap();
-  for (const r of rows) r.hero_display = names[r.hero_id] || r.hero_name;
+  for (const r of rows) {
+    r.hero_display = names[r.hero_id] || r.hero_name;
+    try { r.loot_pacts = JSON.parse(r.loot_pacts || '[]') || []; } catch { r.loot_pacts = []; }
+  }
   // Vote du visiteur connecté sur chaque route de la liste (boutons j'aime / je n'aime pas).
   const me = Accounts.authOptional(req);
   if (me && rows.length) {
@@ -435,6 +438,7 @@ route('GET', /^\/api\/strategies\/best$/, (req, url) => {
   }
   const names = heroNameMap();
   const all = Object.values(groups);
+  const pactsByGroup = groupLootPacts();
   const best = all.filter((g) => g.players.size >= MIN_PLAYERS).map((g) => {
     const lootTotal = Object.values(g.loot).reduce((a, l) => a + Math.max(0, l.value), 0) || 1;
     const topLoot = Object.values(g.loot).filter((l) => l.value > 0).sort((a, b) => b.value - a.value).slice(0, 4).map((l) => {
@@ -452,6 +456,7 @@ route('GET', /^\/api\/strategies\/best$/, (req, url) => {
       mechanics: Object.values(g.mods).sort((a, b) => b.sessions - a.sessions || b.perMap - a.perMap).slice(0, 12)
         .map((m) => ({ desc: m.desc, share: m.sessions / g.modSessions, perMap: m.perMap / m.sessions })),
       mechanicsKnown: g.modSessions,
+      lootPacts: pactsByGroup[`${g.region || '?'}|${g.timemark ?? ''}|${g.tag || ''}|${g.depth || ''}`] || null,
     };
   }).sort((a, b) => b.perHourNow - a.perHourNow).slice(0, 30);
   // Groupes pas encore assez fournis : on dit juste combien de sessions attendent d'autres joueurs.
@@ -461,6 +466,31 @@ route('GET', /^\/api\/strategies\/best$/, (req, url) => {
   if (bestCache.size > 300) bestCache.delete(bestCache.keys().next().value);
   return body;
 });
+
+// Pactes de loot des routes partagées, par groupe (région, Timemark, type, profondeur) : les 3 plus choisis,
+// avec la part des routes du groupe qui les utilisent. Cache 10 min.
+let lootPactsGroupCache = { at: 0, body: null };
+function groupLootPacts() {
+  if (lootPactsGroupCache.body && Date.now() - lootPactsGroupCache.at < 10 * 60000) return lootPactsGroupCache.body;
+  const rows = db.prepare(`SELECT region, timemark, strategy_tag, depth, json_extract(json, '$.lootPacts') AS lp FROM reports
+    WHERE created_at > ? AND json_extract(json, '$.lootPacts') IS NOT NULL`).all(Date.now() - 120 * 86400000);
+  const g = {};
+  for (const r of rows) {
+    let lp;
+    try { lp = JSON.parse(r.lp) || []; } catch { lp = []; }
+    if (!lp.length) continue;
+    const k = `${r.region || '?'}|${r.timemark ?? ''}|${r.strategy_tag || ''}|${r.depth || ''}`;
+    const x = (g[k] = g[k] || { routes: 0, pacts: {} });
+    x.routes++;
+    for (const p of lp) x.pacts[p.name] = (x.pacts[p.name] || 0) + 1;
+  }
+  const out = {};
+  for (const [k, x] of Object.entries(g)) {
+    out[k] = { routes: x.routes, top: Object.entries(x.pacts).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([name, n]) => ({ name, share: n / x.routes })) };
+  }
+  lootPactsGroupCache = { at: Date.now(), body: out };
+  return out;
+}
 
 // ---------------- Builds ----------------
 
@@ -753,6 +783,68 @@ route('GET', /^\/api\/prices\/history\/(\d+)$/, (req, url, m) => {
 // Ménage quotidien de l'historique (plus de 120 jours).
 setInterval(() => { try { db.prepare('DELETE FROM price_hist WHERE ts < ?').run(Date.now() - 120 * 86400000); } catch { /* rien */ } }, 24 * 3600000).unref();
 
+// Ce qui bouge : objets dont le prix a le plus changé sur 3 jours, pesés par ce qu'ils rapportent par carte.
+// Quantité par carte = loot des sessions de farm anonymes (toutes, ou celles d'une stratégie : région, Timemark,
+// balise, profondeur). Effet par carte = quantité par carte × (prix actuel − prix d'il y a 3 jours).
+const moversCache = new Map();
+route('GET', /^\/api\/prices\/movers$/, (req, url) => {
+  const q = url.searchParams;
+  const key = q.toString();
+  const hit = moversCache.get(key);
+  if (hit && Date.now() - hit.at < 10 * 60000) return hit.body;
+  const table = priceTable();
+  const byId = new Map(table.items.map((i) => [i.id, i]));
+  const { where, args } = statsFilters(q);
+  where.push('created_at > ?'); args.push(Date.now() - 30 * 86400000);
+  const rows = db.prepare(`SELECT contributor, runs, json FROM farm_stats WHERE ${where.join(' AND ')} ORDER BY created_at DESC LIMIT 5000`).all(...args);
+  const qty = {}; let runs = 0;
+  const players = new Set();
+  for (const r of rows) {
+    runs += r.runs; players.add(r.contributor);
+    for (const i of JSON.parse(r.json).loot || []) if (i.qty > 0) qty[i.id] = (qty[i.id] || 0) + i.qty;
+  }
+  const avg = (a) => { const v = a.filter((x) => x != null); return v.length ? v.reduce((s, x) => s + x, 0) / v.length : null; };
+  const items = [];
+  for (const it of table.items) {
+    const old = it.trend[4]; // prix médian d'il y a 3 jours
+    if (!old || it.players < 2) continue;
+    const perMap = runs ? (qty[it.id] || 0) / runs : 0;
+    items.push({ id: it.id, name: it.name, img: it.img, cat: it.cat, price: it.price, avg3: avg(it.trend.slice(5)), old3: old,
+      ch3: (it.price - old) / old, perMap, impact: perMap * (it.price - old), players: it.players, trend: it.trend });
+  }
+  const body = { updatedAt: Date.now(), sessions: rows.length, players: players.size, runs, items };
+  moversCache.set(key, { at: Date.now(), body });
+  if (moversCache.size > 200) moversCache.delete(moversCache.keys().next().value);
+  return body;
+});
+
+// Pactes : combien de routes partagées les utilisent comme pactes de loot, et leur FE/h moyen. Sert à la page
+// Pactes (petite flamme sur les plus utilisés). Routes des 120 derniers jours.
+let pactsUsageCache = { at: 0, body: null };
+route('GET', /^\/api\/pacts\/usage$/, () => {
+  if (pactsUsageCache.body && Date.now() - pactsUsageCache.at < 10 * 60000) return pactsUsageCache.body;
+  const rows = db.prepare('SELECT user_id, per_hour_real, json FROM reports WHERE created_at > ?').all(Date.now() - 120 * 86400000);
+  const use = {}; let routes = 0;
+  for (const r of rows) {
+    let lp;
+    try { lp = JSON.parse(r.json).lootPacts || []; } catch { lp = []; }
+    if (!lp.length) continue;
+    routes++;
+    for (const p of lp) {
+      const u = (use[p.name] = use[p.name] || { name: p.name, routes: 0, players: new Set(), fe: 0, levels: {} });
+      u.routes++; u.players.add(r.user_id); u.fe += r.per_hour_real;
+      if (p.level) u.levels[p.level] = (u.levels[p.level] || 0) + 1;
+    }
+  }
+  const pacts = Object.values(use).map((u) => ({ name: u.name, routes: u.routes, players: u.players.size, share: u.routes / routes,
+    avgFeH: u.fe / u.routes, topLevel: +(Object.entries(u.levels).sort((a, b) => b[1] - a[1])[0] || [null])[0] || null }))
+    .sort((a, b) => b.routes - a.routes);
+  let drop = [];
+  try { drop = JSON.parse(fs.readFileSync(path.join(__dirname, 'loot_pacts.json'), 'utf8')).pacts || []; } catch { /* facultatif */ }
+  pactsUsageCache = { at: Date.now(), body: { routes, pacts, drop } };
+  return pactsUsageCache.body;
+});
+
 // Médiane des derniers prix de chaque joueur sur 7 jours.
 let pricesCache = { at: 0, body: null };
 route('GET', /^\/api\/prices$/, () => currentPrices());
@@ -761,7 +853,8 @@ route('GET', /^\/api\/prices$/, () => currentPrices());
 let ITEM_CATS = {};
 try { ITEM_CATS = JSON.parse(fs.readFileSync(path.join(__dirname, 'item_cats.json'), 'utf8')); } catch { /* facultatif */ }
 let priceTableCache = { at: 0, body: null };
-route('GET', /^\/api\/prices\/table$/, () => {
+route('GET', /^\/api\/prices\/table$/, () => priceTable());
+function priceTable() {
   if (Date.now() - priceTableCache.at < 10 * 60000 && priceTableCache.body) return priceTableCache.body;
   const now = Date.now(), DAY = 86400000;
   const cur = currentPrices().prices;
@@ -792,7 +885,7 @@ route('GET', /^\/api\/prices\/table$/, () => {
   items.sort((a, b) => b.price - a.price);
   priceTableCache = { at: now, body: { updatedAt: now, items } };
   return priceTableCache.body;
-});
+}
 // Page d'un objet (/prices/<id>) : courbe du prix sur 24 h / 7 j / 30 j / tout (120 jours), par tranches de temps :
 // médiane, plus bas et plus haut de chaque tranche, nombre de relevés et de joueurs. Plus les stats de la page.
 const RANGES = { '24h': [86400000, 3600000], '7d': [7 * 86400000, 3 * 3600000], '30d': [30 * 86400000, 12 * 3600000], all: [120 * 86400000, 86400000] };
@@ -923,7 +1016,7 @@ function serveDownload(req, res, name) {
 
 const PAGES = {
   '/': '/home.html', '/strategies': '/strategies.html', '/meta': '/meta.html',
-  '/download': '/download.html', '/prices': '/prices.html', '/account': '/account.html', '/planner': '/planner.html', '/privacy': '/privacy.html', '/terms': '/terms.html',
+  '/download': '/download.html', '/prices': '/prices.html', '/pacts': '/pacts.html', '/guide': '/guide.html', '/account': '/account.html', '/planner': '/planner.html', '/privacy': '/privacy.html', '/terms': '/terms.html',
 };
 // TOB, le planificateur façon POB (alpha publique, application d'une seule page) : servi sous /builds/, ses
 // propres routes renvoient vers son index.html ; les fichiers de assets/ ont un nom unique, donc gardés en

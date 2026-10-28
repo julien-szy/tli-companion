@@ -47,6 +47,9 @@ class CommunityClient {
   appLoginPoll(code) { return this._req('GET', `/api/auth/app/poll?code=${encodeURIComponent(code)}`, null, false); }
   logout() { return this._req('POST', '/api/auth/logout', null, 'optional'); }
   myContent() { return this._req('GET', '/api/me/content'); }
+  // Collection de pactes du compte (page Pactes du site) : pré-remplit les pactes de loot d'une route.
+  myPacts() { return this._req('GET', '/api/me/pacts'); }
+  saveMyPacts(pacts) { return this._req('PUT', '/api/me/pacts', { pacts }); }
   vote(kind, id, value) { return this._req('POST', '/api/votes', { kind, id, value }); }
   comments(kind, id) { return this._req('GET', `/api/comments?kind=${encodeURIComponent(kind)}&id=${encodeURIComponent(id)}`, null, 'optional'); }
   commentPost(kind, id, body, parentId) { return this._req('POST', '/api/comments', { kind, id, body, parentId }); }

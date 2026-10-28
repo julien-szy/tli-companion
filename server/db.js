@@ -198,7 +198,9 @@ function openDb(dataDir) {
   }
   // Comptes (bêta) : connexion Google (seul l'identifiant Google est gardé), profil et sessions.
   const ucols = new Set(db.prepare('PRAGMA table_info(users)').all().map((c) => c.name));
-  for (const [c, type] of [['google_sub', 'TEXT'], ['avatar', 'TEXT'], ['bio', 'TEXT'], ['named', 'INTEGER NOT NULL DEFAULT 1']]) {
+  for (const [c, type] of [['google_sub', 'TEXT'], ['avatar', 'TEXT'], ['bio', 'TEXT'], ['named', 'INTEGER NOT NULL DEFAULT 1'],
+    // Collection de pactes du joueur (JSON [{ name, level }]) et cases cochées du guide de progression (JSON { id: date }).
+    ['pacts', 'TEXT'], ['progress', 'TEXT']]) {
     if (!ucols.has(c)) db.exec(`ALTER TABLE users ADD COLUMN ${c} ${type}`);
   }
   db.exec(`

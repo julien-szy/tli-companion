@@ -223,6 +223,43 @@ module.exports = function setupAccounts({ db, route, HttpError, sha256, clientIp
         JOIN users w ON w.id = r.user_id WHERE l.user_id = ? AND l.value = 1 ORDER BY r.created_at DESC LIMIT 200`).all(u.id),
     };
   });
+  // Collection de pactes : sert à la page Pactes du site et à pré-remplir les pactes de loot quand l'app
+  // partage une route. Noms connus seulement (icônes des pactes), niveau 1 à 6 ou inconnu.
+  const PACT_NAMES = (() => {
+    try {
+      const icons = JSON.parse(fs.readFileSync(path.join(__dirname, 'public', 'extra_icons.json'), 'utf8')).icons || {};
+      return new Set(Object.keys(icons).filter((k) => /\/icons\/servants\//.test(icons[k])));
+    } catch { return new Set(); }
+  })();
+  const cleanPacts = (v) => {
+    const seen = new Set();
+    return (Array.isArray(v) ? v.slice(0, 400) : []).filter((p) => p && PACT_NAMES.has(p.name) && !seen.has(p.name) && seen.add(p.name))
+      .map((p) => ({ name: p.name, level: Number.isInteger(p.level) && p.level >= 1 && p.level <= 6 ? p.level : null }));
+  };
+  const readJsonCol = (id, col, def) => { try { return JSON.parse(db.prepare(`SELECT ${col} FROM users WHERE id = ?`).get(id)[col] || 'null') ?? def; } catch { return def; } };
+  route('GET', /^\/api\/me\/pacts$/, (req) => ({ pacts: readJsonCol(auth(req).id, 'pacts', []) }));
+  route('PUT', /^\/api\/me\/pacts$/, async (req) => {
+    const u = auth(req);
+    rateLimit('pacts:' + u.id, 120, 3600000);
+    const b = await readJson(req);
+    const pacts = cleanPacts(b.pacts);
+    db.prepare('UPDATE users SET pacts = ? WHERE id = ?').run(JSON.stringify(pacts), u.id);
+    return { pacts };
+  });
+  // Guide de progression : cases cochées ({ id: date }), pour les retrouver sur un autre ordinateur.
+  route('GET', /^\/api\/me\/progress$/, (req) => ({ progress: readJsonCol(auth(req).id, 'progress', {}) }));
+  route('PUT', /^\/api\/me\/progress$/, async (req) => {
+    const u = auth(req);
+    rateLimit('progress:' + u.id, 300, 3600000);
+    const b = await readJson(req);
+    const out = {};
+    for (const [k, v] of Object.entries(b.progress && typeof b.progress === 'object' ? b.progress : {}).slice(0, 300)) {
+      if (/^[a-z0-9_-]{1,40}$/.test(k) && Number.isFinite(v) && v > 0) out[k] = Math.trunc(v);
+    }
+    db.prepare('UPDATE users SET progress = ? WHERE id = ?').run(JSON.stringify(out), u.id);
+    return { progress: out };
+  });
+
   // Supprimer son compte et tout ce qu'il a partagé.
   route('DELETE', /^\/api\/me$/, async (req) => {
     const u = auth(req);

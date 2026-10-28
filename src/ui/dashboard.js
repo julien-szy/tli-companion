@@ -399,8 +399,18 @@ async function loadCompare(id) {
   if (!box || openReportId !== id || !c) return;
   box.hidden = false;
   const where = `${c.region}${c.tier ? ' · T' + c.tier : ''}`;
+  // Ce qui bouge : prix qui montent ou baissent sur 3 jours, et ce que ça change par carte sur cette route (site).
+  const movers = () => {
+    const q = new URLSearchParams({ view: 'movers', ...(c.region ? { region: c.region } : {}), ...(c.tier ? { tier: c.tier } : {}) });
+    const b = document.createElement('p');
+    b.style.marginTop = '8px';
+    b.innerHTML = `<a href="#" id="cmpMovers">📈 ${esc(t('cmp.movers'))}</a>`;
+    box.appendChild(b);
+    $('cmpMovers').onclick = (e) => { e.preventDefault(); tli.openSite('/prices?' + q.toString()); };
+  };
   if (!c.enough) {
     box.innerHTML = `<h2>${esc(t('cmp.title', { map: where }))}</h2><p class="muted">${esc(t('cmp.notEnough', { n: c.players, needed: c.needed }))}</p>`;
+    movers();
     return;
   }
   const pct = Math.round(((c.mine - c.median) / Math.max(1, Math.abs(c.median))) * 100);
@@ -413,6 +423,7 @@ async function loadCompare(id) {
     </div>
     <p class="muted" style="margin-top:8px">${esc(t(pct >= 0 ? 'cmp.above' : 'cmp.below', { pct: Math.abs(pct), n: c.sessions, players: c.players }))}</p>
     ${c.topItems.length ? `<p style="margin-top:6px">${esc(t('cmp.topItems'))} ${c.topItems.map((i) => `<span class="chip">${icon(i.img)}${esc(i.name)}</span>`).join(' ')}</p>` : ''}`;
+  movers();
 }
 
 // Zone de partage : pseudo -> confirmation -> lien public.
@@ -476,24 +487,48 @@ async function checkVoidChart(id) {
 async function pickLootPacts(id) {
   const r = await tli.getReport(id);
   if (!r) return true;
-  const { list, last: prev } = await tli.lootPacts();
-  const cur = r.lootPacts || prev || [];
+  const { list, last: prev, owned = [], signedIn, accounts } = await tli.lootPacts();
+  // Pactes de loot de ma collection (compte), les plus hauts niveaux d'abord.
+  const RANK = { Legendary: 0, Rare: 1, Magic: 2 };
+  const rarity = Object.fromEntries(list.map((p) => [p.name, p.rarity]));
+  const mineDrop = owned.filter((p) => rarity[p.name]).sort((a, b) => (b.level || 0) - (a.level || 0) || RANK[rarity[a.name]] - RANK[rarity[b.name]]);
+  const ownedLv = Object.fromEntries(owned.map((p) => [p.name, p.level]));
+  const fromAccount = !(r.lootPacts && r.lootPacts.length) && !(prev && prev.length) && mineDrop.length > 0;
+  const cur = (r.lootPacts && r.lootPacts.length ? r.lootPacts : null) || (prev && prev.length ? prev : null) || mineDrop.slice(0, 3);
   const RAR = ['Legendary', 'Rare', 'Magic'];
-  const opts = (sel) => `<option value="">${esc(t('lp.none'))}</option>` + RAR.map((rar) => `<optgroup label="${esc(t('lp.r.' + rar))}">${list.filter((p) => p.rarity === rar)
-    .map((p) => `<option${p.name === sel ? ' selected' : ''}>${esc(p.name)}</option>`).join('')}</optgroup>`).join('');
+  const opts = (sel) => `<option value="">${esc(t('lp.none'))}</option>`
+    + (mineDrop.length ? `<optgroup label="${esc(t('lp.mine'))}">${mineDrop.map((p) => `<option value="${esc(p.name)}"${p.name === sel ? ' selected' : ''}>${esc(p.name)}${p.level ? ' · ' + esc(t('lp.lv', { n: p.level })) : ''}</option>`).join('')}</optgroup>` : '')
+    + RAR.map((rar) => `<optgroup label="${esc(t('lp.r.' + rar))}">${list.filter((p) => p.rarity === rar && !(p.name in ownedLv && rarity[p.name]))
+      .map((p) => `<option${p.name === sel ? ' selected' : ''}>${esc(p.name)}</option>`).join('')}</optgroup>`).join('');
   const lv = (sel) => `<option value="">${esc(t('lp.level'))}</option>` + [1, 2, 3, 4, 5, 6].map((n) => `<option value="${n}"${n === sel ? ' selected' : ''}>${esc(t('lp.lv', { n }))}</option>`).join('');
   return new Promise((resolve) => {
     modal(`<h1>${esc(t('lp.title'))}</h1>
       <div class="body end-form" style="min-height:0"><p class="muted">${esc(t('lp.help'))}</p>
+        ${fromAccount ? `<p class="lp-note">${esc(t('lp.fromAccount'))}</p>` : ''}
         ${[0, 1, 2].map((i) => `<div class="lp-row"><select data-lp="${i}">${opts(cur[i] && cur[i].name)}</select><select data-lpl="${i}">${lv(cur[i] && cur[i].level)}</select></div>`).join('')}
+        ${accounts && !signedIn ? `<div class="lp-login"><span>${esc(t('lp.loginHint'))}</span><button class="btn" id="lpLogin">${esc(t('lp.login'))}</button></div>`
+          : signedIn ? `<p class="muted small">${esc(t('lp.collection'))} <a href="#" id="lpSite">${esc(t('lp.collectionLink'))}</a></p>` : ''}
       </div>
       <div class="foot"><button class="btn" id="lpCancel">${esc(t('vcm.cancel'))}</button>
         <span style="display:flex;gap:8px"><button class="btn" id="lpSkip">${esc(t('lp.skip'))}</button><button class="btn primary big" id="lpOk">${esc(t('lp.ok'))}</button></span></div>`);
+    // Choisir un pacte de ma collection remplit aussi son niveau.
+    document.querySelectorAll('[data-lp]').forEach((s) => (s.onchange = () => {
+      const lvSel = document.querySelector(`[data-lpl="${s.dataset.lp}"]`);
+      if (ownedLv[s.value]) lvSel.value = String(ownedLv[s.value]);
+    }));
+    if ($('lpSite')) $('lpSite').onclick = (e) => { e.preventDefault(); tli.openSite('/pacts'); };
+    if ($('lpLogin')) $('lpLogin').onclick = async () => {
+      $('lpLogin').disabled = true;
+      $('lpLogin').textContent = t('lp.loginWait');
+      try { await tli.googleLogin(); modal(''); resolve(await pickLootPacts(id)); }
+      catch { $('lpLogin').disabled = false; $('lpLogin').textContent = t('lp.login'); }
+    };
     $('lpCancel').onclick = () => { modal(''); resolve(false); };
     $('lpSkip').onclick = async () => { await tli.updateReport(id, { lootPacts: [] }); modal(''); resolve(true); };
     $('lpOk').onclick = async () => {
       const picked = [0, 1, 2].map((i) => ({ name: document.querySelector(`[data-lp="${i}"]`).value, level: +document.querySelector(`[data-lpl="${i}"]`).value || null })).filter((p) => p.name);
       await tli.updateReport(id, { lootPacts: picked });
+      if (signedIn && picked.length) tli.addMyPacts(picked).catch(() => {});
       modal('');
       resolve(true);
     };

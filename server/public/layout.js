@@ -2,7 +2,7 @@
 // Chargé AVANT common.js : il complète le dictionnaire STR défini dans common.js via SITE_STR.
 window.SITE_STR = {
   en: {
-    navHome: 'Home', navDownload: 'Download', navAccount: 'Account',
+    navHome: 'Home', navPacts: 'Pactspirits', navGuide: 'Guide', navDownload: 'Download', navAccount: 'Account',
     supButton: 'Support', supTitle: 'Support TLI Companion', supCta: 'Buy me a coffee', supFooter: 'Like the tool? Support it on Buy Me a Coffee',
     supText: 'TLI Companion is free, without ads, and made by one player in their spare time. If it helps you farm, a coffee helps pay for the server and keeps new features coming (build planner, AI advisor…).',
     footerLine: 'TLI Companion is a fan-made tool, not affiliated with XD Inc. Torchlight: Infinite and its assets belong to XD Inc.',
@@ -74,7 +74,7 @@ window.SITE_STR = {
     accCta: 'In the meantime, everything works without an account.',
   },
   fr: {
-    navHome: 'Accueil', navDownload: 'Télécharger', navAccount: 'Compte',
+    navHome: 'Accueil', navPacts: 'Pactes', navGuide: 'Débuter', navDownload: 'Télécharger', navAccount: 'Compte',
     supButton: 'Soutenir', supTitle: 'Soutenir TLI Companion', supCta: 'Offrir un café', supFooter: "L'outil te plaît ? Soutiens-le sur Buy Me a Coffee",
     supText: "TLI Companion est gratuit, sans pub, et fait par un joueur sur son temps libre. S'il t'aide à farmer, un café aide à payer le serveur et à sortir les prochaines fonctionnalités (planificateur de build, conseiller IA…).",
     footerLine: "TLI Companion est un outil de fan, non affilié à XD Inc. Torchlight: Infinite et ses ressources appartiennent à XD Inc.",
@@ -170,7 +170,7 @@ function renderLayout() {
     const link = (href, key, id) => `<a href="${href}" class="${page === id ? 'on' : ''}">${esc(t(key))}</a>`;
     header.innerHTML = `
       <a class="brand" href="/"><img class="logo" src="/logo.svg" alt="">TLI Companion</a>
-      <nav>${link('/', 'navHome', 'home')}${link('/meta', 'navMeta', 'meta')}${link('/builds/', 'navBuilds', 'builds')}${link('/strategies', 'navStrategies', 'strategies')}${link('/prices', 'navPrices', 'prices')}${link('/download', 'navDownload', 'download')}</nav>
+      <nav>${link('/', 'navHome', 'home')}${link('/meta', 'navMeta', 'meta')}${link('/builds/', 'navBuilds', 'builds')}${link('/strategies', 'navStrategies', 'strategies')}${link('/prices', 'navPrices', 'prices')}${link('/pacts', 'navPacts', 'pacts')}${link('/guide', 'navGuide', 'guide')}${link('/download', 'navDownload', 'download')}</nav>
       <div class="right"><a class="btn coffee" href="${SUPPORT_URL}" target="_blank" rel="noopener">☕ ${esc(t('supButton'))}</a><button class="lang" id="themeSwitch"></button><button class="lang" id="langSwitch"></button><a class="btn" id="accBtn" href="/account">${esc(t('navAccount'))}</a></div>`;
     document.getElementById('themeSwitch').onclick = () => setTheme(!isLight());
     setTheme(isLight());

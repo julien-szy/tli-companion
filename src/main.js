@@ -1201,7 +1201,7 @@ ipcMain.handle('unshareReport', async (_e, id) => {
 });
 ipcMain.handle('openSite', (_e, sitePath) => {
   // Uniquement des pages de notre serveur.
-  const p = typeof sitePath === 'string' && /^\/[\w/?=&.-]*$/.test(sitePath) ? sitePath : '/';
+  const p = typeof sitePath === 'string' && /^\/[\w/?=&.%+-]*$/.test(sitePath) ? sitePath : '/';
   shell.openExternal(community.siteUrl(p));
 });
 // Nouveautés : notes des versions installées depuis la dernière ouverture (rien à la première installation).
@@ -1274,7 +1274,24 @@ ipcMain.handle('saveCsv', async (e, name, content) => {
   fs.writeFileSync(res.filePath, '\ufeff' + String(content)); // BOM : Excel lit bien les accents
   return res.filePath;
 });
-ipcMain.handle('lootPacts', () => ({ list: LOOT_PACTS, last: settings.lastLootPacts || [] }));
+// Pactes de loot pour le partage d'une route. Connecté avec Google : la collection du compte (page Pactes du
+// site) sert à pré-remplir la fenêtre, et les pactes choisis y sont ajoutés.
+const signedInGoogle = () => FEATURES.accounts && community.registered && !!settings.server.google;
+ipcMain.handle('lootPacts', async () => {
+  let owned = [];
+  if (signedInGoogle()) { try { owned = (await community.myPacts()).pacts || []; } catch { /* hors ligne */ } }
+  return { list: LOOT_PACTS, last: settings.lastLootPacts || [], owned, signedIn: signedInGoogle(), accounts: FEATURES.accounts };
+});
+ipcMain.handle('addMyPacts', async (_e, picked) => {
+  if (!signedInGoogle()) return false;
+  const add = cleanLootPacts(picked);
+  if (!add.length) return true;
+  const cur = (await community.myPacts()).pacts || [];
+  const byName = new Map(cur.map((p) => [p.name, p]));
+  for (const p of add) byName.set(p.name, { name: p.name, level: p.level ?? (byName.get(p.name) || {}).level ?? null });
+  await community.saveMyPacts([...byName.values()]);
+  return true;
+});
 ipcMain.handle('updateReport', (_e, id, patch) => {
   const r = loadJson(reportPath(id), null);
   if (!r) return null;
