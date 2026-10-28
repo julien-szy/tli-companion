@@ -51,7 +51,7 @@ window.SITE_STR = {
     fbLink: 'Give feedback', fbTitle: 'Give feedback', fbIntro: 'A bug, an idea, a question? Tell me here: every message is read.',
     fbType: 'Type', fbBug: 'Bug', fbIdea: 'Idea / improvement', fbQuestion: 'Question', fbOther: 'Other',
     fbMessage: 'Message', fbMessagePh: 'Describe the bug or your idea (at least 10 characters)…',
-    fbContact: 'Contact (optional)', fbContactPh: 'Discord name or email, only if you want an answer',
+    fbContact: 'Your Discord name or email (required)', fbContactPh: 'So I can answer you or ask for details, e.g. yourname or you@mail.com', fbNeedContact: "Add your Discord name or email: without it I can't answer you or ask for details.",
     fbPrivacy: 'Only this text is sent, nothing else. No attachments.', fbSend: 'Send', fbCancel: 'Cancel',
     fbThanks: 'Thanks! Your message has been sent.', fbTooShort: 'Please write at least 10 characters.', fbError: 'Could not send: {msg}',
     openSource: 'Source code on GitHub',
@@ -121,7 +121,7 @@ window.SITE_STR = {
     fbLink: 'Donner mon avis', fbTitle: 'Donner mon avis', fbIntro: 'Un bug, une idée, une question ? Dis-le ici : chaque message est lu.',
     fbType: 'Type', fbBug: 'Bug', fbIdea: 'Idée / amélioration', fbQuestion: 'Question', fbOther: 'Autre',
     fbMessage: 'Message', fbMessagePh: 'Décris le bug ou ton idée (10 caractères minimum)…',
-    fbContact: 'Contact (facultatif)', fbContactPh: 'Pseudo Discord ou email, seulement si tu veux une réponse',
+    fbContact: 'Ton pseudo Discord ou ton email (obligatoire)', fbContactPh: 'Pour que je puisse te répondre ou te demander des détails, ex. tonpseudo ou toi@mail.com', fbNeedContact: 'Indique ton pseudo Discord ou ton email : sans ça, je ne peux pas te répondre ni te demander de détails.',
     fbPrivacy: 'Seul ce texte est envoyé, rien d’autre. Pas de pièce jointe.', fbSend: 'Envoyer', fbCancel: 'Annuler',
     fbThanks: 'Merci ! Ton message a bien été envoyé.', fbTooShort: 'Écris au moins 10 caractères.', fbError: 'Envoi impossible : {msg}',
     openSource: 'Code source sur GitHub',
@@ -208,7 +208,7 @@ function openFeedback() {
     <h2>${esc(t('fbTitle'))}</h2><p class="muted">${esc(t('fbIntro'))}</p>
     <label>${esc(t('fbType'))}<select id="fbType"><option value="bug">${esc(t('fbBug'))}</option><option value="idea">${esc(t('fbIdea'))}</option><option value="question">${esc(t('fbQuestion'))}</option><option value="other">${esc(t('fbOther'))}</option></select></label>
     <label>${esc(t('fbMessage'))}<textarea id="fbMsg" rows="6" maxlength="2000" placeholder="${esc(t('fbMessagePh'))}"></textarea></label>
-    <label>${esc(t('fbContact'))}<input id="fbContact" maxlength="100" placeholder="${esc(t('fbContactPh'))}"></label>
+    <label>${esc(t('fbContact'))}<input id="fbContact" maxlength="100" required placeholder="${esc(t('fbContactPh'))}"></label>
     <input id="fbWebsite" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px;width:1px;height:1px" aria-hidden="true">
     <p class="muted" style="font-size:12px">${esc(t('fbPrivacy'))}</p>
     <p id="fbOut" hidden></p>
@@ -222,6 +222,7 @@ function openFeedback() {
     const out = document.getElementById('fbOut');
     const message = document.getElementById('fbMsg').value.trim();
     if (message.length < 10) { out.hidden = false; out.className = 'neg'; out.textContent = t('fbTooShort'); return; }
+    if (document.getElementById('fbContact').value.trim().length < 3) { out.hidden = false; out.className = 'neg'; out.textContent = t('fbNeedContact'); document.getElementById('fbContact').focus(); return; }
     document.getElementById('fbSend').disabled = true;
     try {
       const res = await fetch('/api/feedback', { method: 'POST', headers: { 'Content-Type': 'application/json' },
