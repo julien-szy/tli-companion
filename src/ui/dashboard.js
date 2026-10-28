@@ -55,7 +55,7 @@ function showTab(name) {
 }
 document.querySelectorAll('aside.side button[data-grp]').forEach((b) => (b.onclick = () => showGroup(b.dataset.grp)));
 $('supportBtn').onclick = () => tli.openSupport();
-// « Donner mon avis » : texte brut seulement (type, message, contact facultatif), envoyé à tlicompanion.com.
+// « Donner mon avis » : texte brut seulement (type, message, contact obligatoire pour pouvoir répondre), envoyé à tlicompanion.com.
 $('feedbackBtn').onclick = () => {
   modal(`<h1>${esc(t('fb.title'))}</h1>
     <p class="muted">${esc(t('fb.intro'))}</p>
@@ -63,7 +63,7 @@ $('feedbackBtn').onclick = () => {
       <label>${esc(t('fb.type'))}<select id="fbType">${['bug', 'idea', 'question', 'other'].map((k) => `<option value="${k}">${esc(t('fb.t.' + k))}</option>`).join('')}</select></label>
       <label>${esc(t('fb.message'))}<textarea id="fbMsg" rows="6" maxlength="2000" placeholder="${esc(t('fb.messagePh'))}"></textarea></label>
       <span class="muted" id="fbCount" style="font-size:11px;text-align:right">0 / 2000</span>
-      <label>${esc(t('fb.contact'))}<input id="fbContact" maxlength="100" placeholder="${esc(t('fb.contactPh'))}"></label>
+      <label>${esc(t('fb.contact'))}<input id="fbContact" maxlength="100" required placeholder="${esc(t('fb.contactPh'))}"></label>
       <p class="muted" style="font-size:12px">${esc(t('fb.privacy'))}</p>
       <p id="fbMsgOut" style="font-size:13px" hidden></p>
     </div>
@@ -74,6 +74,7 @@ $('feedbackBtn').onclick = () => {
     const out = $('fbMsgOut');
     const message = $('fbMsg').value.trim();
     if (message.length < 10) { out.hidden = false; out.className = 'neg'; out.textContent = t('fb.tooShort'); return; }
+    if ($('fbContact').value.trim().length < 3) { out.hidden = false; out.className = 'neg'; out.textContent = t('fb.needContact'); $('fbContact').focus(); return; }
     $('fbSend').disabled = true;
     const r = await tli.sendFeedback({ type: $('fbType').value, message, contact: $('fbContact').value.trim() });
     out.hidden = false;
