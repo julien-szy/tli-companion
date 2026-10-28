@@ -1,6 +1,18 @@
 {
   "releases": [
     {
+      "version": "1.1.3",
+      "date": "2026-10-28",
+      "en": [
+        "Sharing a route: your loot pactspirits are now filled in for you from your pactspirit collection, saved on your account (new Pactspirits page on tlicompanion.com). Not signed in? The window offers to sign in with Google. Pactspirits you pick are added to your collection.",
+        "Session sheet: new \"What moves\" link under the community comparison. It opens the items whose price rose or fell the most over 3 days, and what it changes per map on that route."
+      ],
+      "fr": [
+        "Partage d'une route : tes pactes de loot sont maintenant remplis pour toi à partir de ta collection de pactes, gardée sur ton compte (nouvelle page Pactes sur tlicompanion.com). Pas connecté ? La fenêtre te propose de te connecter avec Google. Les pactes que tu choisis sont ajoutés à ta collection.",
+        "Fiche de session : nouveau lien « Ce qui bouge » sous la comparaison avec la communauté. Il ouvre les objets dont le prix a le plus monté ou baissé sur 3 jours, et ce que ça change par carte sur cette route."
+      ]
+    },
+    {
       "version": "1.1.2",
       "date": "2026-10-27",
       "en": [
