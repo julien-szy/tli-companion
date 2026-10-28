@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TLI Companion — Price API</title>
+<link rel="icon" type="image/svg+xml" href="/logo.svg">
+<link rel="stylesheet" href="/style.css">
+<style>
+  .legal { max-width: 860px; line-height: 1.65; }
+  .legal h1 { font-size: 26px; margin-bottom: 4px; }
+  .legal h2 { font-size: 17px; margin: 28px 0 8px; }
+  .legal p, .legal li, .legal td { color: #cfcdca; }
+  .legal ul { margin: 6px 0 0 22px; }
+  .legal .upd { color: var(--muted); margin-bottom: 18px; }
+  .legal pre { background: #0b0d12; border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; overflow-x: auto; font-size: 13px; line-height: 1.5; }
+  .legal code { font-family: ui-monospace, Consolas, monospace; font-size: 13px; }
+  .legal p code, .legal li code, .legal td code { background: #1a1d26; padding: 1px 5px; border-radius: 4px; }
+  .legal table { border-collapse: collapse; width: 100%; margin-top: 6px; font-size: 14px; }
+  .legal th, .legal td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .legal .tbl { overflow-x: auto; }
+  [data-l] { display: none; }
+</style>
+</head>
+<body>
+<header class="site" data-page=""></header>
+<main class="legal">
+
+<div data-l="en">
+  <h1>Price API</h1>
+  <p class="upd">Version 1 · free · no key needed</p>
+  <p>Auction House prices seen in game by TLI Companion players, for your site, bot or tool. Read only, open to every website (CORS), cached 10 minutes.</p>
+  <ul>
+    <li><b>Our prices only</b>: Auction House searches captured by TLI Companion players. Prices from other sources are not included.</li>
+    <li><b>At least 3 players</b>: an item is listed only if at least 3 players saw its price in the last 7 days. A history day is listed only if 3 players saw it that day.</li>
+    <li><b>Prices in FE</b> (Flame Elementium). Item ids are the game's ids.</li>
+    <li><b>Version 1 stays stable</b>: fields can be added, never removed or renamed.</li>
+  </ul>
+
+  <h2>Please credit us</h2>
+  <p>Show <b>“Prices: tlicompanion.com”</b> with a link to <a href="https://tlicompanion.com">https://tlicompanion.com</a> where you display these prices.</p>
+
+  <h2>All items</h2>
+  <pre><code>GET https://tlicompanion.com/api/public/v1/prices</code></pre>
+  <pre><code>{
+  "source": "TLI Companion",
+  "attribution": "Prices: tlicompanion.com",
+  "currency": "FE",
+  "minPlayers": 3,
+  "updatedAt": "2026-10-27T18:00:00.000Z",
+  "count": 412,
+  "items": [
+    {
+      "id": 100200,
+      "name": "Flame Sand",
+      "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Item/128/….webp",
+      "category": "currency",
+      "price": 0.0125,
+      "players7d": 58,
+      "updatedAt": "2026-10-27T17:52:10.000Z",
+      "change24h": 0.031,
+      "change7d": -0.084
+    }
+  ]
+}</code></pre>
+
+  <h2>One item, with its history</h2>
+  <pre><code>GET https://tlicompanion.com/api/public/v1/prices/100200?days=30</code></pre>
+  <p>Same fields as above, plus <code>days</code> (1 to 120, 30 by default) and <code>history</code>: one entry per day (UTC).</p>
+  <pre><code>"history": [
+  { "day": "2026-10-26", "median": 0.0121, "low": 0.0110, "high": 0.0140, "players": 21 },
+  { "day": "2026-10-27", "median": 0.0125, "low": 0.0118, "high": 0.0131, "players": 17 }
+]</code></pre>
+
+  <h2>Fields</h2>
+  <div class="tbl"><table>
+    <tr><th>Field</th><th>Meaning</th></tr>
+    <tr><td><code>price</code></td><td>Current price: median of the latest price each player saw in the last 7 days.</td></tr>
+    <tr><td><code>players7d</code></td><td>Number of players who saw a price for this item in the last 7 days.</td></tr>
+    <tr><td><code>updatedAt</code></td><td>When the latest price for this item was seen.</td></tr>
+    <tr><td><code>change24h</code>, <code>change7d</code></td><td>Change compared with the daily median 1 day and 7 days ago. <code>0.05</code> = +5 %. <code>null</code> when unknown.</td></tr>
+    <tr><td><code>category</code></td><td>Same categories as the <a href="/prices">Prices</a> page, <code>other</code> when unknown.</td></tr>
+    <tr><td><code>icon</code></td><td>Item icon URL, or <code>null</code>.</td></tr>
+  </table></div>
+
+  <h2>Limits</h2>
+  <ul>
+    <li>60 requests per minute per address. Above that, the answer is <code>429</code>.</li>
+    <li>Data changes at most every 10 minutes: no need to ask more often. Fetch the full list once and keep it.</li>
+    <li>Errors come as <code>{ "error": "…" }</code> with a <code>4xx</code> code. An unknown item, or one seen by fewer than 3 players, gives <code>404</code>.</li>
+  </ul>
+
+  <h2>Example</h2>
+  <pre><code>const r = await fetch('https://tlicompanion.com/api/public/v1/prices');
+const { items } = await r.json();
+const byId = Object.fromEntries(items.map((i) =&gt; [i.id, i]));
+console.log(byId[100200]?.price);</code></pre>
+
+  <h2>Contact</h2>
+  <p>A question, a missing field, or you use this API? Tell us with the “Feedback” link at the bottom of the page.</p>
+</div>
+
+<div data-l="fr">
+  <h1>API des prix</h1>
+  <p class="upd">Version 1 · gratuite · sans clé</p>
+  <p>Les prix de l'hôtel des ventes vus en jeu par les joueurs de TLI Companion, pour ton site, ton bot ou ton outil. Lecture seule, ouverte à tous les sites (CORS), mise à jour toutes les 10 minutes.</p>
+  <ul>
+    <li><b>Nos prix seulement</b> : les recherches à l'hôtel des ventes captées par les joueurs de TLI Companion. Les prix d'autres sources ne sont pas inclus.</li>
+    <li><b>Au moins 3 joueurs</b> : un objet n'apparaît que si au moins 3 joueurs ont vu son prix ces 7 derniers jours. Un jour de l'historique n'apparaît que si 3 joueurs l'ont vu ce jour-là.</li>
+    <li><b>Prix en FE</b> (Flame Elementium). Les identifiants des objets sont ceux du jeu.</li>
+    <li><b>La version 1 reste stable</b> : des champs peuvent être ajoutés, jamais retirés ni renommés.</li>
+  </ul>
+
+  <h2>Merci de nous citer</h2>
+  <p>Affiche <b>« Prices: tlicompanion.com »</b> (ou « Prix : tlicompanion.com ») avec un lien vers <a href="https://tlicompanion.com">https://tlicompanion.com</a> là où tu montres ces prix.</p>
+
+  <h2>Tous les objets</h2>
+  <pre><code>GET https://tlicompanion.com/api/public/v1/prices</code></pre>
+  <p>Renvoie <code>items</code> : pour chaque objet <code>id</code>, <code>name</code> (en anglais), <code>icon</code>, <code>category</code>, <code>price</code>, <code>players7d</code>, <code>updatedAt</code>, <code>change24h</code>, <code>change7d</code>. Le détail des champs est dans la version anglaise de cette page.</p>
+
+  <h2>Un objet, avec son historique</h2>
+  <pre><code>GET https://tlicompanion.com/api/public/v1/prices/100200?days=30</code></pre>
+  <p>Les mêmes champs, plus <code>days</code> (1 à 120, 30 par défaut) et <code>history</code> : un point par jour (UTC) avec <code>median</code>, <code>low</code>, <code>high</code> et <code>players</code>.</p>
+
+  <h2>Limites</h2>
+  <ul>
+    <li>60 requêtes par minute et par adresse. Au-delà, la réponse est <code>429</code>.</li>
+    <li>Les données changent au plus toutes les 10 minutes : inutile de demander plus souvent.</li>
+    <li>Les erreurs arrivent sous la forme <code>{ "error": "…" }</code> avec un code <code>4xx</code>. Un objet inconnu, ou vu par moins de 3 joueurs, donne <code>404</code>.</li>
+  </ul>
+
+  <h2>Contact</h2>
+  <p>Une question, un champ qui manque, ou tu utilises cette API ? Dis-le-nous avec le lien « Donner mon avis » en bas de la page.</p>
+</div>
+
+</main>
+<footer class="site"></footer>
+<script src="/layout.js"></script>
+<script src="/common.js"></script>
+<script src="/legal.js"></script>
+</body>
+</html>

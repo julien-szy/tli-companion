@@ -886,6 +886,11 @@ function priceTable() {
   priceTableCache = { at: now, body: { updatedAt: now, items } };
   return priceTableCache.body;
 }
+// API publique des prix (autres sites) : voir publicApi.js, documentée sur /api.
+const publicApi = require('./publicApi')({
+  db, priceTable, ITEM_CATS, rateLimit, clientIp, send, HttpError,
+  itemName: (id) => (ITEM_NAMES[id] ? { name: ITEM_NAMES[id][0], img: ITEM_NAMES[id][1] } : db.prepare('SELECT name, img FROM item_names WHERE id = ?').get(id)),
+});
 // Page d'un objet (/prices/<id>) : courbe du prix sur 24 h / 7 j / 30 j / tout (120 jours), par tranches de temps :
 // médiane, plus bas et plus haut de chaque tranche, nombre de relevés et de joueurs. Plus les stats de la page.
 const RANGES = { '24h': [86400000, 3600000], '7d': [7 * 86400000, 3 * 3600000], '30d': [30 * 86400000, 12 * 3600000], all: [120 * 86400000, 86400000] };
@@ -1016,7 +1021,7 @@ function serveDownload(req, res, name) {
 
 const PAGES = {
   '/': '/home.html', '/strategies': '/strategies.html', '/meta': '/meta.html',
-  '/download': '/download.html', '/prices': '/prices.html', '/pacts': '/pacts.html', '/guide': '/guide.html', '/account': '/account.html', '/planner': '/planner.html', '/privacy': '/privacy.html', '/terms': '/terms.html',
+  '/download': '/download.html', '/prices': '/prices.html', '/pacts': '/pacts.html', '/guide': '/guide.html', '/account': '/account.html', '/planner': '/planner.html', '/privacy': '/privacy.html', '/api': '/api.html', '/terms': '/terms.html',
 };
 // TOB, le planificateur façon POB (alpha publique, application d'une seule page) : servi sous /builds/, ses
 // propres routes renvoient vers son index.html ; les fichiers de assets/ ont un nom unique, donc gardés en
@@ -1076,6 +1081,8 @@ function serveStatic(req, res, pathname) {
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://localhost');
   try {
+    // API publique : pas de contrôle de version de l'app, ouverte aux autres sites (CORS).
+    if (publicApi(req, res, url)) return;
     if (url.pathname.startsWith('/api/')) {
       rateLimit('ip:' + clientIp(req), 600, 60000);
       checkClientVersion(req, url.pathname);
