@@ -12,7 +12,7 @@ $root = Split-Path $PSScriptRoot -Parent
 $ssh = @("-i", $Key, "-o", "IdentitiesOnly=yes")
 
 $tmp = Join-Path $env:TEMP "tli-server.tgz"
-$parts = @("server.js", "db.js", "sanitize.js", "ai.js", "titrack.js", "accounts.js", "social.js", "publicApi.js", "item_names_seed.json", "item_cats.json", "loot_pacts.json", "package.json", "public")
+$parts = @("server.js", "db.js", "sanitize.js", "ai.js", "titrack.js", "accounts.js", "social.js", "publicApi.js", "tobShare.js", "item_names_seed.json", "item_cats.json", "loot_pacts.json", "package.json", "public")
 # Extensions locales (non publiées) : envoyées si elles existent sur ce PC.
 if (Test-Path (Join-Path $root "local")) { $parts += "local" }
 tar -czf $tmp -C $root @parts

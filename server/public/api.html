@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>TLI Companion — Price API</title>
+<title>TLI Companion — API</title>
 <link rel="icon" type="image/svg+xml" href="/logo.svg">
 <link rel="stylesheet" href="/style.css">
 <style>
@@ -27,9 +27,9 @@
 <main class="legal">
 
 <div data-l="en">
-  <h1>Price API</h1>
+  <h1>TLI Companion API</h1>
   <p class="upd">Version 1 · free · no key needed</p>
-  <p>Auction House prices seen in game by TLI Companion players, for your site, bot or tool. Read only, open to every website (CORS), cached 10 minutes.</p>
+  <p>Auction House prices seen in game by TLI Companion players, and builds shared from the planner (see <a href="#builds">Shared builds</a>), for your site, bot or tool. Read only, open to every website (CORS), cached 10 minutes.</p>
   <ul>
     <li><b>Our prices only</b>: Auction House searches captured by TLI Companion players. Prices from other sources are not included.</li>
     <li><b>At least 3 players</b>: an item is listed only if at least 3 players saw its price in the last 7 days. A history day is listed only if 3 players saw it that day.</li>
@@ -96,14 +96,59 @@ const { items } = await r.json();
 const byId = Object.fromEntries(items.map((i) =&gt; [i.id, i]));
 console.log(byId[100200]?.price);</code></pre>
 
+  <h2 id="builds">Shared builds</h2>
+  <p>Builds shared from the <a href="/builds/">TLI Companion planner</a> (most of them imported straight from the game). A player clicks <b>Share</b> and gets a link like <code>https://tlicompanion.com/b/Ab3dEf7h</code>. The same build, as plain JSON:</p>
+  <pre><code>GET https://tlicompanion.com/api/public/v1/builds/Ab3dEf7h</code></pre>
+  <pre><code>{
+  "id": "Ab3dEf7h",
+  "url": "https://tlicompanion.com/b/Ab3dEf7h",
+  "sharedAt": "2026-10-28T12:00:00.000Z",
+  "updatedAt": "2026-10-28T12:00:00.000Z",
+  "tobCode": "…",               // code for the TLI Companion planner
+  "build": {
+    "format": "tlicompanion-build",
+    "version": 1,
+    "name": "Erika lightning",
+    "hero": { "name": "Cateye Erika: Wind Stalker (#1)", "traits": { "level1": "Wind Stalker", "level45": "…" } },
+    "memories": [ { "slot": "slot45", "type": "Memory of Origin", "rarity": "epic", "level": 40, "affixes": ["+90 Dexterity", "…"] } ],
+    "gear": [ { "slot": "helmet", "itemType": "Helmet (DEX)", "rarity": "legendary", "legendaryName": "Thunder Jawbone",
+                "baseName": null, "baseStats": ["+1615 gear Evasion"], "implicits": [], "prefixes": [], "suffixes": [],
+                "legendaryAffixes": ["+472 gear Evasion", "…"], "blend": [], "sweetDream": [], "towerSequence": [], "other": [] } ],
+    "skills": {
+      "active":  [ { "slot": 1, "name": "Thunder Slash", "level": 20, "enabled": true,
+                     "supports": [ { "slot": 1, "name": "Steamroll", "kind": "support", "level": 20 } ] } ],
+      "passive": [ … ]
+    },
+    "talents": [ { "slot": "tree1", "tree": "Goddess of Hunting", "points": 27, "coreTalents": ["Rushed"],
+                   "nodes": [ { "x": 1, "y": 1, "points": 3, "maxPoints": 3, "nodeType": "micro", "reflected": false,
+                                "effects": ["+9% Attack and Cast Speed", "+6% Movement Speed"] } ] } ],
+    "pactspirits": [ { "slot": "slot1", "name": "Kitty Express", "level": 6, "mainEffects": ["…"],
+                       "rings": [ { "ring": "innerRing1", "name": "Attack Critical Strike I", "destiny": null, "effects": ["…"] } ],
+                       "undeterminedFate": null } ],
+    "divinity": [ { "row": 0, "col": 2, "legendaryName": null, "god": "…", "shape": "L", "rotation": 0,
+                    "flippedH": false, "flippedV": false, "affixes": ["…"] } ],
+    "extraEffects": ["+8% Barrier Absorption Rate"],
+    "stats": { "maxLife": 2481, "dexterity": 1157, "fireResPct": 60, "…": "…" }
+  }
+}</code></pre>
+  <ul>
+    <li><b>Text as in the game</b>: names and every affix line are the English game texts, one string per line.</li>
+    <li><b>Talent nodes</b>: <code>x</code> = column from the left, <code>y</code> = row from the top, both starting at 0, as the tree is shown in game.</li>
+    <li><b><code>gear[].other</code></b>: lines without their own slot in the planner (corrupted lines, enchantments…).</li>
+    <li><b><code>extraEffects</code></b>: effects read from the game with no place in the planner (divinity slate effects…), or added by hand.</li>
+    <li><b><code>stats</code></b>: computed by the planner (no damage), to check an import. <code>null</code> if the build could not be computed.</li>
+    <li><b>Only what players choose to share</b>, and nothing from their account. An author can remove a share: the API then gives <code>404</code>.</li>
+    <li>Same rules as the price API: CORS open, version 1 stable (fields only added), 60 requests per minute.</li>
+  </ul>
+
   <h2>Contact</h2>
   <p>A question, a missing field, or you use this API? Tell us with the “Feedback” link at the bottom of the page.</p>
 </div>
 
 <div data-l="fr">
-  <h1>API des prix</h1>
+  <h1>API de TLI Companion</h1>
   <p class="upd">Version 1 · gratuite · sans clé</p>
-  <p>Les prix de l'hôtel des ventes vus en jeu par les joueurs de TLI Companion, pour ton site, ton bot ou ton outil. Lecture seule, ouverte à tous les sites (CORS), mise à jour toutes les 10 minutes.</p>
+  <p>Les prix de l'hôtel des ventes vus en jeu par les joueurs de TLI Companion, et les builds partagés depuis le planner (voir <a href="#builds">Builds partagés</a>), pour ton site, ton bot ou ton outil. Lecture seule, ouverte à tous les sites (CORS), mise à jour toutes les 10 minutes.</p>
   <ul>
     <li><b>Nos prix seulement</b> : les recherches à l'hôtel des ventes captées par les joueurs de TLI Companion. Les prix d'autres sources ne sont pas inclus.</li>
     <li><b>Au moins 3 joueurs</b> : un objet n'apparaît que si au moins 3 joueurs ont vu son prix ces 7 derniers jours. Un jour de l'historique n'apparaît que si 3 joueurs l'ont vu ce jour-là.</li>
@@ -128,6 +173,11 @@ console.log(byId[100200]?.price);</code></pre>
     <li>Les données changent au plus toutes les 10 minutes : inutile de demander plus souvent.</li>
     <li>Les erreurs arrivent sous la forme <code>{ "error": "…" }</code> avec un code <code>4xx</code>. Un objet inconnu, ou vu par moins de 3 joueurs, donne <code>404</code>.</li>
   </ul>
+
+  <h2 id="builds">Builds partagés</h2>
+  <p>Les builds partagés depuis le <a href="/builds/">planner de TLI Companion</a> (la plupart importés directement du jeu). Un joueur clique sur <b>Partager</b> et obtient un lien du type <code>https://tlicompanion.com/b/Ab3dEf7h</code>. Le même build en JSON :</p>
+  <pre><code>GET https://tlicompanion.com/api/public/v1/builds/Ab3dEf7h</code></pre>
+  <p>Renvoie <code>build</code> au format <code>tlicompanion-build</code> version 1 : héros et traits, souvenirs, équipement (chaque ligne d'affixe en texte anglais), compétences et soutiens, nœuds de talents (<code>x</code> = colonne, <code>y</code> = ligne, à partir de 0), pactes et leurs anneaux, tablettes de divinité, effets en plus et stats calculées (sans les dégâts). Le détail et un exemple sont dans la version anglaise de cette page. Seuls les builds que les joueurs choisissent de partager sont lisibles, sans rien de leur compte ; un partage retiré par son auteur donne <code>404</code>.</p>
 
   <h2>Contact</h2>
   <p>Une question, un champ qui manque, ou tu utilises cette API ? Dis-le-nous avec le lien « Donner mon avis » en bas de la page.</p>

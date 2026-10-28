@@ -7,7 +7,7 @@ const SITE = 'https://tlicompanion.com';
 const MIN_PLAYERS = 3;
 const CACHE_S = 600;
 
-module.exports = function ({ db, priceTable, itemName, ITEM_CATS, rateLimit, clientIp, send, HttpError }) {
+module.exports = function ({ db, priceTable, itemName, ITEM_CATS, rateLimit, clientIp, send, HttpError, TobShare }) {
   const CORS = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, OPTIONS',
@@ -89,6 +89,24 @@ module.exports = function ({ db, priceTable, itemName, ITEM_CATS, rateLimit, cli
     return body;
   }
 
+  // Build partagé depuis le TOB, au format ouvert « tlicompanion-build » v1 (voir openBuild.ts dans le TOB).
+  function sharedBuild(id) {
+    const row = TobShare && TobShare.get(id);
+    if (!row) throw new HttpError(404, 'unknown build, or removed by its author');
+    return {
+      id: row.id,
+      url: `${SITE}/b/${row.id}`,
+      source: 'TLI Companion',
+      sourceUrl: SITE,
+      docs: `${SITE}/api`,
+      sharedAt: new Date(row.created_at).toISOString(),
+      updatedAt: new Date(row.updated_at).toISOString(),
+      // Code du build pour le planner de TLI Companion (même format que Torchlight of Building).
+      tobCode: row.code,
+      build: JSON.parse(row.json),
+    };
+  }
+
   // Renvoie true si la requête était pour l'API publique (réponse envoyée).
   return function handle(req, res, url) {
     if (!url.pathname.startsWith('/api/public/')) return false;
@@ -102,12 +120,16 @@ module.exports = function ({ db, priceTable, itemName, ITEM_CATS, rateLimit, cli
       rateLimit('public:' + clientIp(req), 60, 60000);
       let body;
       let m;
+      let cache = `public, max-age=${CACHE_S}`;
       if (url.pathname === '/api/public/v1/prices') body = list();
       else if ((m = /^\/api\/public\/v1\/prices\/(\d{1,12})$/.exec(url.pathname))) {
         const days = Math.min(120, Math.max(1, Math.trunc(+url.searchParams.get('days')) || 30));
         body = item(+m[1], days);
+      } else if ((m = /^\/api\/public\/v1\/builds\/([A-Za-z0-9]{8})$/.exec(url.pathname))) {
+        body = sharedBuild(m[1]);
+        cache = 'no-cache'; // un build mis à jour ou retiré par son auteur doit changer tout de suite
       } else throw new HttpError(404, `unknown route, see ${SITE}/api`);
-      send(res, 200, body, { ...CORS, 'Cache-Control': `public, max-age=${CACHE_S}` });
+      send(res, 200, body, { ...CORS, 'Cache-Control': cache });
     } catch (e) {
       const status = e.status || 500;
       if (!e.status) console.error(new Date().toISOString(), 'public api', url.pathname, e);

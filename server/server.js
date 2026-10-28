@@ -919,9 +919,11 @@ function priceTable() {
   priceTableCache = { at: now, body: { updatedAt: now, items } };
   return priceTableCache.body;
 }
-// API publique des prix (autres sites) : voir publicApi.js, documentée sur /api.
+// Partage des builds du TOB (liens /b/<id>) : voir tobShare.js.
+const TobShare = require('./tobShare')({ db, route, readJson, rateLimit, clientIp, sha256, HttpError });
+// API publique (prix, builds partagés du TOB) pour les autres sites : voir publicApi.js, documentée sur /api.
 const publicApi = require('./publicApi')({
-  db, priceTable, ITEM_CATS, rateLimit, clientIp, send, HttpError,
+  db, priceTable, ITEM_CATS, rateLimit, clientIp, send, HttpError, TobShare,
   itemName: (id) => (ITEM_NAMES[id] ? { name: ITEM_NAMES[id][0], img: ITEM_NAMES[id][1] } : db.prepare('SELECT name, img FROM item_names WHERE id = ?').get(id)),
 });
 // Page d'un objet (/prices/<id>) : courbe du prix sur 24 h / 7 j / 30 j / tout (120 jours), par tranches de temps :
@@ -1091,6 +1093,7 @@ function serveStatic(req, res, pathname) {
   if (PAGES[pathname]) pathname = PAGES[pathname];
   else if (/^\/s\/[0-9a-f-]{36}$/.test(pathname)) pathname = '/strategy.html';
   else if (/^\/b\/[0-9a-f-]{36}$/.test(pathname)) pathname = '/build.html';
+  else if (/^\/b\/[A-Za-z0-9]{8}$/.test(pathname)) { res.writeHead(302, { Location: `/builds/?share=${pathname.slice(3)}` }); return res.end(); }
   else if (/^\/prices\/\d+$/.test(pathname)) pathname = '/price.html';
   // Les noms d'icônes contiennent des caractères encodés (%27, %28…).
   try { pathname = decodeURIComponent(pathname); } catch { return send(res, 400, 'bad path'); }
