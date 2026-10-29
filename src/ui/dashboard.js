@@ -1190,7 +1190,16 @@ const Bag = (() => {
     if (!v || tab !== 'bag') return;
     const d = await tli.bagScan({ min });
     if (!d.ready && !d.rows.length) {
-      v.innerHTML = `<div class="card bag-empty"><h2>${esc(t('bag.notReady'))}</h2><p class="muted">${esc(t('bag.notReadyHelp'))}</p></div>`;
+      // Diagnostic : le bon fichier ? le jeu y écrit-il ses infos (Enable Log) ? des lignes du sac ?
+      const g = d.log;
+      let why = '';
+      if (g && g.path) {
+        const age = g.writtenAt ? Date.now() - g.writtenAt : null;
+        const key = !g.game ? 'bag.diagNoGame' : age != null && age > 10 * 60000 ? 'bag.diagStale' : !g.bag ? 'bag.diagNoBag' : 'bag.diagSort';
+        why = `<p class="bag-diag"><b>${esc(t(key, { ago: age != null ? dur(age) : '?' }))}</b></p>
+          <p class="muted small">${esc(t('bag.diagFile'))} <code>${esc(g.path)}</code><br>${esc(t('bag.diagCounts', { lines: g.lines, game: g.game, bag: g.bag }))}</p>`;
+      }
+      v.innerHTML = `<div class="card bag-empty"><h2>${esc(t('bag.notReady'))}</h2><p class="muted">${esc(t('bag.notReadyHelp'))}</p>${why}</div>`;
       return;
     }
     const rows = filter === 'all' ? d.rows : d.rows.filter((r) => r.verdict === filter);

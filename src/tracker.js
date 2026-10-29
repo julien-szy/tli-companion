@@ -613,7 +613,8 @@ class Tracker extends EventEmitter {
     const countModes = this.settings.countModeTime !== false;
     const cut = countModes ? 0 : modeMs;
     mapTime = Math.max(0, mapTime - cut);
-    const realTime = Math.max(mapTime, now - s.startedAt - pausedMs - cut);
+    // Hors session de farm, rien n'est compté : pas de chrono non plus (il tournait depuis l'ouverture de l'app).
+    const realTime = s.recording ? Math.max(mapTime, now - s.startedAt - pausedMs - cut) : 0;
     const timeBase = this.settings.timeMode === 'map' ? mapTime : realTime;
     // Hors carte : actif (tri du sac, achats…) ou AFK (aucune activité > 3 min, y compris la pause en cours).
     const idleNow = !s.pausedAt && !s.currentRun && now - s.lastActivity > AFK_GAP_MS ? now - Math.max(s.lastActivity, s.startedAt) : 0;

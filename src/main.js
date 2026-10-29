@@ -131,6 +131,8 @@ async function syncServerPrices() {
   try { prices.setServerPrices(await community.fetchPrices()); } catch { /* idem */ }
 }
 let watcher = null;
+// Santé du log lu (pour expliquer un « sac inconnu ») : lignes lues, lignes du jeu, lignes du sac.
+let logHealth = { lines: 0, game: 0, bag: 0 };
 let status = { logPath: null, state: 'init', progress: 0, error: '', msgKey: null, msgVars: null };
 
 let overlay = null;
@@ -293,7 +295,13 @@ async function startWatching() {
 
   tracker.resetBag();
   tracker.replay = true;
-  watcher = new LogWatcher(file, (l) => parser.feed(l));
+  logHealth = { lines: 0, game: 0, bag: 0 };
+  watcher = new LogWatcher(file, (l) => {
+    logHealth.lines++;
+    if (l.includes('[Game]')) logHealth.game++;
+    if (l.includes('BagMgr@')) logHealth.bag++;
+    parser.feed(l);
+  });
   watcher.onRotate = () => { tracker.resetBag(); broadcast(); };
   try {
     const simulateMb = +(process.env.TLI_SIMULATE_MB || 0);
@@ -895,6 +903,12 @@ ipcMain.handle('priceHistory', async (_e, id, days) => {
   const it = items.get(id);
   return { id, name: it.name, img: it.img, days, now: prices.get(id), own, server };
 });
+// Pourquoi le sac est inconnu : fichier lu, dernière écriture du jeu, lignes du jeu et du sac vues.
+function logDiag() {
+  let writtenAt = null;
+  try { writtenAt = status.logPath ? fs.statSync(status.logPath).mtimeMs : null; } catch { /* absent */ }
+  return { path: status.logPath, writtenAt, ...logHealth };
+}
 ipcMain.handle('bagScan', (_e, opts) => {
   const min = Math.max(0, +((opts && opts.min) ?? 1) || 0);
   const STALE = 24 * 3600 * 1000; // prix non revu depuis plus d'un jour : à vérifier en jeu
@@ -932,6 +946,7 @@ ipcMain.handle('bagScan', (_e, opts) => {
   const total = (l) => l.reduce((x, r) => x + r.value, 0);
   return {
     ready: tracker.snapshotReady, fe: tracker.bagQty(FE_ID), hidden, min, rows, taxRate: tracker.taxRate(), pages,
+    log: tracker.snapshotReady ? null : logDiag(),
     totals: { all: total(rows), sell: total(sum('sell')), low: total(sum('low')) },
     staleSell: rows.filter((r) => r.verdict === 'sell' && (r.stale || !r.ts)).length,
     counts: { all: rows.length, sell: sum('sell').length, low: sum('low').length, noprice: sum('noprice').length, variable: sum('variable').length, bound: sum('bound').length, keep: sum('keep').length },
@@ -1017,7 +1032,10 @@ function statsGearView(g) {
   });
 }
 ipcMain.handle('getStats', () => {
-  const sum = stats.summary(Date.now(), tracker.snapshot().session.realTimeMs);
+  // XP/h « session » : temps de la session de farm, ou, sans session, temps depuis l'ouverture de l'app.
+  const now = Date.now();
+  const sessMs = tracker.session.recording ? tracker.snapshot().session.realTimeMs : Math.max(0, now - tracker.session.startedAt);
+  const sum = stats.summary(now, sessMs);
   // Compétences équipées, chaque sort avec ses soutiens : actifs 1 à 5 (soutiens N01 à N05), passifs
   // 1001 / 1007 / 1013 / 1019 (soutiens dans les 5 emplacements suivants).
   const KIND = { '辅助技能': 'support', '崇高辅助技能': 'noble', '华贵辅助技能': 'magnificent', '触媒技能': 'catalyst' };
