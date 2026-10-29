@@ -106,36 +106,50 @@ console.log(byId[100200]?.price);</code></pre>
     <tr><td>Erika Wind Stalker: full build imported from the game</td><td><a href="/b/mqjwf2F5">/b/mqjwf2F5</a></td><td><a href="/api/public/v1/builds/mqjwf2F5">JSON</a></td></tr>
     <tr><td>Almost empty build, to see empty fields and <code>null</code></td><td><a href="/b/MWnAqr4b">/b/MWnAqr4b</a></td><td><a href="/api/public/v1/builds/MWnAqr4b">JSON</a></td></tr>
   </table></div>
+  <p>Example (a build imported from the game, shortened with <code>…</code>):</p>
   <pre><code>{
   "id": "Ab3dEf7h",
   "url": "https://tlicompanion.com/b/Ab3dEf7h",
-  "sharedAt": "2026-10-28T12:00:00.000Z",
-  "updatedAt": "2026-10-28T12:00:00.000Z",
+  "sharedAt": "2026-10-29T12:00:00.000Z",
+  "updatedAt": "2026-10-29T12:00:00.000Z",
   "tobCode": "…",               // code for the TLI Companion planner
   "build": {
     "format": "tlicompanion-build",
     "version": 1,
-    "name": "Erika lightning",
-    "hero": { "name": "Cateye Erika: Wind Stalker (#1)", "traits": { "level1": "Wind Stalker", "level45": "…" } },
-    "memories": [ { "slot": "slot45", "type": "Memory of Origin", "rarity": "epic", "level": 40, "affixes": ["+90 Dexterity", "…"] } ],
-    "gear": [ { "slot": "helmet", "itemType": "Helmet (DEX)", "rarity": "legendary", "legendaryName": "Thunder Jawbone",
-                "baseName": null, "baseStats": ["+1615 gear Evasion"], "implicits": [], "prefixes": [], "suffixes": [],
-                "legendaryAffixes": ["+472 gear Evasion", "…"], "blend": [], "sweetDream": [], "towerSequence": [], "other": [] } ],
+    "name": "Erika corrosive",
+    "hero": { "name": "Cateye Erika: Wind Stalker (#1)",
+              "traits": { "level1": "Wind Stalker", "level45": "Have Fun", "level60": "Cat's Vision", "level75": "Cat's Punches" },
+              "gameIds": { "heroId": 700, "traits": [ { "name": "Have Fun", "level": 45, "id": 700012 }, … ] } },
+    "memories": [ { "slot": "slot45", "type": "Memory of Origin", "rarity": "rare", "level": 30,
+                    "affixes": ["+70 Dexterity", "+40% Critical Strike Rating", "…"],
+                    "gameIds": { "itemId": 71001,
+                                 "affixes": [ { "field": "affixes", "modId": 403102321, "values": [70], "lines": ["+70 Dexterity"] }, … ] } } ],
+    "gear": [ { "slot": "helmet", "itemType": "Helmet (DEX)", "rarity": "legendary", "legendaryName": "Blind Vision",
+                "baseName": "Secret Shadow's Mask", "baseStats": ["+1920 gear Evasion"], "implicits": [], "prefixes": [], "suffixes": [],
+                "legendaryAffixes": ["+229 Max Life", "…"], "blend": [], "sweetDream": [], "towerSequence": [], "other": [],
+                "gameIds": { "itemId": 3711, "legendaryId": 112212,
+                             "affixes": [ { "field": "baseStats", "modId": 590011, "values": [1920], "lines": ["+1920 gear Evasion"] },
+                                          { "field": "legendaryAffixes", "modId": 51421221, "values": [229], "lines": ["+229 Max Life"] }, … ] } } ],
     "skills": {
-      "active":  [ { "slot": 1, "name": "Thunder Slash", "level": 20, "enabled": true,
-                     "supports": [ { "slot": 1, "name": "Steamroll", "kind": "support", "level": 20 } ] } ],
+      "active":  [ { "slot": 1, "name": "Corrosive Throw", "level": 16, "enabled": true, "gameIds": { "itemId": 7060 },
+                     "supports": [ { "slot": 1, "name": "Activation Medium: Motionless", "kind": "activation_medium", "tier": 1,
+                                     "affixes": ["Auto-used supported skills +13% additional damage", "…"],
+                                     "gameIds": { "itemId": 8028, "affixes": [ { "field": "affixes", "modId": 771028010, "values": [13], "lines": ["…"] }, … ] } } ] } ],
       "passive": [ … ]
     },
-    "talents": [ { "slot": "tree1", "tree": "Goddess of Hunting", "points": 27, "coreTalents": ["Rushed"],
-                   "nodes": [ { "x": 1, "y": 1, "points": 3, "maxPoints": 3, "nodeType": "micro", "reflected": false,
-                                "effects": ["+9% Attack and Cast Speed", "+6% Movement Speed"] } ] } ],
-    "pactspirits": [ { "slot": "slot1", "name": "Kitty Express", "level": 6, "mainEffects": ["…"],
-                       "rings": [ { "ring": "innerRing1", "name": "Attack Critical Strike I", "destiny": null, "effects": ["…"] } ],
+    "talents": [ { "slot": "tree1", "tree": "Goddess of Hunting", "points": 29, "coreTalents": ["Third time's a charm", "Rushed"],
+                   "gameIds": { "careerId": 2, "coreTalents": [ { "name": "Rushed", "id": 20002100 }, … ] },
+                   "nodes": [ { "x": 4, "y": 0, "points": 3, "maxPoints": 3, "nodeType": "micro", "reflected": false,
+                                "effects": ["+9% Attack and Cast Speed"], "gameId": 20050100 } ] } ],
+    "pactspirits": [ { "slot": "slot2", "name": "Fog Scorpion", "level": 6, "mainEffects": ["…"], "gameIds": { "servantId": 1230 },
+                       "rings": [ { "ring": "innerRing1", "name": "Double Damage I", "destiny": { "type": "Micro Fate", "name": "Dexterity" },
+                                    "effects": ["+13 Dexterity"],
+                                    "gameIds": { "destinyItemId": 350008, "pointId": 201, "modId": 100350008, "values": [13] } } ],
                        "undeterminedFate": null } ],
-    "divinity": [ { "row": 0, "col": 2, "legendaryName": null, "god": "…", "shape": "L", "rotation": 0,
-                    "flippedH": false, "flippedV": false, "affixes": ["…"] } ],
-    "extraEffects": ["+8% Barrier Absorption Rate"],
-    "stats": { "maxLife": 2481, "dexterity": 1157, "fireResPct": 60, "…": "…" }
+    "divinity": [],
+    "extraEffects": ["+5% Dexterity", "…"],
+    "stats": { "maxLife": 1940, "dexterity": 398, "evasion": 14797, "…": "…" },
+    "game": { "source": "UE_game.log", "slates": [ { "talentIds": [24040500, 20060500, …] } ] }
   }
 }</code></pre>
   <ul>
@@ -149,20 +163,7 @@ console.log(byId[100200]?.price);</code></pre>
   </ul>
 
   <h3 id="game-ids">Game IDs (<code>gameIds</code>)</h3>
-  <p>When a build was imported from the game log, each part also carries the <b>game's own IDs</b>, so you can match it against your data by number instead of comparing texts. An ID is only given for parts that are unchanged since the import: if the player edits an item or a skill by hand, that part gets <code>gameIds: null</code>. Builds made by hand have <code>null</code> everywhere and <code>build.game: null</code>.</p>
-  <pre><code>"gear": [ { "slot": "helmet", "legendaryName": "…", "legendaryAffixes": ["+229 Max Life", "…"],
-            "gameIds": { "itemId": 3711, "legendaryId": 112212,
-                         "affixes": [ { "field": "legendaryAffixes", "modId": 51421221, "values": [229], "lines": ["+229 Max Life"] } ] } } ],
-"skills":  { "active": [ { "name": "Corrosive Throw", "gameIds": { "itemId": 7060 },
-                           "supports": [ { "name": "Activation Medium: Motionless", "gameIds": { "itemId": 8028, "affixes": [ … ] } } ] } ] },
-"hero":    { "gameIds": { "heroId": 700, "traits": [ { "name": "Have Fun", "level": 45, "id": 700012 } ] } },
-"memories": [ { "slot": "slot45", "gameIds": { "itemId": 71001, "affixes": [ … ] } } ],
-"talents": [ { "tree": "Goddess of Hunting", "gameIds": { "careerId": 2, "coreTalents": [ { "name": "Rushed", "id": 20002100 } ] },
-               "nodes": [ { "x": 4, "y": 0, "gameId": 20050100, "…": "…" } ] } ],
-"pactspirits": [ { "name": "Fog Scorpion", "gameIds": { "servantId": 1230 },
-                   "rings": [ { "ring": "innerRing1", "destiny": { "type": "Micro Fate", "name": "Dexterity" },
-                                "gameIds": { "destinyItemId": 350008, "pointId": 201, "modId": 100350008, "values": [13] } } ] } ],
-"game": { "source": "UE_game.log", "slates": [ { "talentIds": [ … ] } ] }</code></pre>
+  <p>When a build was imported from the game log, each part also carries the <b>game's own IDs</b> (the <code>gameIds</code> fields in the example above), so you can match it against your data by number instead of comparing texts. An ID is only given for parts that are unchanged since the import: if the player edits an item or a skill by hand, that part gets <code>gameIds: null</code>. Builds made by hand have <code>null</code> everywhere and <code>build.game: null</code>.</p>
   <ul>
     <li><b><code>modId</code></b>: the game's modifier ID of an affix, with its rolled <code>values</code> as the game sends them, and the text <code>lines</code> it gives. <code>field</code> says which list the lines are in (<code>baseStats</code>, <code>prefixes</code>, <code>suffixes</code>, <code>legendaryAffixes</code>, <code>other</code>…). An affix unknown to tlidb still has its <code>modId</code>, with empty <code>lines</code>.</li>
     <li><b><code>itemId</code></b>: the game's base ID of the item, skill or memory. <code>legendaryId</code>: the legendary's own ID.</li>
