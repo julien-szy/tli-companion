@@ -42,6 +42,7 @@ contextBridge.exposeInMainWorld('tli', {
   aiChat: (messages) => ipcRenderer.invoke('aiChat', messages),
   openExternal: (url) => ipcRenderer.invoke('openExternal', url),
   openSupport: () => ipcRenderer.invoke('openSupport'),
+  openDiscord: () => ipcRenderer.invoke('openDiscord'),
   searchItems: (q) => ipcRenderer.invoke('searchItems', q),
   listBuilds: () => ipcRenderer.invoke('listBuilds'),
   getBuild: (id) => ipcRenderer.invoke('getBuild', id),

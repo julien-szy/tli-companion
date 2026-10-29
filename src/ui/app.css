@@ -1007,3 +1007,5 @@ tr.hdet > td { background: rgba(255,255,255,.02); padding: 8px 12px 12px; }
 /* Pactes de loot : note « rempli depuis ta collection » et invitation à se connecter. */
 .lp-note { margin: 6px 0 4px; padding: 6px 10px; border-radius: 8px; background: rgba(95,211,141,.1); color: var(--pos, #5fd38d); font-size: 12.5px; }
 .lp-login { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-top: 10px; padding: 8px 10px; border-radius: 8px; border: 1px solid rgba(255,138,61,.45); background: rgba(255,138,61,.07); font-size: 12.5px; }
+/* Bouton Discord de la barre latérale. */
+aside.side .util.discord svg { color: #7983f5; }

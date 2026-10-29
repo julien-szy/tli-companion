@@ -1052,11 +1052,13 @@ ipcMain.handle('getStats', () => {
 });
 // Liens externes autorisés : uniquement les pages de classe tlidb.
 const SUPPORT_URL = 'https://buymeacoffee.com/snoopiisz';
+const DISCORD_URL = 'https://discord.gg/QCX2XN6BCp'; // serveur Discord TLI Companion (invitation permanente)
 ipcMain.handle('openExternal', (_e, url) => {
   if (typeof url === 'string' && /^https:\/\/tlidb\.com\/en\/[\w-]+$/.test(url)) shell.openExternal(url);
 });
 // Page de soutien du projet (lien fixe, jamais fourni par la page).
 ipcMain.handle('openSupport', () => shell.openExternal(SUPPORT_URL));
+ipcMain.handle('openDiscord', () => shell.openExternal(DISCORD_URL));
 ipcMain.handle('searchItems', (_e, q) => (q ? items.search(q, 40) : []).map((id) => ({ id, ...items.get(id), price: prices.value(id) })));
 ipcMain.handle('listBuilds', () => builds.list().map((b) => ({
   id: b.id, title: b.title, heroKey: b.heroKey, steps: b.steps.length, updatedAt: b.updatedAt,

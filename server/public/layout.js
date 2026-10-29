@@ -147,6 +147,7 @@ window.SITE_STR = {
 };
 
 const SUPPORT_URL = 'https://buymeacoffee.com/snoopiisz';
+const DISCORD_URL = 'https://discord.gg/QCX2XN6BCp';
 
 // Thème clair (bouton ☀/🌙 de l'en-tête, gardé dans ce navigateur) : feuilles de style claires générées
 // par scripts/lighttheme.js, ajoutées après les sombres.
@@ -173,7 +174,7 @@ function renderLayout() {
     header.innerHTML = `
       <a class="brand" href="/"><img class="logo" src="/logo.svg" alt="">TLI Companion</a>
       <nav>${link('/', 'navHome', 'home')}${link('/meta', 'navMeta', 'meta')}${link('/builds/', 'navBuilds', 'builds')}${link('/strategies', 'navStrategies', 'strategies')}${link('/prices', 'navPrices', 'prices')}${link('/pacts', 'navPacts', 'pacts')}${link('/guide', 'navGuide', 'guide')}${link('/download', 'navDownload', 'download')}${link('/api', 'navApi', 'api')}</nav>
-      <div class="right"><a class="btn coffee" href="${SUPPORT_URL}" target="_blank" rel="noopener">☕ ${esc(t('supButton'))}</a><button class="lang" id="themeSwitch"></button><button class="lang" id="langSwitch"></button><a class="btn" id="accBtn" href="/account">${esc(t('navAccount'))}</a></div>`;
+      <div class="right"><a class="btn discord" href="${DISCORD_URL}" target="_blank" rel="noopener" title="Discord"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.3 4.4A19.8 19.8 0 0 0 15.4 3l-.6 1.3a18.4 18.4 0 0 0-5.6 0L8.6 3a19.7 19.7 0 0 0-4.9 1.5C.6 9.1-.3 13.6.1 18.1a19.9 19.9 0 0 0 6 3l1.3-2.1a12.9 12.9 0 0 1-2-1l.5-.4a14.2 14.2 0 0 0 12.2 0l.5.4c-.6.4-1.3.7-2 1l1.3 2.1a19.8 19.8 0 0 0 6-3c.5-5.2-.8-9.7-3.6-13.7zM8.3 15.4c-1.2 0-2.2-1.1-2.2-2.4s1-2.4 2.2-2.4 2.2 1.1 2.2 2.4-1 2.4-2.2 2.4zm7.4 0c-1.2 0-2.2-1.1-2.2-2.4s1-2.4 2.2-2.4 2.2 1.1 2.2 2.4-1 2.4-2.2 2.4z"/></svg><span>Discord</span></a><a class="btn coffee" href="${SUPPORT_URL}" target="_blank" rel="noopener">☕ ${esc(t('supButton'))}</a><button class="lang" id="themeSwitch"></button><button class="lang" id="langSwitch"></button><a class="btn" id="accBtn" href="/account">${esc(t('navAccount'))}</a></div>`;
     document.getElementById('themeSwitch').onclick = () => setTheme(!isLight());
     setTheme(isLight());
     // Connecté (bêta) : le bouton Compte affiche le pseudo.
@@ -183,7 +184,7 @@ function renderLayout() {
     }).catch(() => {});
   }
   const footer = document.querySelector('footer.site');
-  if (footer) footer.innerHTML = `<div style="margin-bottom:8px"><a href="${SUPPORT_URL}" target="_blank" rel="noopener" style="color:#ffdd00">☕ ${esc(t('supFooter'))}</a></div><div>${esc(t('footerLine'))} · <a href="https://github.com/julien-szy/tli-companion" target="_blank" rel="noopener">${esc(t('openSource'))}</a></div><div>${esc(t('footerCredits'))}</div><div style="margin-top:6px"><a href="/privacy">${LANG === 'fr' ? 'Confidentialité' : 'Privacy'}</a> · <a href="/terms">${LANG === 'fr' ? "Conditions d'utilisation" : 'Terms of use'}</a> · <a href="/api">${LANG === 'fr' ? 'API des prix' : 'Price API'}</a></div><div id="appVer" style="margin-top:8px"></div>`;
+  if (footer) footer.innerHTML = `<div style="margin-bottom:8px"><a href="${SUPPORT_URL}" target="_blank" rel="noopener" style="color:#ffdd00">☕ ${esc(t('supFooter'))}</a></div><div>${esc(t('footerLine'))} · <a href="https://github.com/julien-szy/tli-companion" target="_blank" rel="noopener">${esc(t('openSource'))}</a></div><div>${esc(t('footerCredits'))}</div><div style="margin-top:6px"><a href="/privacy">${LANG === 'fr' ? 'Confidentialité' : 'Privacy'}</a> · <a href="/terms">${LANG === 'fr' ? "Conditions d'utilisation" : 'Terms of use'}</a> · <a href="/api">${LANG === 'fr' ? 'API des prix' : 'Price API'}</a> · <a href="${DISCORD_URL}" target="_blank" rel="noopener">Discord</a></div><div id="appVer" style="margin-top:8px"></div>`;
   // Lien « Donner mon avis » (formulaire texte seul, voir openFeedback).
   const fbl = document.createElement('div');
   fbl.style.marginTop = '6px';

@@ -55,6 +55,7 @@ function showTab(name) {
 }
 document.querySelectorAll('aside.side button[data-grp]').forEach((b) => (b.onclick = () => showGroup(b.dataset.grp)));
 $('supportBtn').onclick = () => tli.openSupport();
+$('discordBtn').onclick = () => tli.openDiscord();
 // « Donner mon avis » : texte brut seulement (type, message, contact obligatoire pour pouvoir répondre), envoyé à tlicompanion.com.
 $('feedbackBtn').onclick = () => {
   modal(`<h1>${esc(t('fb.title'))}</h1>

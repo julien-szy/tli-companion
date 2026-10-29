@@ -452,5 +452,10 @@ table[data-pacts="hide"] .lp-tiles.sm { display: none; }
 .gd-stage-a .btn { padding: 5px 12px; font-size: 13px; }
 @media (max-width: 760px) { .gd-tracks { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 @media (max-width: 420px) { .gd-tracks { grid-template-columns: repeat(3, minmax(0, 1fr)); } .gd-track span { font-size: 12px; } }
+/* Bouton Discord de l'en-tête. */
+header.site .btn.discord { background: #5865f2; border-color: #5865f2; color: #141414; }
+header.site .btn.discord:hover { background: #4752c4; border-color: #4752c4; }
+header.site .btn.discord svg { width: 18px; height: 18px; }
+@media (max-width: 760px) { header.site .btn.discord span { display: none; } }
 
 html { color-scheme: light; }
