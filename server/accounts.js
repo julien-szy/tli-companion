@@ -253,7 +253,7 @@ module.exports = function setupAccounts({ db, route, HttpError, sha256, clientIp
     rateLimit('progress:' + u.id, 300, 3600000);
     const b = await readJson(req);
     const out = {};
-    for (const [k, v] of Object.entries(b.progress && typeof b.progress === 'object' ? b.progress : {}).slice(0, 300)) {
+    for (const [k, v] of Object.entries(b.progress && typeof b.progress === 'object' ? b.progress : {}).slice(0, 600)) { // 390 tâches dans Path of Progression
       if (/^[a-z0-9_-]{1,40}$/.test(k) && Number.isFinite(v) && v > 0) out[k] = Math.trunc(v);
     }
     db.prepare('UPDATE users SET progress = ? WHERE id = ?').run(JSON.stringify(out), u.id);

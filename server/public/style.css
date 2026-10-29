@@ -433,3 +433,21 @@ table[data-pacts="hide"] .lp-tiles.sm { display: none; }
 .rt-flag.short { color: #c9cdd6; background: rgba(139,143,152,.14); border: 1px solid rgba(139,143,152,.35); }
 .title .rt-flag { font-size: 12px; }
 .rt-why { font-size: 13px; font-weight: 400; margin-top: 6px; line-height: 1.5; }
+/* Guide Path of Progression : onglets des 7 parcours, récompenses des tâches. */
+.gd-tracks { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; margin-bottom: 14px; }
+.gd-track { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 6px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); color: var(--text); font: inherit; cursor: pointer; text-align: center; }
+.gd-track span { font-size: 13px; color: var(--muted); }
+.gd-track b { font-size: 18px; }
+.gd-track:hover { border-color: var(--accent); }
+.gd-track.on { border-color: var(--accent); background: rgba(255,138,61,.1); }
+.gd-track.on span { color: var(--text); }
+.gd-track.full b { color: var(--pos, #4caf7a); }
+.gd-phase.full h2 { color: var(--muted); }
+.gd-chest { margin: 0 0 6px; }
+.gd-rew { display: inline-block; font-size: 12px; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); margin-top: 3px; }
+.gd-rew.talent, .gd-rew.star { color: var(--accent); border-color: rgba(255,138,61,.5); }
+.gd-rew.buff { color: #8fb8ff; border-color: rgba(143,184,255,.45); }
+.gd-stage-a { display: flex; justify-content: flex-end; padding-top: 8px; border-top: 1px solid var(--line); }
+.gd-stage-a .btn { padding: 5px 12px; font-size: 13px; }
+@media (max-width: 760px) { .gd-tracks { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 420px) { .gd-tracks { grid-template-columns: repeat(3, minmax(0, 1fr)); } .gd-track span { font-size: 12px; } }
