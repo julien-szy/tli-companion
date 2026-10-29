@@ -5,6 +5,18 @@
   },
   "releases": [
     {
+      "version": "1.1.7",
+      "date": "2026-10-29",
+      "en": [
+        "Settings: new \"Choose the game folder\" button. Pick where Torchlight Infinite is installed (any drive, Steam or launcher) and the app finds the log in it every time.",
+        "New Discord button: join the TLI Companion Discord for help, bug reports and ideas."
+      ],
+      "fr": [
+        "Réglages : nouveau bouton « Choisir le dossier du jeu ». Indique où Torchlight Infinite est installé (n'importe quel disque, Steam ou launcher) et l'app y retrouve le log à chaque fois.",
+        "Nouveau bouton Discord : rejoins le Discord de TLI Companion pour l'aide, les bugs et les idées."
+      ]
+    },
+    {
       "version": "1.1.6",
       "date": "2026-10-29",
       "en": [
