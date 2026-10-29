@@ -144,7 +144,15 @@ class Tracker extends EventEmitter {
     s.pausedAt = null; s.pauseAuto = false;
     this.emit('changed');
   }
-  togglePause() { if (this.session.pausedAt) this.resume(); else this.pause(false); }
+  // Reprise au bouton = activité : sinon, au repaire après plus de 3 min de pause, la pause auto se remettait
+  // aussitôt (calculée depuis la dernière activité d'avant la pause).
+  togglePause() {
+    const s = this.session;
+    if (!s.pausedAt) return this.pause(false);
+    const now = Date.now();
+    this.resume(now);
+    if (now > s.lastActivity) s.lastActivity = now;
+  }
   pausedTotal(now = Date.now()) { const s = this.session; return s.pausedMs + (s.pausedAt ? Math.max(0, now - s.pausedAt) : 0); }
   autoPauseCheck(now = Date.now()) {
     const s = this.session;
