@@ -55,15 +55,31 @@ function gameDirs() {
   return found;
 }
 
-function findLogPath(custom) {
+// Dossier du jeu choisi à la main : on accepte le dossier du jeu, un dossier au-dessus (launcher : le jeu est
+// dans un sous-dossier) ou n'importe quel dossier à l'intérieur (dans UE_game).
+function resolveGameDir(p) {
+  if (!p) return null;
+  if (isDir(path.join(p, 'UE_game'))) return p;
+  const parts = path.resolve(p).split(path.sep);
+  const i = parts.findIndex((x) => x.toLowerCase() === 'ue_game');
+  if (i > 0) return parts.slice(0, i).join(path.sep) || null;
+  for (const sub of list(p)) {
+    if (isDir(path.join(sub, 'UE_game'))) return sub;
+    for (const sub2 of list(sub)) if (isDir(path.join(sub2, 'UE_game'))) return sub2;
+  }
+  return null;
+}
+
+function findLogPath(custom, gameDir) {
   const candidates = [];
   if (custom) candidates.push(custom, path.join(custom, 'UE_game.log'), path.join(custom, LOG_REL));
+  if (gameDir) candidates.push(path.join(gameDir, LOG_REL));
   for (const g of gameDirs()) candidates.push(path.join(g, LOG_REL));
   return candidates.find(isFile) || null;
 }
 // Jeu trouvé mais pas de log : « Enable Log » n'est pas activé (ou le jeu n'a pas encore été relancé).
-function findGameDir() {
-  return gameDirs()[0] || null;
+function findGameDir(chosen) {
+  return (chosen && isDir(path.join(chosen, 'UE_game')) ? chosen : null) || gameDirs()[0] || null;
 }
 function expectedLogDir(gameDir) { return path.join(gameDir, path.dirname(LOG_REL)); }
 
@@ -144,4 +160,4 @@ class LogWatcher {
   }
 }
 
-module.exports = { findGameDir, expectedLogDir, LogWatcher, findLogPath };
+module.exports = { findGameDir, expectedLogDir, LogWatcher, findLogPath, resolveGameDir };

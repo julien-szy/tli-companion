@@ -140,7 +140,8 @@ const Home = (() => {
         <ol><li>${esc(t('h.setup1'))}</li><li>${esc(t('h.setup2'))}</li><li>${esc(t('h.setup3'))}</li></ol>
         <p class="muted" style="margin-top:10px">${esc(t('h.logWhere'))}<br><code class="path">${esc(st.expectedLog || t('h.logExample'))}</code></p>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
-          <button class="btn primary" id="hPickLog">${esc(t('h.pickLog'))}</button>
+          <button class="btn primary" id="hPickGame">${esc(t('btn.pickGame'))}</button>
+          <button class="btn" id="hPickLog">${esc(t('h.pickLog'))}</button>
           ${st.gameDir ? `<button class="btn" id="hOpenLog">${esc(t('h.openLogDir'))}</button>` : ''}
           <span class="muted" style="align-self:center;font-size:12px">${esc(t('h.autoRetry'))}</span></div></div>` : '';
     const timeMs = s.timeMode === 'map' ? ss.mapTimeMs : ss.realTimeMs;
@@ -209,6 +210,7 @@ const Home = (() => {
     root().querySelectorAll('[data-go]').forEach((b) => (b.onclick = () => showTab(b.dataset.go)));
     root().querySelectorAll('[data-build]').forEach((b) => (b.onclick = () => { Build.focus(b.dataset.build); showTab('bfollow'); }));
     if ($('hPickLog')) $('hPickLog').onclick = () => tli.action('pickLog');
+    if ($('hPickGame')) $('hPickGame').onclick = () => tli.action('pickGame');
     if ($('hOpenLog')) $('hOpenLog').onclick = () => tli.action('openLogDir');
     bindCarousel();
     $('hFarm').onclick = () => tli.action(s.recording ? 'stopFarm' : 'startFarm');

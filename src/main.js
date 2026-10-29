@@ -7,7 +7,7 @@ const { LogParser } = require('./parser');
 const { Tracker, zoneLabel, TARTARUS_ENTRY, TARTARUS_MAX, STAR_MAX } = require('./tracker');
 const { StatsBook } = require('./stats');
 const { ItemDb, PriceBook } = require('./prices');
-const { LogWatcher, findLogPath, findGameDir, expectedLogDir } = require('./logwatcher');
+const { LogWatcher, findLogPath, findGameDir, expectedLogDir, resolveGameDir } = require('./logwatcher');
 const { JsonStore } = require('./store');
 const { buildReport } = require('./report');
 const { CommunityClient } = require('./community');
@@ -53,6 +53,7 @@ function gameNamed(cat, id) {
 
 const DEFAULTS = {
   logPath: null,
+  gameDir: null, // dossier du jeu choisi à la main (le log est cherché dedans à chaque lancement)
   lang: 'en',            // langue de l'interface : 'en' (défaut) ou 'fr'
   theme: 'dark',         // thème de la fenêtre principale : 'dark' (défaut) ou 'light' (le widget reste sombre)
   mode: 'farm',          // 'farm' = loot en carte - coût des cartes ; 'all' = tout ce qui entre/sort du sac
@@ -285,9 +286,9 @@ function stopFarm(title, open = true) {
 
 async function startWatching() {
   if (watcher) watcher.stop();
-  const file = process.env.TLI_NOLOG ? null : findLogPath(settings.logPath); // TLI_NOLOG : test de l'aide
+  const file = process.env.TLI_NOLOG ? null : findLogPath(settings.logPath, settings.gameDir); // TLI_NOLOG : test de l'aide
   // Pas de log : jeu trouvé (= « Enable Log » pas activé) ou jeu introuvable (= choisir le fichier à la main).
-  const gameDir = file ? null : findGameDir();
+  const gameDir = file ? null : findGameDir(settings.gameDir);
   status = { ...status, logPath: file, gameDir, expectedLog: gameDir ? path.join(expectedLogDir(gameDir), 'UE_game.log') : null,
     state: file ? 'loading' : 'nolog', progress: 0, error: '' };
   broadcast();
@@ -1898,6 +1899,18 @@ ipcMain.handle('action', async (_e, name, arg) => {
         properties: ['openFile'], filters: [{ name: 'Log', extensions: ['log'] }],
       });
       if (!r.canceled && r.filePaths[0]) { settings.logPath = r.filePaths[0]; saveSettings(); await startWatching(); }
+      break;
+    }
+    case 'pickGame': {
+      const r = await dialog.showOpenDialog(dashboard || overlay, { title: tr()('dlg.pickGame'), properties: ['openDirectory'] });
+      if (r.canceled || !r.filePaths[0]) break;
+      const dir = resolveGameDir(r.filePaths[0]);
+      if (!dir) {
+        await dialog.showMessageBox(dashboard || overlay, { type: 'warning', message: tr()('dlg.noGame'), detail: r.filePaths[0] });
+        break;
+      }
+      // Le dossier du jeu remplace un fichier choisi avant : le log est retrouvé dedans à chaque lancement.
+      settings.gameDir = dir; settings.logPath = null; saveSettings(); await startWatching();
       break;
     }
   }

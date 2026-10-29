@@ -551,6 +551,7 @@ async function doShare(id) {
 ['fLoot', 'fCost', 'fOther', 'fText'].forEach((id) => ($(id).oninput = () => refresh(true)));
 $('newSession').onclick = () => tli.action('newSession');
 $('pickLog').onclick = () => tli.action('pickLog');
+$('pickGame').onclick = () => tli.action('pickGame');
 $('sMode').onchange = (e) => tli.action('mode', e.target.value);
 $('sTime').onchange = (e) => tli.action('timeMode', e.target.value);
 $('sModeTime').onchange = (e) => tli.action('countModeTime', e.target.checked);
