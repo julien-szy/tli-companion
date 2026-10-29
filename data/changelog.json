@@ -5,6 +5,16 @@
   },
   "releases": [
     {
+      "version": "1.1.5",
+      "date": "2026-10-29",
+      "en": [
+        "Farm session: pressing Play after a long pause in your hideout works again. The automatic pause no longer comes back right away."
+      ],
+      "fr": [
+        "Session de farm : appuyer sur Play après une longue pause au repaire remarche. La pause automatique ne se remet plus aussitôt."
+      ]
+    },
+    {
       "version": "1.1.4",
       "date": "2026-10-28",
       "en": [
