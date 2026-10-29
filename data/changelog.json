@@ -5,6 +5,18 @@
   },
   "releases": [
     {
+      "version": "1.1.6",
+      "date": "2026-10-29",
+      "en": [
+        "Session time: the timer no longer runs when no farm session is started.",
+        "Analyze my bag: when your bag is not synced, the app now tells you why (wrong log file, Enable Log turned off in game, or bag not sorted yet) and which file it reads."
+      ],
+      "fr": [
+        "Temps de session : le chrono ne tourne plus quand aucune session de farm n'est lancée.",
+        "Analyser mon sac : quand ton sac n'est pas synchronisé, l'app te dit maintenant pourquoi (mauvais fichier de log, Enable Log désactivé en jeu, ou sac pas encore trié) et quel fichier elle lit."
+      ]
+    },
+    {
       "version": "1.1.5",
       "date": "2026-10-29",
       "en": [
