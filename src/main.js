@@ -9,7 +9,7 @@ const { StatsBook } = require('./stats');
 const { ItemDb, PriceBook } = require('./prices');
 const { LogWatcher, findLogPath, findGameDir, expectedLogDir, resolveGameDir } = require('./logwatcher');
 const { JsonStore } = require('./store');
-const { buildReport } = require('./report');
+const { buildReport, setReportPrice, addReportLoot, removeReportLoot, sharedView, publicView } = require('./report');
 const { CommunityClient } = require('./community');
 const { BuildStore, cleanBuild, publicBuild, advise } = require('./builds');
 const Meta = require('./meta');
@@ -236,14 +236,16 @@ async function sendFarmStats(report) {
   if (!settings.shareFarmStats || !report || report.statsSent) return false;
   const t = report.totals;
   if (t.runs < 3 || t.realMs < 5 * 60000) return false;
+  // Prix du marché seulement : les prix tapés par le joueur et le loot ajouté à la main restent sur son PC.
+  const sv = sharedView(report);
   const body = {
     id: report.id, anonId: settings.anonId,
     heroId: report.hero ? report.hero.id : null,
     mainMap: report.strategy.maps[0] ? report.strategy.maps[0].name : null,
     strategyTag: report.strategyTag || null,
     server: report.context ? report.context.server : null, season: report.context ? report.context.season : null,
-    runs: t.runs, realMs: t.realMs, mapMs: t.mapMs, afkMs: t.afkMs || 0, profit: t.profit, perHour: t.perHourReal,
-    loot: report.loot.map((i, k) => ({ id: i.id, qty: i.qty, unit: i.unit, ...(k < 40 ? { name: i.name, img: i.img } : {}) })),
+    runs: t.runs, realMs: t.realMs, mapMs: t.mapMs, afkMs: t.afkMs || 0, profit: sv.profit, perHour: sv.perHour,
+    loot: sv.loot.map((i, k) => ({ id: i.id, qty: i.qty, unit: i.unit, ...(k < 40 ? { name: i.name, img: i.img } : {}) })),
     // Mécanique de farm : modificateurs de carte (talents Netherrealm, compas, sondes…) et leur fréquence par carte.
     modifiers: (report.strategy.modifiers || []).filter((m) => m.desc).slice(0, 25).map((m) => ({ id: m.id, desc: m.desc, perMap: m.perMap })),
     consumables: report.strategy.consumables.map((c) => ({ id: c.id, name: c.name, img: c.img, qty: c.qty, unit: c.unit })),
@@ -588,6 +590,10 @@ function autoStatsFlush() {
     for (const id in r.loot) loot[id] = (loot[id] || 0) + r.loot[id];
     for (const id in r.cost) cost[id] = (cost[id] || 0) + r.cost[id];
   }
+  // Stats partagées : prix du marché seulement (sans prix manuels ni prix de session).
+  return tracker.withMarket(() => autoStatsSend(runs, first, realMs, mapMs, loot, cost));
+}
+function autoStatsSend(runs, first, realMs, mapMs, loot, cost) {
   const profit = tracker.lootValueOf(loot) + tracker.valueOf(cost);
   const heroes = {};
   for (const r of runs) if (r.heroId != null) heroes[r.heroId] = (heroes[r.heroId] || 0) + 1;
@@ -1209,7 +1215,8 @@ ipcMain.handle('shareReport', async (_e, id) => {
   const r = loadJson(reportPath(id), null);
   if (!r) throw new Error('session not found');
   if (r.hero) r.hero.name = tracker.heroName(r.hero.id); // nom donné à la classe depuis
-  const { prices: _p, shared: _s, ...payload } = r;
+  // Prix tapés à la main et loot ajouté à la main : jamais publiés (prix du marché seulement).
+  const { prices: _p, shared: _s, ...payload } = publicView(r);
   const res = await community.share({ ...payload, prices: _p });
   r.shared = { url: community.siteUrl(res.url), at: Date.now() };
   saveReport(r);
@@ -1329,6 +1336,30 @@ ipcMain.handle('updateReport', (_e, id, patch) => {
   saveReport(r);
   return r;
 });
+// Prix d'un drop (cette session seulement) et loot ajouté à la main, dans une session enregistrée.
+ipcMain.handle('reportPrice', (_e, id, itemId, price) => {
+  const r = loadJson(reportPath(id), null);
+  if (!r || !setReportPrice(r, itemId, price)) return null;
+  saveReport(r);
+  return r;
+});
+ipcMain.handle('reportAddLoot', (_e, id, it) => {
+  const r = loadJson(reportPath(id), null);
+  if (!r || !it || !items.known(+it.id)) return null;
+  const known = items.get(+it.id);
+  addReportLoot(r, { id: +it.id, name: known.name, img: known.img, qty: it.qty, price: it.price });
+  saveReport(r);
+  return r;
+});
+ipcMain.handle('reportRemoveLoot', (_e, id, key) => {
+  const r = loadJson(reportPath(id), null);
+  if (!r || !removeReportLoot(r, key)) return null;
+  saveReport(r);
+  return r;
+});
+// Prix d'un objet pour la session de farm en cours seulement.
+ipcMain.handle('sessionPrice', (_e, itemId, price) => { tracker.setSessionPrice(itemId, price); saveLiveSession(); broadcast(); });
+ipcMain.handle('unpricedLoot', () => tracker.itemList(Object.fromEntries(tracker.unpriced().map((id) => [id, tracker.session.loot[id]]))));
 ipcMain.handle('deleteReport', (_e, id) => { try { fs.unlinkSync(reportPath(id)); } catch { /* déjà supprimé */ } });
 // Associe le numéro de héros du jeu à une classe/trait de la liste (ou à un nom libre).
 ipcMain.handle('setHeroName', (_e, heroId, value) => {
@@ -1767,6 +1798,17 @@ ipcMain.handle('action', async (_e, name, arg) => {
     case 'shortcut': return setShortcut(arg);
     case 'resetShortcuts': settings.shortcuts = { ...DEFAULTS.shortcuts }; registerShortcuts(); saveSettings(); buildTrayMenu(); broadcast(); break;
     case 'collapse': setCollapsed(arg ?? !settings.overlay.collapsed); break;
+    // Menu ⋯ du widget réduit : la fenêtre grandit le temps qu'il est ouvert (0 = taille normale).
+    case 'menuSpace': {
+      if (!overlay || overlay.isDestroyed() || !settings.overlay.collapsed) break;
+      const size = widgetSize();
+      const s = settings.overlay.scale;
+      const h = Math.max(size.h, Math.min(400, +arg || 0));
+      overlay.setResizable(true);
+      overlay.setSize(Math.round(size.w * s), Math.round(h * s));
+      overlay.setResizable(false);
+      break;
+    }
     case 'dashboard': openDashboard(typeof arg === 'string' ? arg : null); break;
     // Bouton du widget : ouvre la fenêtre principale, ou la cache si elle est déjà affichée.
     case 'dashboardToggle': toggleDashboard(); break;

@@ -5,6 +5,28 @@
   },
   "releases": [
     {
+      "version": "1.1.8",
+      "date": "2026-10-30",
+      "en": [
+        "Your own price for a drop: click an item (Items tab during a session, or the loot of a saved session) and set a price for this session only, or everywhere. Profit, FE/h and maps are recalculated.",
+        "Drops without a price: the widget shows how many, and the end-of-session window lets you give them a price.",
+        "Legendaries are now counted: when you look at a piece of gear you picked up, the game tells which legendary it is, and it joins your loot with its price.",
+        "Price check with affixes (or skill quality) ticked: it becomes the price of that drop for the session, and no longer replaces the normal price of the item (which also skewed the shared prices).",
+        "Add a loot by hand to a saved session (legendary gear, item the log missed), with a search over all items and legendaries.",
+        "Prices you type and loot added by hand stay on your PC: shared stats and published routes keep market prices.",
+        "Collapsed widget: the ⋯ menu (stop and restart, reset) now opens."
+      ],
+      "fr": [
+        "Ton prix pour un drop : clique sur un objet (onglet Objets pendant une session, ou loot d'une session enregistrée) et donne-lui un prix pour cette session seulement, ou partout. Profit, FE/h et cartes sont recalculés.",
+        "Drops sans prix : le widget indique combien, et la fenêtre de fin de session permet de leur donner un prix.",
+        "Les légendaires sont maintenant comptés : quand tu regardes une pièce ramassée, le jeu dit quel légendaire c'est, et il entre dans ton loot avec son prix.",
+        "Vérification de prix avec des affixes (ou la qualité d'un skill) cochés : elle devient le prix de ce drop pour la session, et ne remplace plus le prix normal de l'objet (ce qui faussait aussi les prix partagés).",
+        "Ajouter un loot à la main dans une session enregistrée (légendaire, objet que le log n'a pas vu), avec une recherche dans tous les objets et légendaires.",
+        "Les prix tapés et le loot ajouté à la main restent sur ton PC : les stats partagées et les routes publiées gardent les prix du marché.",
+        "Widget réduit : le menu ⋯ (arrêter et relancer, réinitialiser) s'ouvre maintenant."
+      ]
+    },
+    {
       "version": "1.1.7",
       "date": "2026-10-29",
       "en": [

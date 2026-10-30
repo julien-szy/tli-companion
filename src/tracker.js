@@ -22,6 +22,13 @@ const STAR_PREFIX = 'SpAreaBossPoint_';
 const STAR_MAX = 80;
 const STAR_KNOWN = { SpAreaBossPoint_430127: 'Thunder Wastes' };
 const NO_PROFIT_TYPES = new Set(['英雄追忆']); // souvenirs de héros : affixes aléatoires
+const LEGEND_TYPE = '传奇装备';
+// Équipement ramassé : le log ne donne que sa base, la même pour la pièce rare et sa version légendaire.
+// Quand le joueur regarde la pièce, le jeu calcule la comparaison et écrit « SetPlayerEquipment(BaseId, GoldId) » :
+// GoldId = le légendaire (0 pour une pièce rare). On relie les deux s'ils arrivent moins de 30 min après.
+const GEAR_HINT_MS = 30 * 60 * 1000;
+// Ardoises de divinité légendaires : base 26xxxx = 260000 + numéro du légendaire (261005 -> 1005).
+const SLATE_BASE = 260000;
 const { FE_ID: FE } = require('./parser'); // Flame Elementium : toujours compté, même sous le seuil
 // Hors carte sans aucune activité dans le log pendant plus de 3 min = AFK.
 const AFK_GAP_MS = 3 * 60 * 1000;
@@ -92,6 +99,8 @@ class Tracker extends EventEmitter {
       pausedMs: 0,        // temps de pause terminé (non compté dans le temps de session ni le FE/h)
       pausedAt: null,     // début de la pause en cours
       pauseAuto: false,   // pause mise automatiquement (AFK) : reprend dès la prochaine activité
+      priceEdits: {},     // id -> prix choisi par le joueur pour les drops de cette session seulement
+      gearPicks: [],      // équipement ramassé en carte, en attente de savoir si c'est un légendaire
     };
     if (recording && this.zone && !this.zone.hub) this._startRun(this.zone.path, Date.now());
     this.emit('changed');
@@ -104,7 +113,7 @@ class Tracker extends EventEmitter {
   // elle se termine à l'heure de la sauvegarde.
   restoreSession(saved, savedAt, now = Date.now()) {
     if (!saved || !saved.recording) return false;
-    const s = { ...saved, feed: saved.feed || [], pendingCost: saved.pendingCost || {} };
+    const s = { ...saved, feed: saved.feed || [], pendingCost: saved.pendingCost || {}, priceEdits: saved.priceEdits || {}, gearPicks: saved.gearPicks || [] };
     if (!s.pausedAt) s.pausedMs = (s.pausedMs || 0) + Math.max(0, now - savedAt);
     else if (s.pauseAuto) { s.pausedMs = (s.pausedMs || 0) + Math.max(0, now - s.pausedAt); s.pausedAt = null; s.pauseAuto = false; }
     s.lastActivity = now;
@@ -250,7 +259,10 @@ class Tracker extends EventEmitter {
       // Nouveau personnage : on oublie le sac (et les Star Shards) de l'ancien. Le jeu renvoie ensuite le sac
       // complet du nouveau perso ; ses pages vides n'envoient rien, d'où la remise à zéro.
       // Équipement porté : le légendaire est celui que le jeu a annoncé pour cette base juste avant.
-      case 'equipHint': if (ev.gold > 0) this.equipHints.set(ev.base, { gold: ev.gold, ts: ev.ts }); return;
+      case 'equipHint':
+        if (ev.gold > 0) this.equipHints.set(ev.base, { gold: ev.gold, ts: ev.ts });
+        if (!this.replay) this._gearHint(ev);
+        return;
       case 'equip': {
         const h = this.equipHints.get(ev.base);
         this.equipped.set(ev.slot, { base: ev.base, gold: h && ev.ts - h.ts < 30 * 60000 ? h.gold : 0 });
@@ -285,6 +297,14 @@ class Tracker extends EventEmitter {
           this.meta.save();
         }
         return;
+      // Prix vu avec des affixes cochés : prix de ce drop pour la session (si l'objet est dans le loot).
+      case 'priceFiltered': {
+        if (this.replay || !this.session.recording || !(this.session.loot[ev.id] > 0)) return;
+        const sorted = [...ev.prices].sort((a, b) => a - b);
+        const p = sorted[Math.floor(0.1 * (sorted.length - 1))];
+        if (p > 0) { this.setSessionPrice(ev.id, p); this.emit('filteredPrice', { id: ev.id, price: p }); }
+        return;
+      }
       case 'price':
         if (this.prices.setFromExchange(ev.id, ev.prices, ev.ts) && !this.replay) {
           this.emit('price', ev.id);
@@ -340,6 +360,7 @@ class Tracker extends EventEmitter {
   _delta(id, delta, ts) {
     if (this.replay || !delta) return;
     if (this.proto && IGNORED_PROTOS.has(this.proto)) return;
+    id = this._legendSlate(id);
     // Balise utilisée (même hors session) : sert à relier les Star Shards à une région et au rappel « déjà à 80 ».
     if (delta < 0) {
       const it = this.items.get(+id);
@@ -371,9 +392,59 @@ class Tracker extends EventEmitter {
       cat = 'other';
       addQty(s.other, id, delta);
     }
+    // Pièce d'équipement (base inconnue de la base d'objets) ramassée en carte : peut-être un légendaire.
+    if (cat === 'loot' && delta > 0 && run && this._isGearBase(id)) {
+      s.gearPicks = s.gearPicks || [];
+      s.gearPicks.push({ base: +id, ts, run: run.startedAt, seg: run.seg || 0 });
+      if (s.gearPicks.length > 200) s.gearPicks.splice(0, s.gearPicks.length - 200);
+    }
     const entry = { ts, id, delta, cat, proto: this.proto || '-', zone: run ? run.name : 'hideout' };
     s.feed.push(entry);
     if (s.feed.length > 5000) s.feed.splice(0, s.feed.length - 5000);
+    this.emit('delta', entry);
+    this.emit('changed');
+  }
+
+  // Base d'équipement : objet absent de la base d'objets, mais base d'au moins un légendaire.
+  _isGearBase(id) {
+    if (this.items.known && this.items.known(+id)) return false;
+    if (!this._legendBases) {
+      this._legendBases = new Set();
+      for (const [, it] of this.items.items || []) if (it.base) this._legendBases.add(it.base);
+    }
+    return this._legendBases.has(+id);
+  }
+  _legendSlate(id) {
+    const n = +id - SLATE_BASE;
+    if (n < 1000 || n > 9999) return id;
+    const it = this.items.get(n);
+    return it && it.type === LEGEND_TYPE && !(this.items.known && this.items.known(+id)) ? n : id;
+  }
+  // Le jeu dit quelle pièce le joueur regarde : si c'est une pièce ramassée il y a peu, on sait enfin si c'est
+  // un légendaire. Le légendaire entre alors dans le loot (sans prix si personne ne l'a vu à l'hôtel des ventes).
+  _gearHint(ev) {
+    const s = this.session;
+    if (!s || !s.recording || !s.gearPicks) return;
+    let pick = null;
+    for (let i = s.gearPicks.length - 1; i >= 0; i--) {
+      const p = s.gearPicks[i];
+      if (p.base === ev.base && p.gold == null && ev.ts >= p.ts && ev.ts - p.ts < GEAR_HINT_MS) { pick = p; break; }
+    }
+    if (!pick) return;
+    if (!(ev.gold > 0)) { pick.gold = 0; return; } // pièce rare
+    const it = this.items.get(ev.gold);
+    if (it.type !== LEGEND_TYPE || (it.base && it.base !== ev.base)) return;
+    pick.gold = ev.gold;
+    addQty(s.loot, ev.gold, 1);
+    const run = s.currentRun && s.currentRun.startedAt === pick.run ? s.currentRun : s.runs.find((r) => r.startedAt === pick.run);
+    if (run) {
+      addQty(run.loot, ev.gold, 1);
+      const seg = run.segs && run.segs[pick.seg];
+      if (seg) addQty(seg.loot, ev.gold, 1);
+    }
+    this._curve = null;
+    const entry = { ts: ev.ts, id: ev.gold, delta: 1, cat: 'loot', proto: 'Legendary', zone: run ? run.name : 'hideout' };
+    s.feed.push(entry);
     this.emit('delta', entry);
     this.emit('changed');
   }
@@ -449,10 +520,40 @@ class Tracker extends EventEmitter {
 
   // Prix utilisé dans le profit. Les souvenirs de héros (Memory of Origin, Discipline, Progress) ont des affixes
   // aléatoires : leur prix communautaire ne veut rien dire, ils comptent 0 sauf prix manuel.
+  // Prix choisi pour cette session (clic sur un drop) > prix manuel > marché. En « mode marché » (stats
+  // partagées), seuls les prix du marché comptent.
   unitPrice(id) {
-    const p = this.prices.get(+id);
+    const e = !this.marketOnly && this.session && this.session.priceEdits;
+    if (e && e[+id] != null) return e[+id];
+    const p = this.prices.get(+id, !!this.marketOnly);
     if (p.source !== 'manuel' && NO_PROFIT_TYPES.has((this.items.get(+id) || {}).type)) return 0;
     return p.price;
+  }
+  priceSource(id) {
+    const e = !this.marketOnly && this.session && this.session.priceEdits;
+    if (e && e[+id] != null) return 'session';
+    return this.prices.get(+id, !!this.marketOnly).source;
+  }
+  // Calculs faits avec les prix du marché seulement (sans prix manuels ni prix de session).
+  withMarket(fn) {
+    const prev = this.marketOnly;
+    this.marketOnly = true;
+    try { return fn(); } finally { this.marketOnly = prev; }
+  }
+  // Prix d'un objet pour la session en cours seulement (null = retour au prix normal).
+  setSessionPrice(id, price) {
+    const e = (this.session.priceEdits = this.session.priceEdits || {});
+    if (price == null || price === '' || !Number.isFinite(+price) || +price < 0) delete e[+id];
+    else e[+id] = +price;
+    this._curve = null;
+    this.emit('changed');
+  }
+  // Loot de la session sans prix connu (objets identifiés seulement) : le joueur peut leur en donner un.
+  unpriced() {
+    const s = this.session;
+    if (!s.recording) return [];
+    return Object.keys(s.loot).filter((k) => s.loot[k] > 0 && this.visible(k) && +k !== FE
+      && !NO_PROFIT_TYPES.has((this.items.get(+k) || {}).type) && !(this.unitPrice(+k) > 0)).map(Number);
   }
 
   // Taxe de l'hôtel des ventes (réglage « valeurs après taxe ») : ce qu'on vend rapporte le prix moins la
@@ -582,10 +683,11 @@ class Tracker extends EventEmitter {
     return Object.keys(qtyMap).filter((k) => this.visible(k)).map((k) => {
       const id = +k;
       const it = this.items.get(id);
-      const p = this.prices.get(id);
       const unit = this.priceFor(id, qtyMap[k]);
       const ignored = qtyMap[k] > 0 && this.ignored(id);
-      return { id, name: it.name, img: it.img, qty: qtyMap[k], unit, source: p.source, value: ignored ? 0 : qtyMap[k] * unit, ...(ignored ? { ignored: true } : {}) };
+      const source = this.priceSource(id);
+      return { id, name: it.name, img: it.img, qty: qtyMap[k], unit, source, value: ignored ? 0 : qtyMap[k] * unit, ...(ignored ? { ignored: true } : {}),
+        ...(source === 'session' ? { sp: this.session.priceEdits[id] } : {}) };
     }).sort((a, b) => Math.abs(b.value) - Math.abs(a.value));
   }
 
@@ -677,15 +779,15 @@ class Tracker extends EventEmitter {
       recent,
       topDrops,
       mapDrops,
+      unpriced: this.unpriced().length,
       curve: this.sessionCurve(now),
     };
   }
 
   _feedEntry(e) {
     const it = this.items.get(e.id);
-    const p = this.prices.get(e.id);
     const unit = this.priceFor(e.id, e.delta);
-    return { ...e, name: it.name, img: it.img, unit, source: p.source, value: e.delta * unit };
+    return { ...e, name: it.name, img: it.img, unit, source: this.priceSource(e.id), value: e.delta * unit };
   }
 
   fullData() {

@@ -21,6 +21,7 @@ class ItemDb {
           name,
           type: it.type_cn || '',
           img: icons[name] || it.img || null,
+          ...(it.baseItemId ? { base: +it.baseItemId } : {}), // légendaire : sa base (même numéro que la pièce rare)
         });
       }
     } catch (e) {
@@ -65,10 +66,11 @@ class PriceBook {
     this._saveTimer = null;
   }
 
-  // Prix unitaire en FE + source.
-  get(id) {
+  // Prix unitaire en FE + source. market = true : prix du marché seul, sans le prix manuel du joueur
+  // (stats partagées : un prix tapé à la main ne doit pas fausser les moyennes des autres).
+  get(id, market = false) {
     if (id === FE_ID) return { price: 1, source: 'fe' };
-    if (this.manual[id] != null) return { price: this.manual[id], source: 'manuel' };
+    if (!market && this.manual[id] != null) return { price: this.manual[id], source: 'manuel' };
     // Objet sans nom (« Item #1234 ») : jamais compté, sauf prix manuel ou nom donné par le joueur.
     if (this.isKnown && !this.isKnown(id)) {
       const any = this.exchange[id] || this.server[id] || this.community[id];

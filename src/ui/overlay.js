@@ -14,8 +14,17 @@ const disarm = () => {
   $('btnReset').classList.remove('armed');
   $('resetLbl').textContent = t('ov.reset'); $('resetHelp').textContent = t('ov.resetHelp');
 };
-const closeMenu = () => { $('sMenu').hidden = true; disarm(); };
-$('btnMore').onclick = (e) => { e.stopPropagation(); if ($('sMenu').hidden) $('sMenu').hidden = false; else closeMenu(); };
+// Widget réduit : la fenêtre ne fait que la hauteur de la barre, on l'agrandit le temps que le menu est ouvert.
+const closeMenu = () => {
+  const wasOpen = !$('sMenu').hidden;
+  $('sMenu').hidden = true; disarm();
+  if (wasOpen) tli.action('menuSpace', 0);
+};
+const openMenu = () => {
+  $('sMenu').hidden = false;
+  if (document.body.classList.contains('collapsed')) tli.action('menuSpace', Math.ceil($('sMenu').getBoundingClientRect().bottom) + 10);
+};
+$('btnMore').onclick = (e) => { e.stopPropagation(); if ($('sMenu').hidden) openMenu(); else closeMenu(); };
 $('btnRestart').onclick = () => { closeMenu(); tli.action('restartFarm'); };
 $('btnReset').onclick = () => {
   if (!resetTimer) {
@@ -32,6 +41,7 @@ const DROP_MODES = ['recent', 'value', 'map'];
 let dropsSort = 'recent';
 $('dropsSwitch').onclick = () => tli.action('dropsSort', DROP_MODES[(DROP_MODES.indexOf(dropsSort) + 1) % DROP_MODES.length]);
 $('btnLock').onclick = () => tli.action('lock', true);
+$('unpriced').onclick = () => tli.action('dashboard', 'unpriced');
 let recording = false;
 $('btnRec').onclick = () => tli.action(recording ? 'stopFarm' : 'startFarm');
 // Double-clic sur la barre = réduire / agrandir
@@ -112,6 +122,9 @@ tli.onState((s) => {
   $('btnPause').hidden = !recording;
   $('btnMore').hidden = !recording;
   if (!recording && !$('sMenu').hidden) closeMenu();
+  const np = recording ? s.unpriced || 0 : 0;
+  $('unpriced').hidden = !np;
+  if (np) { $('unpriced').textContent = t('ov.unpriced', { n: np }); $('unpriced').title = t('ov.unpricedTip'); }
   $('btnPause').innerHTML = paused ? '<svg viewBox="0 0 24 24"><path d="M7 4l13 8-13 8z"/></svg>' : '<svg viewBox="0 0 24 24"><rect x="5" y="4" width="5" height="16" rx="1"/><rect x="14" y="4" width="5" height="16" rx="1"/></svg>';
   $('btnPause').title = paused ? t(s.session.pauseAuto ? 'ov.resumeAuto' : 'ov.resume') : t('ov.pause');
   $('btnRec').title = t(recording ? 'ov.recStop' : 'ov.recStart');

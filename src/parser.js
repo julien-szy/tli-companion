@@ -263,11 +263,14 @@ class LogParser {
     if (b.lines.length > 2000) this.block = null; // garde-fou si la fin n'arrive jamais
   }
 
+  // Recherche avec des affixes cochés (refer « 375377664_d1_d2_mt6 », qualité d'un skill…) : c'est le prix d'UNE
+  // pièce précise, pas le prix normal de l'objet. Elle sert de prix pour ce drop seulement (événement à part).
   _onSearchSent(b) {
+    const filtered = b.lines.some((l) => /\+refer \[\d+_/.test(l));
     for (const l of b.lines) {
       const m = /\+refer \[(\d+)\]/.exec(l);
       if (m && +m[1] !== 0) {
-        this.pendingSearch.set(b.synId, +m[1]);
+        this.pendingSearch.set(b.synId, { id: +m[1], filtered });
         if (this.pendingSearch.size > 200) {
           this.pendingSearch.delete(this.pendingSearch.keys().next().value);
         }
@@ -277,8 +280,9 @@ class LogParser {
   }
 
   _onSearchResult(b) {
-    const id = this.pendingSearch.get(b.synId);
-    if (!id) return;
+    const search = this.pendingSearch.get(b.synId);
+    if (!search) return;
+    const { id, filtered } = search;
     this.pendingSearch.delete(b.synId);
     const prices = [];
     let currency = FE_ID;
@@ -295,7 +299,7 @@ class LogParser {
       if (c) currency = +c[1];
     }
     if (prices.length && currency === FE_ID) {
-      this.onEvent({ type: 'price', ts: b.ts, id, prices });
+      this.onEvent({ type: filtered ? 'priceFiltered' : 'price', ts: b.ts, id, prices });
     }
   }
 }

@@ -85,6 +85,7 @@ $('feedbackBtn').onclick = () => {
 };
 tli.onNavigate((nav) => {
   if (nav.startsWith('session:')) { showTab('sessions'); openSession(nav.slice(8)); }
+  else if (nav === 'unpriced') { showTab('items'); unpricedModal(); }
   else if (nav.startsWith('endsession:')) { const id = nav.slice(11); showTab('sessions'); openSession(id).then(() => endSessionModal(id)); }
   else showTab(nav);
 });
@@ -117,9 +118,19 @@ async function endSessionModal(id) {
   const srv = last.settings.server;
   const summary = `<p class="muted">${esc(t('end.summary', { maps: r.totals.runs, profit: fe(r.totals.profit, true), hour: fe(r.totals.perHourReal), time: dur(r.totals.realMs) }))}</p>`;
   let tag = r.strategyTag || '';
+  // Loot sans prix : le joueur peut leur en donner un (prix de cette session seulement).
+  const unpriced = (r.loot || []).filter((i) => i.qty > 0 && !i.added && !(i.unit > 0) && i.source !== 'fe');
+  const unpricedBox = () => (unpriced.length ? `<div class="end-unpriced"><p>${esc(t('end.unpriced', { n: unpriced.length }))}</p>
+    ${unpriced.slice(0, 12).map((i) => `<label class="eu-row">${icon(i.img)}<span>${esc(i.name)} <em class="muted">×${qty(i.qty)}</em></span><input type="number" min="0" step="any" data-eu="${i.id}" placeholder="${esc(t('pe.ph'))}"></label>`).join('')}</div>` : '');
+  const saveUnpriced = async () => {
+    for (const inp of document.querySelectorAll('[data-eu]')) {
+      const v = inp.value.trim().replace(',', '.');
+      if (v !== '' && +v >= 0) await tli.reportPrice(id, +inp.dataset.eu, +v);
+    }
+  };
   const simple = () => {
     modal(`<h1>${esc(t('end.title'))}</h1>${summary}
-      <div class="body end-form" style="min-height:0">
+      <div class="body end-form" style="min-height:0">${unpricedBox()}
         <label>${esc(t('end.tagOpt'))}<select id="endTag">${tagOptions(tag)}</select></label>
         <p class="muted" style="font-size:12px">${esc(t('end.tagHelp'))}</p>
       </div>
@@ -132,11 +143,12 @@ async function endSessionModal(id) {
       await tli.deleteReport(id); modal(''); closeSession(); loadSessions();
     };
     $('endSave').onclick = async () => {
+      await saveUnpriced();
       if (tag !== (r.strategyTag || '')) await tli.updateReport(id, { strategyTag: tag });
       modal('');
       openSession(id);
     };
-    $('endShare').onclick = full;
+    $('endShare').onclick = async () => { await saveUnpriced(); full(); };
   };
   const full = () => {
     modal(`<h1>${esc(t('end.shareTitle'))}</h1>${summary}
@@ -339,7 +351,7 @@ const LOOT_SLICES = 7;
 function lootRows(r) { return (r.loot || []).filter((i) => i.qty > 0); }
 function lootSection(r) {
   const rows = lootRows(r);
-  if (!rows.length) return '';
+  if (!rows.length) return `<div class="card loot-card"><div class="loot-head"><h2>${esc(t('loot.title'))}</h2><button class="btn" id="lootAdd">${esc(t('loot.add'))}</button></div></div>`;
   const total = rows.reduce((a, i) => a + Math.max(0, i.value), 0);
   const byVal = rows.filter((i) => i.value > 0).sort((a, b) => b.value - a.value);
   const top = byVal.slice(0, LOOT_SLICES);
@@ -361,6 +373,7 @@ function lootSection(r) {
   const old = r.loot.length === 80;
   return `<div class="card loot-card"><div class="loot-head"><h2>${esc(t('loot.title'))}</h2>
       <span class="muted">${esc(t('loot.count', { n: rows.length }))}</span>
+      <button class="btn" id="lootAdd">${esc(t('loot.add'))}</button>
       <button class="btn" id="lootCsv">${esc(t('loot.csv'))}</button></div>
     <div class="loot-top">
       <svg class="loot-donut" viewBox="0 0 180 180" role="img" aria-label="${esc(t('loot.title'))}">${arcs}
@@ -368,13 +381,16 @@ function lootSection(r) {
       <ul class="loot-legend">${parts.map((p, k) => `<li data-k="${k}"><i style="background:${p.color}"></i><span>${esc(p.name)}</span><b>${fe(p.value)}</b><em>${pct(p.value)}</em></li>`).join('')}</ul>
     </div>
     <table class="loot-table"><thead><tr><th>${esc(t('col.item'))}</th><th class="r">${esc(t('col.qty'))}</th><th class="r">${esc(t('col.unit'))}</th><th class="r">${esc(t('col.value'))}</th><th class="r">%</th></tr></thead><tbody>
-      ${rows.map((i) => `<tr class="${i.ignored ? 'ignored' : ''}" title="${i.ignored ? esc(t('items.ignored')) : ''}"><td>${icon(i.img)}${esc(i.name)}</td><td class="r">${qty(i.qty)}</td><td class="r muted">${unit(i.unit)}</td><td class="r ${cls(i.value)}">${fe(i.value, true)}</td><td class="r muted">${pct(i.value)}</td></tr>`).join('')}
+      ${rows.map((i) => `<tr ${i.added ? '' : `data-item="${i.id}" data-report="${r.id}"${i.edited ? ` data-sp="${i.price}"` : ''}`} class="${i.ignored ? 'ignored' : ''}${i.added ? '' : ' editable'}" title="${esc(i.ignored ? t('items.ignored') : i.added ? '' : t('loot.editTip'))}"><td>${icon(i.img)}${esc(i.name)}${i.added ? ` <span class="tag">${esc(t('loot.added'))}</span> <button class="btn mini" data-unloot="${esc(i.key)}">${esc(t('loot.remove'))}</button>` : i.edited ? ` <span class="tag">${esc(t('loot.edited'))}</span>` : ''}</td><td class="r">${qty(i.qty)}</td><td class="r muted">${unit(i.unit)}</td><td class="r ${cls(i.value)}">${fe(i.value, true)}</td><td class="r muted">${pct(i.value)}</td></tr>`).join('')}
     </tbody></table>
     ${old ? `<p class="muted" style="margin-top:8px">${esc(t('loot.old'))}</p>` : ''}</div>`;
 }
 function bindLootSection(r) {
   const box = document.querySelector('.loot-card');
   if (!box) return;
+  $('lootAdd').onclick = () => addLootModal(r.id);
+  box.querySelectorAll('[data-unloot]').forEach((b) => (b.onclick = async () => { await tli.reportRemoveLoot(r.id, b.dataset.unloot); openSession(r.id); }));
+  if (!$('lootCsv')) return;
   // Survol d'une part ou d'une ligne de la légende : les deux s'allument ensemble.
   const hl = (k) => box.querySelectorAll('[data-k]').forEach((el) => el.classList.toggle('dim', k != null && el.dataset.k !== k));
   box.querySelectorAll('[data-k]').forEach((el) => { el.onmouseenter = () => hl(el.dataset.k); el.onmouseleave = () => hl(null); });
@@ -926,7 +942,7 @@ function renderRuns(current, runs) {
 }
 
 function renderItems(list) {
-  $('itemList').innerHTML = list.map((i) => `<tr data-item="${i.id}" class="${i.ignored ? 'ignored' : ''}" title="${i.ignored ? esc(t('items.ignored')) : ''}"><td>${icon(i.img)}${esc(i.name)}</td><td class="r">${qty(i.qty)}</td><td class="r muted">${unit(i.unit)}</td><td><span class="tag">${esc(srcLabel(i.source))}</span></td><td class="r ${cls(i.value)}">${fe(i.value, true)}</td></tr>`).join('')
+  $('itemList').innerHTML = list.map((i) => `<tr data-item="${i.id}"${i.sp != null ? ` data-sp="${i.sp}"` : ''} class="${i.ignored ? 'ignored' : ''}" title="${i.ignored ? esc(t('items.ignored')) : ''}"><td>${icon(i.img)}${esc(i.name)}</td><td class="r">${qty(i.qty)}</td><td class="r muted">${unit(i.unit)}</td><td><span class="tag">${esc(srcLabel(i.source))}</span></td><td class="r ${cls(i.value)}">${fe(i.value, true)}</td></tr>`).join('')
     || `<tr><td colspan="5" class="muted">${esc(t('items.empty'))}</td></tr>`;
 }
 
@@ -1323,7 +1339,8 @@ const Bag = (() => {
 // ---------- Courbe de prix d'un objet (clic sur une ligne d'objet) ----------
 // Prix médian du jour vu par les joueurs TLI Companion (ligne) et tes propres vérifications à l'HdV (points).
 let chartDays = 30;
-async function openPriceChart(id) {
+// ctx : d'où vient le clic. live = session en cours, report = session enregistrée (prix de ce drop seulement).
+async function openPriceChart(id, ctx = null) {
   const h = await tli.priceHistory(id, chartDays);
   const W = 640, H = 240, P = { l: 48, r: 14, t: 14, b: 26 };
   const now = Date.now(), from = now - h.days * 86400000;
@@ -1350,14 +1367,104 @@ async function openPriceChart(id) {
     ${empty ? `<p class="muted pc-empty">${esc(t('pc.empty'))}</p>` : `<svg class="pc-svg" viewBox="0 0 ${W} ${H}">${grid}${ticks}${line}${svDots}${ownDots}</svg>
     <div class="pc-legend"><span><i class="pc-k sv"></i>${esc(t('pc.legendServer'))}</span><span><i class="pc-k own"></i>${esc(t('pc.legendMine'))}</span></div>`}
     <p class="muted" style="font-size:12px;margin-top:8px">${esc(t('pc.help'))}</p>
+    ${priceEditBox(h, ctx)}
     <div class="foot"><button class="btn" id="pcClose">${esc(t('pc.close'))}</button></div>`);
-  document.querySelectorAll('[data-days]').forEach((b) => (b.onclick = () => { chartDays = +b.dataset.days; openPriceChart(id); }));
+  document.querySelectorAll('[data-days]').forEach((b) => (b.onclick = () => { chartDays = +b.dataset.days; openPriceChart(id, ctx); }));
   $('pcClose').onclick = () => modal('');
+  bindPriceEdit(id, h, ctx);
+}
+// Ton prix : pour cette session (en cours ou enregistrée) ou partout (prix manuel, comme l'onglet Prix).
+function priceEditBox(h, ctx) {
+  const manual = h.now && h.now.source === 'manuel' ? h.now.price : null;
+  const cur = ctx && ctx.sp != null ? ctx.sp : manual;
+  const sess = ctx && (ctx.kind === 'report' || ctx.kind === 'live');
+  const report = ctx && ctx.kind === 'report';
+  return `<div class="pe-box"><b>${esc(t('pe.title'))}</b>
+    <div class="pe-row"><input id="peVal" type="number" min="0" step="any" placeholder="${esc(t('pe.ph'))}" value="${cur != null ? cur : ''}">
+      ${sess ? `<button class="btn primary" id="peSess">${esc(t('pe.session'))}</button>` : ''}
+      ${report ? '' : `<button class="btn" id="peAll">${esc(t('pe.everywhere'))}</button>`}
+      ${(ctx && ctx.sp != null) || (manual != null && !report) ? `<button class="btn" id="peAuto">${esc(t('pe.auto'))}</button>` : ''}</div>
+    <p class="muted" id="peMsg">${esc(report ? t('pe.reportNote') + ' ' + t('pe.help') : t('pe.help'))}</p></div>`;
+}
+function bindPriceEdit(id, h, ctx) {
+  const val = () => { const v = $('peVal').value.trim().replace(',', '.'); return v === '' || !(+v >= 0) ? null : +v; };
+  const done = () => { modal(''); if (ctx && ctx.kind === 'report') openSession(ctx.report); else refresh(true); };
+  const bad = () => { $('peMsg').textContent = t('pe.bad'); };
+  const setSess = (p) => (ctx.kind === 'report' ? tli.reportPrice(ctx.report, id, p) : tli.sessionPrice(id, p));
+  if ($('peSess')) $('peSess').onclick = async () => { const v = val(); if (v == null) return bad(); await setSess(v); done(); };
+  if ($('peAll')) $('peAll').onclick = async () => {
+    const v = val(); if (v == null) return bad();
+    if (ctx && ctx.kind === 'live' && ctx.sp != null) await tli.sessionPrice(id, null); // le prix manuel prend le relais
+    await tli.setManualPrice(id, v); done();
+  };
+  if ($('peAuto')) $('peAuto').onclick = async () => {
+    if (ctx && ctx.sp != null) await setSess(null);
+    else await tli.setManualPrice(id, null);
+    done();
+  };
+}
+// Drops de la session en cours sans prix connu (bouton du widget) : un prix pour cette session seulement.
+async function unpricedModal() {
+  const list = await tli.unpricedLoot();
+  if (!list.length) return;
+  modal(`<h1>${esc(t('ov.unpricedTip'))}</h1>
+    <div class="body end-form" style="min-height:0"><div class="end-unpriced"><p>${esc(t('end.unpriced', { n: list.length }))}</p>
+    ${list.slice(0, 30).map((i) => `<label class="eu-row">${icon(i.img)}<span>${esc(i.name)} <em class="muted">×${qty(i.qty)}</em></span><input type="number" min="0" step="any" data-eu="${i.id}" placeholder="${esc(t('pe.ph'))}"></label>`).join('')}</div>
+    <p class="muted" style="font-size:12px">${esc(t('pe.help'))}</p></div>
+    <div class="foot"><button class="btn" id="euClose">${esc(t('pc.close'))}</button><button class="btn primary" id="euSave">${esc(t('pe.session'))}</button></div>`);
+  $('euClose').onclick = () => modal('');
+  $('euSave').onclick = async () => {
+    for (const inp of document.querySelectorAll('[data-eu]')) {
+      const v = inp.value.trim().replace(',', '.');
+      if (v !== '' && +v >= 0) await tli.sessionPrice(+inp.dataset.eu, +v);
+    }
+    modal(''); refresh(true);
+  };
+}
+// Ajouter un loot à la main dans une session enregistrée (légendaire, objet que le log n'a pas vu).
+function addLootModal(reportId) {
+  let picked = null;
+  modal(`<h1>${esc(t('loot.addTitle'))}</h1><p class="muted">${esc(t('loot.addHelp'))}</p>
+    <div class="body end-form" style="min-height:0">
+      <input id="alQ" placeholder="${esc(t('loot.search'))}" autocomplete="off">
+      <div id="alRes" class="al-res"></div>
+      <div class="al-row"><label>${esc(t('loot.qty'))}<input id="alQty" type="number" min="1" step="1" value="1"></label>
+        <label>${esc(t('loot.price'))}<input id="alPrice" type="number" min="0" step="any"></label></div>
+      <p class="muted" id="alMsg"></p>
+    </div>
+    <div class="foot"><button class="btn" id="alCancel">${esc(t('pc.close'))}</button><button class="btn primary" id="alOk">${esc(t('loot.addBtn'))}</button></div>`);
+  let timer = null;
+  $('alQ').oninput = () => {
+    clearTimeout(timer);
+    timer = setTimeout(async () => {
+      const q = $('alQ').value.trim();
+      const res = q.length < 2 ? [] : await tli.searchItems(q);
+      $('alRes').innerHTML = res.slice(0, 20).map((it) => `<button class="al-it${picked && picked.id === it.id ? ' on' : ''}" data-id="${it.id}" data-price="${it.price || ''}">${icon(it.img)}<span>${esc(it.name)}</span>${it.price ? `<em class="muted">${unit(it.price)} FE</em>` : ''}</button>`).join('');
+      $('alRes').querySelectorAll('.al-it').forEach((b) => (b.onclick = () => {
+        picked = { id: +b.dataset.id };
+        $('alRes').querySelectorAll('.al-it').forEach((x) => x.classList.toggle('on', x === b));
+        if (!$('alPrice').value && b.dataset.price) $('alPrice').value = Math.round(+b.dataset.price * 100) / 100;
+        $('alPrice').focus();
+      }));
+    }, 200);
+  };
+  $('alQ').focus();
+  $('alCancel').onclick = () => modal('');
+  $('alOk').onclick = async () => {
+    if (!picked) { $('alMsg').textContent = t('loot.pick'); return; }
+    const price = +String($('alPrice').value).replace(',', '.');
+    if ($('alPrice').value === '' || !(price >= 0)) { $('alMsg').textContent = t('pe.bad'); return; }
+    await tli.reportAddLoot(reportId, { id: picked.id, qty: +$('alQty').value || 1, price });
+    modal(''); openSession(reportId);
+  };
 }
 document.addEventListener('click', (e) => {
   const tr = e.target.closest('main tr[data-item]');
   if (!tr || e.target.closest('input, button, select, a, summary')) return;
-  openPriceChart(+tr.dataset.item);
+  const sp = tr.dataset.sp != null ? +tr.dataset.sp : null;
+  const ctx = tr.dataset.report ? { kind: 'report', report: tr.dataset.report, sp }
+    : tr.closest('#itemList') && last && last.recording ? { kind: 'live', sp } : null;
+  openPriceChart(+tr.dataset.item, ctx);
 });
 
 // Icône introuvable (certaines images n'existent plus chez tlidb) : dans le schéma du sac, le nom court la remplace ;
