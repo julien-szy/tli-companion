@@ -553,7 +553,8 @@ class Tracker extends EventEmitter {
     const s = this.session;
     if (!s.recording) return [];
     return Object.keys(s.loot).filter((k) => s.loot[k] > 0 && this.visible(k) && +k !== FE
-      && !NO_PROFIT_TYPES.has((this.items.get(+k) || {}).type) && !(this.unitPrice(+k) > 0)).map(Number);
+      && !NO_PROFIT_TYPES.has((this.items.get(+k) || {}).type) && !/^Bound /i.test(this.items.get(+k).name || '') // objets liés : invendables
+      && !(this.unitPrice(+k) > 0)).map(Number);
   }
 
   // Taxe de l'hôtel des ventes (réglage « valeurs après taxe ») : ce qu'on vend rapporte le prix moins la

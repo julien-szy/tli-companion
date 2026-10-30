@@ -119,9 +119,9 @@ async function endSessionModal(id) {
   const summary = `<p class="muted">${esc(t('end.summary', { maps: r.totals.runs, profit: fe(r.totals.profit, true), hour: fe(r.totals.perHourReal), time: dur(r.totals.realMs) }))}</p>`;
   let tag = r.strategyTag || '';
   // Loot sans prix : le joueur peut leur en donner un (prix de cette session seulement).
-  const unpriced = (r.loot || []).filter((i) => i.qty > 0 && !i.added && !(i.unit > 0) && i.source !== 'fe');
+  const unpriced = (r.loot || []).filter((i) => i.qty > 0 && !i.added && !(i.unit > 0) && i.source !== 'fe' && !/^Bound /i.test(i.name || ''));
   const unpricedBox = () => (unpriced.length ? `<div class="end-unpriced"><p>${esc(t('end.unpriced', { n: unpriced.length }))}</p>
-    ${unpriced.slice(0, 12).map((i) => `<label class="eu-row">${icon(i.img)}<span>${esc(i.name)} <em class="muted">×${qty(i.qty)}</em></span><input type="number" min="0" step="any" data-eu="${i.id}" placeholder="${esc(t('pe.ph'))}"></label>`).join('')}</div>` : '');
+    ${unpriced.slice(0, 12).map((i) => `<label class="eu-row">${icon(i.img)}<span>${esc(i.name)} <em class="muted">×${nf0.format(i.qty)}</em></span><input type="number" min="0" step="any" data-eu="${i.id}" placeholder="${esc(t('pe.ph'))}"></label>`).join('')}</div>` : '');
   const saveUnpriced = async () => {
     for (const inp of document.querySelectorAll('[data-eu]')) {
       const v = inp.value.trim().replace(',', '.');
@@ -1409,7 +1409,7 @@ async function unpricedModal() {
   if (!list.length) return;
   modal(`<h1>${esc(t('ov.unpricedTip'))}</h1>
     <div class="body end-form" style="min-height:0"><div class="end-unpriced"><p>${esc(t('end.unpriced', { n: list.length }))}</p>
-    ${list.slice(0, 30).map((i) => `<label class="eu-row">${icon(i.img)}<span>${esc(i.name)} <em class="muted">×${qty(i.qty)}</em></span><input type="number" min="0" step="any" data-eu="${i.id}" placeholder="${esc(t('pe.ph'))}"></label>`).join('')}</div>
+    ${list.slice(0, 30).map((i) => `<label class="eu-row">${icon(i.img)}<span>${esc(i.name)} <em class="muted">×${nf0.format(i.qty)}</em></span><input type="number" min="0" step="any" data-eu="${i.id}" placeholder="${esc(t('pe.ph'))}"></label>`).join('')}</div>
     <p class="muted" style="font-size:12px">${esc(t('pe.help'))}</p></div>
     <div class="foot"><button class="btn" id="euClose">${esc(t('pc.close'))}</button><button class="btn primary" id="euSave">${esc(t('pe.session'))}</button></div>`);
   $('euClose').onclick = () => modal('');

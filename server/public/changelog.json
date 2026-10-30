@@ -1,6 +1,16 @@
 {
   "releases": [
     {
+      "version": "1.1.9",
+      "date": "2026-10-30",
+      "en": [
+        "Bound items (untradeable) are no longer listed as drops without a price."
+      ],
+      "fr": [
+        "Les objets liés (Bound, invendables) ne sont plus listés comme drops sans prix."
+      ]
+    },
+    {
       "version": "1.1.8",
       "date": "2026-10-30",
       "en": [
