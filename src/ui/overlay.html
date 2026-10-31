@@ -6,17 +6,18 @@
 <title>TLI Companion</title>
 <style>
   :root {
-    --bg: rgba(14, 16, 21, 0.86); --line: rgba(255,255,255,0.08); --text: #e8e6e3; --muted: #8b8f98;
+    --bga: 1; /* opacité du fond seulement (réglage), le texte reste opaque */
+    --bg: rgba(14, 16, 21, calc(0.86 * var(--bga))); --line: rgba(255,255,255,0.08); --text: #e8e6e3; --muted: #8b8f98;
     --accent: #ff8a3d; --pos: #5fd38d; --neg: #ff6b6b; --rec: #2fbf71;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { background: transparent; color: var(--text); font: 13px/1.35 "Segoe UI", system-ui, sans-serif; overflow: hidden; user-select: none; }
-  body.solid { --bg: rgb(14, 16, 21); }
+  body.solid { --bg: rgba(14, 16, 21, var(--bga)); }
   .grip { position: absolute; right: 5px; bottom: 5px; width: 14px; height: 14px; cursor: nwse-resize; z-index: 5; opacity: .45; -webkit-app-region: no-drag;
     background: linear-gradient(135deg, transparent 0 45%, var(--muted) 45% 52%, transparent 52% 64%, var(--muted) 64% 71%, transparent 71% 83%, var(--muted) 83% 90%, transparent 90%); }
   .grip:hover { opacity: 1; }
-  .panel { position: absolute; inset: 4px; background: var(--bg); border: 1px solid var(--line); border-radius: 12px;
-           box-shadow: 0 6px 24px rgba(0,0,0,0.45); overflow: hidden; display: flex; flex-direction: column; }
+  .panel { position: absolute; inset: 4px; background: var(--bg); border: 1px solid rgba(255,255,255,calc(0.08 * var(--bga))); border-radius: 12px;
+           box-shadow: 0 6px 24px rgba(0,0,0,calc(0.45 * var(--bga))); overflow: hidden; display: flex; flex-direction: column; }
 
   /* Barre du haut : bouton d'enregistrement, FE/h, icônes */
   .bar { display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 6px 0 8px; -webkit-app-region: drag; flex: none; border-bottom: 1px solid var(--line); }
@@ -82,7 +83,7 @@
   .k { color: var(--muted); font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em; }
 
   /* Carte en cours */
-  .now { background: rgba(255,255,255,0.035); border-radius: 9px; padding: 8px 10px; }
+  .now { background: rgba(255,255,255,calc(0.035 * var(--bga))); border-radius: 9px; padding: 8px 10px; }
   .now .top { display: flex; justify-content: space-between; align-items: center; }
   .now .big { display: flex; align-items: baseline; gap: 6px; margin-top: 2px; }
   .now .big b { font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.1; }
@@ -96,7 +97,7 @@
 
   /* 3 chiffres de la session */
   .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
-  .stat { background: rgba(255,255,255,0.035); border-radius: 8px; padding: 6px 8px; }
+  .stat { background: rgba(255,255,255,calc(0.035 * var(--bga))); border-radius: 8px; padding: 6px 8px; }
   .stat .v { font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; }
   .line { display: flex; justify-content: space-between; color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
   .line b { color: var(--text); font-weight: 600; }
@@ -113,6 +114,8 @@
   .row .up1 { color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; text-align: right; min-width: 40px; }
   body:not(.unitp) .row .up1 { display: none; }
   body.noflash .row.new { animation: none; }
+  /* Fond très transparent : un léger contour sombre garde le texte lisible sur le jeu. */
+  body.thinbg .panel { text-shadow: 0 0 3px #000, 0 1px 2px #000; }
   /* Widget compact (option) : blocs plus petits, même contenu. */
   body.compact .body { gap: 5px; padding: 6px 8px 8px; }
   body.compact .now { padding: 4px 8px; }

@@ -614,6 +614,7 @@ document.querySelectorAll('[data-sndtest]').forEach((b) => (b.onclick = async ()
 $('refreshCommunity').onclick = () => tli.action('refreshCommunity');
 $('saveHub').onclick = () => tli.action('hubPatterns', $('sHub').value);
 $('sOpacity').onchange = (e) => tli.action('opacity', +e.target.value);
+$('sBgOpacity').oninput = (e) => tli.action('bgOpacity', +e.target.value); // aperçu en direct sur le widget
 $('sScale').onchange = (e) => tli.action('scale', +e.target.value);
 $('sSolid').onchange = (e) => tli.action('solid', e.target.checked);
 $('sUltra').onchange = (e) => tli.action('ultra', e.target.checked);
@@ -836,6 +837,7 @@ tli.onState((s) => {
     $('sTaxRate').disabled = !s.settings.afterTax;
     $('sHub').value = s.settings.hubPatterns.join(', ');
     $('sOpacity').value = s.settings.overlay.opacity;
+    if (document.activeElement !== $('sBgOpacity')) $('sBgOpacity').value = s.settings.overlay.bgOpacity ?? 1;
     $('sScale').value = s.settings.overlay.scale;
     $('sSolid').checked = !!s.settings.overlay.solid;
     $('sUltra').checked = !!s.settings.overlay.ultra;

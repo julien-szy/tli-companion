@@ -1,6 +1,16 @@
 {
   "releases": [
     {
+      "version": "1.1.11",
+      "date": "2026-10-31",
+      "en": [
+        "New Background opacity slider (Settings › Widget look): only the widget background fades, the text stays sharp. Below 60%, the text gets a light dark outline to stay readable over the game."
+      ],
+      "fr": [
+        "Nouveau réglage Opacité du fond (Réglages › Apparence du widget) : seul le fond du widget s'efface, le texte reste net. Sous 60 %, le texte prend un léger contour sombre pour rester lisible sur le jeu."
+      ]
+    },
+    {
       "version": "1.1.10",
       "date": "2026-10-30",
       "en": [

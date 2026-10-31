@@ -63,7 +63,7 @@ const DEFAULTS = {
   communityPrices: true,
   hubPatterns: ['/XZ_'], // chemins de map considérés comme repaire / ville
   popup: { enabled: false, x: null, y: null, size: 1, color: '#ffd447', glow: 1, rainbow: true, hold: 5, fly: true }, // hold : secondes d'affichage ; fly : les gains volent jusqu'au total // taille (0.3 à 2 = 14 à 92 px), couleur, halo (0 à 1), arc-en-ciel au-dessus de 100 FE // popup des gains « +X FE » (fenêtre transparente, clics traversants)
-  overlay: { x: null, y: null, collapsed: false, opacity: 0.92, scale: 1, solid: false, locked: false, dropsSort: 'recent', ultra: false, ultraLines: ['rec', 'map', 'ph', 'sess'], unitPrice: false, noFlash: false, compact: false, rateUnit: 'hour' },
+  overlay: { x: null, y: null, collapsed: false, opacity: 0.92, scale: 1, solid: false, locked: false, dropsSort: 'recent', ultra: false, ultraLines: ['rec', 'map', 'ph', 'sess'], unitPrice: false, noFlash: false, compact: false, rateUnit: 'hour', bgOpacity: 1 },
   server: { url: 'https://tlicompanion.com', token: null, userId: null, name: null },
   activeBuild: null,     // id du build suivi par le conseiller d'achat
   shareMeta: true,       // partage auto du Hero Ranking consulté (pseudos sauf profils masqués)
@@ -1857,6 +1857,8 @@ ipcMain.handle('action', async (_e, name, arg) => {
       if (ovShown) overlay.webContents.send('stockAlert', { ...a, sound: true });
       if (dashboard && !dashboard.isDestroyed()) dashboard.webContents.send('stockAlert', { ...a, sound: !ovShown }); break; }
     case 'opacity': settings.overlay.opacity = arg; saveSettings(); applyOpacity(); break;
+    // Opacité du fond seulement : le texte reste net (0 = fond invisible).
+    case 'bgOpacity': settings.overlay.bgOpacity = Math.min(1, Math.max(0, +arg || 0)); saveSettings(); broadcast(); break;
     case 'theme': settings.theme = arg === 'light' ? 'light' : 'dark'; saveSettings(); broadcast(); break;
     case 'lang':
       settings.lang = I18N.LANGS[arg] ? arg : 'en'; saveSettings(); buildTrayMenu();

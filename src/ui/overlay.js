@@ -78,6 +78,9 @@ tli.onState((s) => {
   $('icCollapse').innerHTML = collapsed ? IC_EXPAND : IC_COLLAPSE;
   $('btnCollapse').title = t(collapsed ? 'ov.expand' : 'ov.collapse.title');
   document.body.classList.toggle('solid', !!s.settings.overlay.solid);
+  const bga = s.settings.overlay.bgOpacity ?? 1;
+  document.documentElement.style.setProperty('--bga', bga);
+  document.body.classList.toggle('thinbg', bga < 0.6);
   document.body.classList.toggle('unitp', !!s.settings.overlay.unitPrice);
   document.body.classList.toggle('noflash', !!s.settings.overlay.noFlash);
   document.body.classList.toggle('compact', !!s.settings.overlay.compact);
