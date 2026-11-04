@@ -5,6 +5,16 @@
   },
   "releases": [
     {
+      "version": "1.1.12",
+      "date": "2026-11-04",
+      "en": [
+        "Fixed inflated profit: a price check with affixes on a piece of gear could give a price to a hidden item, counted in the profit but not shown in the list. Hidden items now never count. Thanks LuxusImReisfeld!"
+      ],
+      "fr": [
+        "Correction du profit gonflé : une vérification de prix avec affixes sur une pièce d'équipement pouvait donner un prix à un objet masqué, compté dans le profit mais absent de la liste. Les objets masqués ne comptent plus jamais. Merci LuxusImReisfeld !"
+      ]
+    },
+    {
       "version": "1.1.11",
       "date": "2026-10-31",
       "en": [

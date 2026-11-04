@@ -200,7 +200,7 @@ class Tracker extends EventEmitter {
   // Valeur totale du sac au prix actuel.
   netWorth() {
     let v = 0;
-    for (const { id, num } of this.slots.values()) v += num * this.sellPrice(id);
+    for (const { id, num } of this.slots.values()) if (this.visible(id)) v += num * this.sellPrice(id);
     return v;
   }
 
@@ -299,7 +299,7 @@ class Tracker extends EventEmitter {
         return;
       // Prix vu avec des affixes cochés : prix de ce drop pour la session (si l'objet est dans le loot).
       case 'priceFiltered': {
-        if (this.replay || !this.session.recording || !(this.session.loot[ev.id] > 0)) return;
+        if (this.replay || !this.session.recording || !(this.session.loot[ev.id] > 0) || !this.visible(ev.id)) return;
         const sorted = [...ev.prices].sort((a, b) => a - b);
         const p = sorted[Math.floor(0.1 * (sorted.length - 1))];
         if (p > 0) { this.setSessionPrice(ev.id, p); this.emit('filteredPrice', { id: ev.id, price: p }); }
@@ -573,12 +573,12 @@ class Tracker extends EventEmitter {
 
   valueOf(qtyMap) {
     let v = 0;
-    for (const id in qtyMap) v += qtyMap[id] * this.unitPrice(+id);
+    for (const id in qtyMap) if (this.visible(id)) v += qtyMap[id] * this.unitPrice(+id);
     return v;
   }
   gainValueOf(qtyMap) {
     let v = 0;
-    for (const id in qtyMap) v += qtyMap[id] * this.priceFor(+id, qtyMap[id]);
+    for (const id in qtyMap) if (this.visible(id)) v += qtyMap[id] * this.priceFor(+id, qtyMap[id]);
     return v;
   }
 
@@ -589,7 +589,8 @@ class Tracker extends EventEmitter {
   }
   lootValueOf(qtyMap) {
     let v = 0;
-    for (const id in qtyMap) if (!(qtyMap[id] > 0 && this.ignored(id))) v += qtyMap[id] * this.priceFor(+id, qtyMap[id]);
+    // Objets masqués (« Item #1234 », base d'équipement) : jamais comptés, comme dans les listes.
+    for (const id in qtyMap) if (this.visible(id) && !(qtyMap[id] > 0 && this.ignored(id))) v += qtyMap[id] * this.priceFor(+id, qtyMap[id]);
     return v;
   }
 
