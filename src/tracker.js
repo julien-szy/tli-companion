@@ -360,7 +360,10 @@ class Tracker extends EventEmitter {
   _delta(id, delta, ts) {
     if (this.replay || !delta) return;
     if (this.proto && IGNORED_PROTOS.has(this.proto)) return;
-    id = this._legendSlate(id);
+    // Équipement : seul un vrai ramassage au sol peut être un drop de légendaire. Un équipement retiré (changement
+    // de stuff en carte) revient au sac par Push2 : ce n'est pas un drop.
+    const picked = !!(this.proto && PICK_PROTOS.has(this.proto));
+    if (picked) id = this._legendSlate(id);
     // Balise utilisée (même hors session) : sert à relier les Star Shards à une région et au rappel « déjà à 80 ».
     if (delta < 0) {
       const it = this.items.get(+id);
@@ -393,7 +396,7 @@ class Tracker extends EventEmitter {
       addQty(s.other, id, delta);
     }
     // Pièce d'équipement (base inconnue de la base d'objets) ramassée en carte : peut-être un légendaire.
-    if (cat === 'loot' && delta > 0 && run && this._isGearBase(id)) {
+    if (cat === 'loot' && picked && delta > 0 && run && this._isGearBase(id)) {
       s.gearPicks = s.gearPicks || [];
       s.gearPicks.push({ base: +id, ts, run: run.startedAt, seg: run.seg || 0 });
       if (s.gearPicks.length > 200) s.gearPicks.splice(0, s.gearPicks.length - 200);
