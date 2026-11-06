@@ -977,12 +977,20 @@ function currentPrices() {
   const since = Date.now() - 7 * 86400000;
   const rows = db.prepare(`SELECT item_id, price, ts FROM (SELECT item_id, price, ts FROM price_obs WHERE ts > ?
     UNION ALL SELECT item_id, price, ts FROM price_obs_anon WHERE ts > ?) ORDER BY item_id, price`).all(since, since);
+  // Prix = médiane des observations les plus récentes : 24 h s'il y en a assez, sinon 3 jours, sinon 7 jours.
+  // Une médiane sur 7 jours restait des jours sur l'ancien prix quand un objet s'effondrait (Siege Hunting
+  // Astrolabe de 21 à 7 FE fin octobre : les apps comptaient encore ~20 FE).
+  const now = Date.now();
+  const WINDOWS = [86400000, 3 * 86400000, 7 * 86400000];
+  const MIN_OBS = 5;
   const out = {};
   let i = 0;
   while (i < rows.length) {
     let j = i;
     while (j < rows.length && rows[j].item_id === rows[i].item_id) j++;
-    const group = rows.slice(i, j);
+    const all = rows.slice(i, j); // triées par prix
+    let group = all;
+    for (const w of WINDOWS) { const g = all.filter((r) => r.ts > now - w); if (g.length >= MIN_OBS) { group = g; break; } }
     const mid = group.length >> 1;
     const median = group.length % 2 ? group[mid].price : (group[mid - 1].price + group[mid].price) / 2;
     out[rows[i].item_id] = { price: median, n: group.length, ts: Math.max(...group.map((g) => g.ts)) };
