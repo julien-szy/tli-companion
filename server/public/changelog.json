@@ -1,6 +1,16 @@
 {
   "releases": [
     {
+      "version": "1.1.14",
+      "date": "2026-11-06",
+      "en": [
+        "New Sandlord alert: a train horn plays when your gliders come back from a raid (one alert per wave, volume 50% by default). On/off and your own sound in Settings › Alerts and sounds. Horn sound: Joseph SARDIN, LaSonotheque.org (free, CC0)."
+      ],
+      "fr": [
+        "Nouvelle alerte Sandlord : un klaxon de train sonne quand tes gliders reviennent d'un raid (une alerte par vague, volume à 50 % par défaut). À activer ou couper, et ton propre son possible, dans Réglages › Alertes et sons. Son du klaxon : Joseph SARDIN, LaSonotheque.org (libre de droits, CC0)."
+      ]
+    },
+    {
       "version": "1.1.13",
       "date": "2026-11-04",
       "en": [

@@ -578,6 +578,7 @@ $('sFarmStats').onchange = (e) => tli.action('shareFarmStats', e.target.checked)
 $('sCheckUpd').onclick = () => tli.action('checkUpdates');
 $('sTartarus').onchange = (e) => tli.action('tartarusAlerts', e.target.checked);
 $('sStar').onchange = (e) => tli.action('starAlerts', e.target.checked);
+$('sGlider').onchange = (e) => tli.action('gliderAlerts', e.target.checked);
 $('sMinLoot').onchange = (e) => tli.action('minLootValue', e.target.value);
 $('sAfterTax').onchange = (e) => tli.action('afterTax', e.target.checked);
 $('sTaxRate').onchange = (e) => tli.action('taxRate', e.target.value);
@@ -609,7 +610,7 @@ document.querySelectorAll('[data-sndtest]').forEach((b) => (b.onclick = async ()
   // Stock : chaque clic fait entendre le palier suivant (1, 2 puis 3 bips).
   if (k === 'stock' || k === 'beacon') testLevel = testLevel === 10 ? 5 : testLevel === 5 ? 1 : 10;
   const volEl = document.querySelector(`[data-sndvol="${k}"]`);
-  alertSound({ volume: volEl ? +volEl.value / 100 : 1, soundSpec: await tli.soundSpec(k), kind: k === 'starFull' ? 'star-full' : ['stock', 'beacon', 'beaconEmpty'].includes(k) ? 'stock' : k === 'tartarusFull' ? 'tartarus-full' : 'tartarus-ready', level: k === 'beaconEmpty' ? 0 : ['stock', 'beacon'].includes(k) ? testLevel : 5 });
+  alertSound({ volume: volEl ? +volEl.value / 100 : 1, soundSpec: await tli.soundSpec(k), kind: k === 'gliders' ? 'gliders' : k === 'starFull' ? 'star-full' : ['stock', 'beacon', 'beaconEmpty'].includes(k) ? 'stock' : k === 'tartarusFull' ? 'tartarus-full' : 'tartarus-ready', level: k === 'beaconEmpty' ? 0 : ['stock', 'beacon'].includes(k) ? testLevel : 5 });
 }));
 $('refreshCommunity').onclick = () => tli.action('refreshCommunity');
 $('saveHub').onclick = () => tli.action('hubPatterns', $('sHub').value);
@@ -861,6 +862,7 @@ tli.onState((s) => {
     if (document.activeElement !== $('popColor')) $('popColor').value = pp.color || '#ffd447';
     $('popColors').querySelectorAll('[data-c]').forEach((b) => b.classList.toggle('on', b.dataset.c === (pp.color || '#ffd447')));
     $('sStar').checked = s.settings.starAlerts !== false;
+    $('sGlider').checked = s.settings.gliderAlerts !== false;
     $('sAutoPause').checked = s.settings.autoPause !== false;
     $('sLock').checked = !!s.settings.overlay.locked;
     // Comptes (bêta) : visibles seulement quand ils sont activés.

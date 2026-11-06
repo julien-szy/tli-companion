@@ -256,6 +256,7 @@ class Tracker extends EventEmitter {
         return;
       }
       case 'voidNode': this.pendingNode = { areaId: ev.areaId, mapOrder: ev.mapOrder }; return;
+      case 'gliderAlert': if (!this.replay) this.emit('gliderAlert', ev); return;
       // Nouveau personnage : on oublie le sac (et les Star Shards) de l'ancien. Le jeu renvoie ensuite le sac
       // complet du nouveau perso ; ses pages vides n'envoient rien, d'où la remise à zéro.
       // Équipement porté : le légendaire est celui que le jeu a annoncé pour cette base juste avant.

@@ -184,7 +184,7 @@ async function alertSound(a) {
     }
   }
   if (a.kind === 'star-full') tartarusSound('tartarus-ready', vol); // son de secours si la voix ne se lit pas
-  else if (a.kind && a.kind.startsWith('tartarus')) tartarusSound(a.kind, vol);
+  else if (a.kind && (a.kind.startsWith('tartarus') || a.kind === 'gliders')) tartarusSound(a.kind === 'gliders' ? 'tartarus-ready' : a.kind, vol);
   else stockBeep(a.level, vol);
 }
 

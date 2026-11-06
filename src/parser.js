@@ -85,7 +85,7 @@ class LogParser {
        line.includes('GetCardDataByMapOrder') || line.endsWith('[Game] AffixInfos') || line.includes('ResreshConsumData') ||
        line.includes('SelectRoleNetMgr@_EnterLevelStep5') || line.includes('SetPlayerEquipment(BaseId=') ||
        line.includes('ExpMgr@UpdateExp') || line.includes('Open FightFailureView') || line.includes('KilledSkill:') || line.includes('AttributeMgr:Log(') ||
-       line.includes('RoleAttrMgr@') || line.includes('PageId=-6') || line.includes('PageId=-1'));
+       line.includes('RoleAttrMgr@') || line.includes('PageId=-6') || line.includes('PageId=-1') || line.includes('UI_S10_SMDH_Event_Alerts'));
     if (!hasBag && !hasItem && !hasLevel && !hasXchg && !hasMisc) return;
 
     const ts = parseTs(line);
@@ -98,6 +98,8 @@ class LogParser {
       const eq = SETEQ_RE.exec(line);
       if (eq) { this.onEvent({ type: 'equipHint', ts: t, base: +eq[1], gold: +eq[2] }); return; }
       if (line.includes('Open FightFailureView')) { this.onEvent({ type: 'death', ts: t }); return; }
+      // Sandlord : le jeu joue ce son quand les gliders reviennent d'un raid (par paquets, un par glider).
+      if (line.includes('UI_S10_SMDH_Event_Alerts')) { this.onEvent({ type: 'gliderAlert', ts: t }); return; }
       if (line.includes('RoleAttrMgr@')) {
         const n = ATTR_NAME_RE.exec(line);
         if (n) { this.attrName = { name: n[1], id: +n[2] }; return; }
